@@ -17,8 +17,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['var(--font-alegreya)', 'serif'],
-        headline: ['var(--font-alegreya)', 'serif'],
+        // Updated to use Rubik with a sans-serif fallback
+        body: ['var(--font-rubik)', 'sans-serif'],
+        headline: ['var(--font-rubik)', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
