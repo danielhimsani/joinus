@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { CalendarIcon, Upload } from "lucide-react";
-import { format } from "date-fns-jalali"; // For Jalali (Persian/Hebrew) calendar, or use date-fns with he locale
+import { format } from "date-fns"; 
 import { he } from 'date-fns/locale';
 
 

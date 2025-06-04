@@ -8,7 +8,7 @@ import { ListFilter, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns-jalali";
+import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";

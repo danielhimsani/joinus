@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { Event } from "@/types";
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { CalendarDays, MapPin, Users, Tag, Utensils } from 'lucide-react';
-import { format } from 'date-fns-jalali';
+import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 
 interface EventCardProps {
