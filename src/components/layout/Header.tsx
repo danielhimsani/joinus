@@ -1,9 +1,10 @@
+
 "use client";
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
-import { PartyPopper, Home, CalendarPlus, UserCircle, LogIn, LogOut, Menu } from 'lucide-react';
+import { Home, CalendarPlus, UserCircle, LogIn, LogOut, Menu, PartyPopper } from 'lucide-react'; // Kept PartyPopper in case it's used by navLinks
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -50,7 +51,7 @@ const useAuth = () => {
 
 const navLinks = [
   { href: '/', label: HEBREW_TEXT.navigation.home, icon: <Home className="ml-2 h-5 w-5" /> },
-  { href: '/events', label: HEBREW_TEXT.navigation.events, icon: <PartyPopper className="ml-2 h-5 w-5" /> },
+  { href: '/events', label: HEBREW_TEXT.navigation.events, icon: <PartyPopper className="ml-2 h-5 w-5" /> }, // Using PartyPopper here for nav icon
   { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: <CalendarPlus className="ml-2 h-5 w-5" /> },
 ];
 
@@ -97,7 +98,7 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center space-x-2 rtl:space-x-reverse">
-          <PartyPopper className="h-8 w-8 text-primary" />
+          <span className="text-2xl" role="img" aria-label="Ring icon">💍</span>
           <span className="font-headline text-2xl font-bold text-primary">{HEBREW_TEXT.appName}</span>
         </Link>
 
