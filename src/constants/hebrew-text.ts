@@ -20,6 +20,7 @@ export const HEBREW_TEXT = {
     createEvent: "יצירת אירוע",
     profile: "פרופיל",
     leaderboard: "טבלת מובילים",
+    mobileMenuTitle: "תפריט",
   },
   event: {
     createEventTitle: "יצירת אירוע חדש",

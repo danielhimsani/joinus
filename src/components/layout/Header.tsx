@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
-import { Home, CalendarPlus, UserCircle, LogIn, LogOut, Menu, PartyPopper } from 'lucide-react'; // Kept PartyPopper in case it's used by navLinks
+import { Home, CalendarPlus, UserCircle, LogIn, LogOut, Menu, PartyPopper } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useState, useEffect } from 'react';
 
 // Mock authentication state
@@ -51,7 +51,7 @@ const useAuth = () => {
 
 const navLinks = [
   { href: '/', label: HEBREW_TEXT.navigation.home, icon: <Home className="ml-2 h-5 w-5" /> },
-  { href: '/events', label: HEBREW_TEXT.navigation.events, icon: <PartyPopper className="ml-2 h-5 w-5" /> }, // Using PartyPopper here for nav icon
+  { href: '/events', label: HEBREW_TEXT.navigation.events, icon: <PartyPopper className="ml-2 h-5 w-5" /> },
   { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: <CalendarPlus className="ml-2 h-5 w-5" /> },
 ];
 
@@ -137,7 +137,10 @@ export default function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <nav className="flex flex-col space-y-4 mt-8">
+                <SheetHeader className="mb-4 border-b pb-4">
+                  <SheetTitle className="text-center text-xl font-headline">{HEBREW_TEXT.navigation.mobileMenuTitle}</SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col space-y-4 mt-4">
                   {navLinks.map(link => (
                     <Link key={link.href} href={link.href} className="flex items-center p-2 rounded-md hover:bg-accent">
                        {link.icon}
