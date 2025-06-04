@@ -11,7 +11,7 @@ const alegreya = Alegreya({
 });
 
 export const metadata: Metadata = {
-  title: 'מחוברים',
+  title: 'Join us',
   description: 'פלטפורמת ניהול אורחים לחתונה',
 };
 

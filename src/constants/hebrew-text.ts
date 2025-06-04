@@ -1,5 +1,5 @@
 export const HEBREW_TEXT = {
-  appName: "מחוברים",
+  appName: "Join us",
   auth: {
     signIn: "התחברות",
     signUp: "הרשמה",
@@ -110,6 +110,7 @@ export const HEBREW_TEXT = {
     forGuests: "לאורחים",
     createYourEvent: "צרו את האירוע שלכם",
     findOpenSpots: "מצאו מקומות פנויים",
+    to: "ל",
   },
   foodIcons: {
     // Using text for clarity as specific kosher icons are hard to standardize
