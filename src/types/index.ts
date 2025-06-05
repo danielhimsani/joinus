@@ -25,7 +25,7 @@ export interface Event {
   location: string; // Could be more complex with GeoPoint
   dateTime: Date;
   description: string;
-  ageRange?: string;
+  ageRange?: [number, number]; // Updated from string to [number, number]
   foodType: FoodType;
   religionStyle: ReligionStyle;
   imageUrl?: string;

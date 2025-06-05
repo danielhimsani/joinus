@@ -32,6 +32,7 @@ import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { PaymentOption, FoodType, ReligionStyle } from "@/types";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { Slider } from "@/components/ui/slider";
 
 const foodTypes: { value: FoodType; label: string }[] = [
   { value: "kosherMeat", label: HEBREW_TEXT.event.kosherMeat },
@@ -62,7 +63,7 @@ const formSchema = z.object({
   location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }),
   dateTime: z.date({ required_error: "תאריך ושעה נדרשים." }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
-  ageRange: z.string().optional(),
+  ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([18, 80]).optional(),
   foodType: z.enum(["kosherMeat", "kosherDairy", "kosherParve", "notKosher"]),
   religionStyle: z.enum(["secular", "traditional", "religious", "mixed"]),
   imageUrl: z.string().optional(), 
@@ -103,12 +104,14 @@ export function EventForm() {
       pricePerGuest: 100,
       location: "",
       description: "",
+      ageRange: [25, 55], // Default age range for the slider
       foodType: "kosherParve",
       religionStyle: "mixed",
     },
   });
 
   const paymentOptionValue = form.watch("paymentOption");
+  const ageRangeValue = form.watch("ageRange");
 
   const fetchSuggestions = useCallback((query: string) => {
     if (!query.trim()) {
@@ -361,19 +364,31 @@ export function EventForm() {
               )}
             />
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-3 gap-8 items-start">
                 <FormField
-                control={form.control}
-                name="ageRange"
-                render={({ field }) => (
+                  control={form.control}
+                  name="ageRange"
+                  render={({ field }) => (
                     <FormItem>
-                    <FormLabel>{HEBREW_TEXT.event.ageRange} ({HEBREW_TEXT.general.optional})</FormLabel>
-                    <FormControl>
-                        <Input placeholder="לדוגמה: 25-40" {...field} />
-                    </FormControl>
-                    <FormMessage />
+                      <FormLabel>{HEBREW_TEXT.event.ageRange}</FormLabel>
+                      <FormControl>
+                        <Slider
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          min={18}
+                          max={80}
+                          step={1}
+                          className={cn("py-3")} 
+                        />
+                      </FormControl>
+                      {field.value && (
+                        <FormDescription className="text-center pt-1">
+                          טווח גילאים נבחר: {field.value[0]} - {field.value[1]}
+                        </FormDescription>
+                      )}
+                      <FormMessage />
                     </FormItem>
-                )}
+                  )}
                 />
                 <FormField
                 control={form.control}
@@ -448,6 +463,3 @@ export function EventForm() {
     </Card>
   );
 }
-
-
-    

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -21,7 +22,7 @@ const mockEvents: Event[] = [
     location: "אולמי 'קסם', ירושלים",
     dateTime: new Date(new Date().setDate(new Date().getDate() + 7)), // Next week
     description: "הצטרפו אלינו לחגיגה של אהבה באווירה קסומה ומרגשת. מוזיקה טובה, אוכל משובח והמון שמחה!",
-    ageRange: "25-55",
+    ageRange: [25, 55],
     foodType: "kosherMeat",
     religionStyle: "traditional",
     imageUrl: "https://placehold.co/600x400.png?text=Event1",
@@ -37,7 +38,7 @@ const mockEvents: Event[] = [
     location: "לופט 'אורבן', תל אביב",
     dateTime: new Date(new Date().setDate(new Date().getDate() + 14)), // In two weeks
     description: "מסיבת אירוסין צעירה ותוססת עם DJ, קוקטיילים ואווירה מחשמלת. בואו לחגוג איתנו!",
-    ageRange: "20-35",
+    ageRange: [20, 35],
     foodType: "kosherParve",
     religionStyle: "secular",
     imageUrl: "https://placehold.co/600x400.png?text=Event2",
@@ -53,6 +54,7 @@ const mockEvents: Event[] = [
     location: "בית כנסת 'אוהל מועד', חיפה",
     dateTime: new Date(new Date().setDate(new Date().getDate() + 30)), // In a month
     description: "אירוע מרגש לחידוש נדרים לאחר 20 שנות נישואין. כיבוד קל ואווירה משפחתית.",
+    // ageRange remains undefined as per original mock data
     foodType: "kosherDairy",
     religionStyle: "religious",
     imageUrl: "https://placehold.co/600x400.png?text=Event3",
@@ -69,6 +71,7 @@ const mockEvents: Event[] = [
     location: "יער בן שמן",
     dateTime: new Date(new Date().setDate(new Date().getDate() + 21)),
     description: "חתונה אינטימית ורומנטית בלב הטבע. אווירה פסטורלית ואוכל גורמה צמחוני.",
+    // ageRange remains undefined as per original mock data
     foodType: "kosherParve", // Assuming vegetarian can be parve
     religionStyle: "mixed",
     imageUrl: "https://placehold.co/600x400.png?text=Event4",
@@ -117,6 +120,8 @@ export default function EventsPage() {
        if (currentFilters.foodType && currentFilters.foodType !== "any") {
         events = events.filter(event => event.foodType === currentFilters.foodType);
       }
+      // Note: Age range filtering logic is not implemented in EventFilters yet.
+      // If it were, it would need to handle the new ageRange: [min, max] format.
 
       setFilteredEvents(events);
       setIsLoading(false);

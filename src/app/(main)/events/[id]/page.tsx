@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
@@ -29,7 +30,7 @@ const mockEvents: Event[] = [
     location: "אולמי 'קסם', ירושלים",
     dateTime: new Date(new Date().setDate(new Date().getDate() + 7)),
     description: "הצטרפו אלינו לחגיגה של אהבה באווירה קסומה ומרגשת. מוזיקה טובה, אוכל משובח והמון שמחה! האירוע יכלול הופעה חיה של אמן אורח, בר קוקטיילים עשיר ופינות ישיבה מפנקות. מצפים לראותכם!",
-    ageRange: "25-55",
+    ageRange: [25, 55],
     foodType: "kosherMeat",
     religionStyle: "traditional",
     imageUrl: "https://placehold.co/800x400.png?text=Event1+Large",
@@ -45,7 +46,7 @@ const mockEvents: Event[] = [
     location: "לופט 'אורבן', תל אביב",
     dateTime: new Date(new Date().setDate(new Date().getDate() + 14)), // In two weeks
     description: "מסיבת אירוסין צעירה ותוססת עם DJ, קוקטיילים ואווירה מחשמלת. בואו לחגוג איתנו!",
-    ageRange: "20-35",
+    ageRange: [20, 35],
     foodType: "kosherParve",
     religionStyle: "secular",
     imageUrl: "https://placehold.co/800x400.png?text=Event2+Large",
@@ -193,7 +194,7 @@ export default function EventDetailPage() {
                 <div className="flex items-start"><Tag className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.paymentOptions}:</strong> {getPriceDisplay(event)}</span></div>
                 <div className="flex items-start"><Utensils className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.foodType}:</strong> {getFoodTypeLabel(event.foodType)}</span></div>
                 <div className="flex items-start"><Info className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.religionStyle}:</strong> {event.religionStyle}</span></div>
-                {event.ageRange && <div className="flex items-start"><Clock className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.ageRange}:</strong> {event.ageRange}</span></div>}
+                {event.ageRange && <div className="flex items-start"><Clock className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.ageRange}:</strong> {event.ageRange[0]} - {event.ageRange[1]}</span></div>}
               </div>
             </div>
 
