@@ -104,14 +104,13 @@ export function EventForm() {
       pricePerGuest: 100,
       location: "",
       description: "",
-      ageRange: [25, 55], // Default age range for the slider
+      ageRange: [25, 55], 
       foodType: "kosherParve",
       religionStyle: "mixed",
     },
   });
 
   const paymentOptionValue = form.watch("paymentOption");
-  const ageRangeValue = form.watch("ageRange");
 
   const fetchSuggestions = useCallback((query: string) => {
     if (!query.trim()) {
@@ -120,7 +119,6 @@ export function EventForm() {
       return;
     }
     setIsSuggestionsLoading(true);
-    // Simulate API call
     console.log("Simulating API call for:", query);
     setTimeout(() => {
       const filteredSuggestions = mockLocationSuggestions.filter(s => 
@@ -129,7 +127,7 @@ export function EventForm() {
       setLocationSuggestions(filteredSuggestions);
       setIsSuggestionsLoading(false);
       setShowSuggestions(true);
-    }, 500); // Simulate network delay
+    }, 500); 
   }, []);
 
   useEffect(() => {
@@ -140,7 +138,7 @@ export function EventForm() {
         setLocationSuggestions([]);
         setShowSuggestions(false);
       }
-    }, 300); // Debounce input
+    }, 300); 
 
     return () => {
       clearTimeout(handler);
@@ -309,7 +307,7 @@ export function EventForm() {
                         placeholder="התחל להקליד כתובת או שם מקום..." 
                         value={locationInput}
                         onChange={(e) => setLocationInput(e.target.value)}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} // Delay to allow click on suggestions
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} 
                         onFocus={() => {
                             if (locationInput && locationSuggestions.length > 0) {
                                 setShowSuggestions(true);
@@ -328,7 +326,7 @@ export function EventForm() {
                             <li 
                               key={index}
                               className="px-3 py-2 text-sm hover:bg-accent cursor-pointer"
-                              onMouseDown={() => handleSuggestionClick(suggestion)} // use onMouseDown to fire before onBlur
+                              onMouseDown={() => handleSuggestionClick(suggestion)} 
                             >
                               {suggestion}
                             </li>
@@ -368,27 +366,41 @@ export function EventForm() {
                 <FormField
                   control={form.control}
                   name="ageRange"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{HEBREW_TEXT.event.ageRange}</FormLabel>
-                      <FormControl>
-                        <Slider
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          min={18}
-                          max={80}
-                          step={1}
-                          className={cn("py-3")} 
-                        />
-                      </FormControl>
-                      {field.value && (
-                        <FormDescription className="text-center pt-1">
-                          טווח גילאים נבחר: {field.value[0]} - {field.value[1]}
-                        </FormDescription>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const sliderValue = (Array.isArray(field.value) && field.value.length === 2)
+                                      ? field.value
+                                      : (form.formState.defaultValues?.ageRange || [18, 80]);
+                    return (
+                      <FormItem>
+                        <FormLabel>{HEBREW_TEXT.event.ageRange}</FormLabel>
+                        <FormControl>
+                          <Slider
+                            value={sliderValue}
+                            onValueChange={(newValue) => {
+                                // Ensure newValue is always an array before calling field.onChange
+                                if (Array.isArray(newValue) && newValue.length === 2) {
+                                    field.onChange(newValue);
+                                } else if (typeof newValue === 'number') {
+                                    // Handle if onValueChange unexpectedly returns a single number
+                                    // This case should ideally not happen with Radix range slider
+                                    field.onChange([newValue, sliderValue[1]]); 
+                                }
+                            }}
+                            min={18}
+                            max={80}
+                            step={1}
+                            className={cn("py-3")} 
+                          />
+                        </FormControl>
+                        {sliderValue && (
+                          <FormDescription className="text-center pt-1">
+                            טווח גילאים נבחר: {sliderValue[0]} - {sliderValue[1]}
+                          </FormDescription>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 <FormField
                 control={form.control}
@@ -463,3 +475,4 @@ export function EventForm() {
     </Card>
   );
 }
+
