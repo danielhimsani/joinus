@@ -93,7 +93,7 @@ export function EventForm() {
     },
   });
 
-  const paymentOption = form.watch("paymentOption");
+  const paymentOptionValue = form.watch("paymentOption");
 
   // Mock create event function
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -202,7 +202,7 @@ export function EventForm() {
                 name="paymentOption"
                 render={({ field }) => (
                     <FormItem className="space-y-3">
-                    <FormLabel>{HEBREW_TEXT.event.paymentOptions}</FormLabel>
+                    <FormLabel className="text-right">{HEBREW_TEXT.event.paymentOptions}</FormLabel>
                     <FormControl>
                         <RadioGroup
                         onValueChange={field.onChange}
@@ -226,7 +226,7 @@ export function EventForm() {
                 )}
             />
 
-            {paymentOption === 'fixed' && (
+            {paymentOptionValue === 'fixed' && (
                  <FormField
                     control={form.control}
                     name="pricePerGuest"
