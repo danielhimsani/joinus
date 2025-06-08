@@ -104,7 +104,7 @@ export function EventForm() {
       pricePerGuest: 100,
       location: "",
       description: "",
-      ageRange: [25, 55], // Default value for the form
+      ageRange: [25, 55], // Ensured default for RHF
       foodType: "kosherParve",
       religionStyle: "mixed",
       imageUrl: "",
@@ -212,7 +212,7 @@ export function EventForm() {
                           <Button
                             variant={"outline"}
                             className={cn(
-                              "w-full pl-3 text-left font-normal",
+                              "w-full pl-3 text-right font-normal",
                               !field.value && "text-muted-foreground"
                             )}
                           >
@@ -374,32 +374,25 @@ export function EventForm() {
                 <FormField
                   control={form.control}
                   name="ageRange"
-                  render={({ field }) => {
-                    // Ensure field.value is always a two-element array for the Slider's value prop
-                    const currentSliderValue = (Array.isArray(field.value) && field.value.length === 2)
-                      ? field.value
-                      : (form.formState.defaultValues?.ageRange || [18, 80]); // Fallback if needed
-
-                    return (
-                      <FormItem>
-                        <FormLabel>{HEBREW_TEXT.event.ageRange}</FormLabel>
-                        <FormControl>
-                          <Slider
-                            value={currentSliderValue}
-                            onValueChange={field.onChange} // react-hook-form's onChange will handle the update
-                            min={18}
-                            max={80}
-                            step={1}
-                            className={cn("py-3")}
-                          />
-                        </FormControl>
-                        <FormDescription className="text-center pt-1">
-                           טווח גילאים נבחר: {currentSliderValue[0]} - {currentSliderValue[1]}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{HEBREW_TEXT.event.ageRange}</FormLabel>
+                      <FormControl>
+                        <Slider
+                          value={field.value} // Directly use field.value from RHF
+                          onValueChange={field.onChange} // Directly use field.onChange from RHF
+                          min={18}
+                          max={80}
+                          step={1}
+                          className={cn("py-3")}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-center pt-1">
+                         טווח גילאים נבחר: {Array.isArray(field.value) && field.value.length === 2 ? `${field.value[0]} - ${field.value[1]}` : 'טוען...'}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <FormField
                 control={form.control}
