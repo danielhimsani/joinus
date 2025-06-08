@@ -306,11 +306,18 @@ export function EventForm() {
                       <Input 
                         placeholder="התחל להקליד כתובת או שם מקום..." 
                         value={locationInput}
-                        onChange={(e) => setLocationInput(e.target.value)}
+                        onChange={(e) => {
+                            setLocationInput(e.target.value);
+                            // If user types, we assume they are changing the selection,
+                            // so we might want to clear the field.onChange if not matching a suggestion later
+                            // For now, this just updates the visual input
+                        }}
                         onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} 
                         onFocus={() => {
                             if (locationInput && locationSuggestions.length > 0) {
                                 setShowSuggestions(true);
+                            } else if (locationInput) {
+                                fetchSuggestions(locationInput); // Fetch suggestions if input has text on focus
                             }
                         }}
                         autoComplete="off"
@@ -367,24 +374,20 @@ export function EventForm() {
                   control={form.control}
                   name="ageRange"
                   render={({ field }) => {
-                    const sliderValue = (Array.isArray(field.value) && field.value.length === 2)
-                                      ? field.value
-                                      : (form.formState.defaultValues?.ageRange || [18, 80]);
+                    // Ensure field.value is always a two-element array for the Slider
+                    // and for display. Default to a sensible range if undefined or malformed.
+                    const currentAgeRange = (Array.isArray(field.value) && field.value.length === 2)
+                                          ? field.value
+                                          : [18, 80]; // Fallback default
                     return (
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.event.ageRange}</FormLabel>
                         <FormControl>
                           <Slider
-                            value={sliderValue}
+                            value={currentAgeRange} // Use the guaranteed array
                             onValueChange={(newValue) => {
-                                // Ensure newValue is always an array before calling field.onChange
-                                if (Array.isArray(newValue) && newValue.length === 2) {
-                                    field.onChange(newValue);
-                                } else if (typeof newValue === 'number') {
-                                    // Handle if onValueChange unexpectedly returns a single number
-                                    // This case should ideally not happen with Radix range slider
-                                    field.onChange([newValue, sliderValue[1]]); 
-                                }
+                                // Radix Slider with two thumbs will call onValueChange with a number[]
+                                field.onChange(newValue);
                             }}
                             min={18}
                             max={80}
@@ -392,11 +395,9 @@ export function EventForm() {
                             className={cn("py-3")} 
                           />
                         </FormControl>
-                        {sliderValue && (
-                          <FormDescription className="text-center pt-1">
-                            טווח גילאים נבחר: {sliderValue[0]} - {sliderValue[1]}
-                          </FormDescription>
-                        )}
+                        <FormDescription className="text-center pt-1">
+                          טווח גילאים נבחר: {currentAgeRange[0]} - {currentAgeRange[1]}
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     );
@@ -475,4 +476,3 @@ export function EventForm() {
     </Card>
   );
 }
-

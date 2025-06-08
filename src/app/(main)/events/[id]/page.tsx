@@ -202,7 +202,7 @@ export default function EventDetailPage() {
               {isOwner ? (
                 <Button className="w-full font-body" variant="outline" onClick={() => router.push(`/events/edit/${event.id}`)}>
                   <Edit3 className="ml-2 h-4 w-4" />
-                  {HEBREW_TEXT.profile.editProfile} האירוע
+                  {HEBREW_TEXT.event.editEvent}
                 </Button>
               ) : (
                 <Button className="w-full font-body text-lg py-3" onClick={handleRequestToJoin}>
@@ -224,7 +224,7 @@ export default function EventDetailPage() {
                 {joinRequests.length > 0 ? (
                   <div className="space-y-4">
                     {joinRequests.map(guest => (
-                      <Card key={guest.id} className="p-4 flex items-center justify-between">
+                      <Card key={guest.id} className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div className="flex items-center">
                           <Avatar className="ml-3 h-10 w-10">
                             <AvatarImage src={guest.profileImageUrl} alt={guest.name} data-ai-hint="guest avatar" />
@@ -235,9 +235,9 @@ export default function EventDetailPage() {
                             <p className="text-xs text-muted-foreground">{guest.bio || "אין ביו זמין"}</p>
                           </div>
                         </div>
-                        <div className="flex space-x-2 rtl:space-x-reverse">
-                          <Button size="sm" variant="outline" onClick={() => handleApproveRequest(guest.id)}><CheckCircle className="ml-1 h-4 w-4 text-green-500"/> {HEBREW_TEXT.event.approve}</Button>
-                          <Button size="sm" variant="destructiveOutline" onClick={() => handleRejectRequest(guest.id)}><XCircle className="ml-1 h-4 w-4"/> {HEBREW_TEXT.event.reject}</Button>
+                        <div className="flex space-x-2 rtl:space-x-reverse self-end sm:self-center">
+                          <Button size="sm" variant="default" onClick={() => handleApproveRequest(guest.id)}><CheckCircle className="ml-1 h-4 w-4"/> {HEBREW_TEXT.event.approve}</Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleRejectRequest(guest.id)}><XCircle className="ml-1 h-4 w-4"/> {HEBREW_TEXT.event.reject}</Button>
                         </div>
                       </Card>
                     ))}
@@ -253,7 +253,7 @@ export default function EventDetailPage() {
                  {approvedGuests.length > 0 ? (
                   <div className="space-y-4">
                     {approvedGuests.map(guest => (
-                      <Card key={guest.id} className="p-4 flex items-center justify-between">
+                      <Card key={guest.id} className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div className="flex items-center">
                           <Avatar className="ml-3 h-10 w-10">
                             <AvatarImage src={guest.profileImageUrl} alt={guest.name} data-ai-hint="guest avatar"/>
@@ -264,7 +264,7 @@ export default function EventDetailPage() {
                             <p className="text-xs text-muted-foreground">{guest.bio || "אין ביו זמין"}</p>
                           </div>
                         </div>
-                        <div className="flex space-x-2 rtl:space-x-reverse">
+                        <div className="flex space-x-2 rtl:space-x-reverse self-end sm:self-center">
                           <Button size="icon" variant="ghost" onClick={() => handleRateGuest(guest.id, 'positive')} title="דרג חיובי">
                             <ThumbsUp className="h-5 w-5 text-green-500"/>
                           </Button>

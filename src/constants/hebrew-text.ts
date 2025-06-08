@@ -1,3 +1,4 @@
+
 export const HEBREW_TEXT = {
   appName: "Join us",
   auth: {
@@ -24,6 +25,7 @@ export const HEBREW_TEXT = {
   },
   event: {
     createEventTitle: "יצירת אירוע חדש",
+    editEvent: "ערוך אירוע",
     eventName: "שם האירוע",
     numberOfGuests: "מספר אורחים",
     pricePerGuest: "מחיר לאורח",
