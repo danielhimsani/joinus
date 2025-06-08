@@ -54,7 +54,7 @@ const mockEvents: Event[] = [
     location: "בית כנסת 'אוהל מועד', חיפה",
     dateTime: new Date(new Date().setDate(new Date().getDate() + 30)), // In a month
     description: "אירוע מרגש לחידוש נדרים לאחר 20 שנות נישואין. כיבוד קל ואווירה משפחתית.",
-    // ageRange remains undefined as per original mock data
+    ageRange: [30, 60], // Added default age range
     foodType: "kosherDairy",
     religionStyle: "religious",
     imageUrl: "https://placehold.co/600x400.png?text=Event3",
@@ -71,7 +71,7 @@ const mockEvents: Event[] = [
     location: "יער בן שמן",
     dateTime: new Date(new Date().setDate(new Date().getDate() + 21)),
     description: "חתונה אינטימית ורומנטית בלב הטבע. אווירה פסטורלית ואוכל גורמה צמחוני.",
-    // ageRange remains undefined as per original mock data
+    ageRange: [20, 40], // Added default age range
     foodType: "kosherParve", // Assuming vegetarian can be parve
     religionStyle: "mixed",
     imageUrl: "https://placehold.co/600x400.png?text=Event4",
@@ -92,7 +92,7 @@ export default function EventsPage() {
     setTimeout(() => {
       let events = mockEvents;
       if (currentFilters.searchTerm) {
-        events = events.filter(event => 
+        events = events.filter(event =>
             event.name.toLowerCase().includes(currentFilters.searchTerm!.toLowerCase()) ||
             event.description.toLowerCase().includes(currentFilters.searchTerm!.toLowerCase())
         );
@@ -147,7 +147,7 @@ export default function EventsPage() {
   return (
     <div className="container mx-auto px-4 py-12">
       <h1 className="font-headline text-4xl font-bold mb-8 text-center">{HEBREW_TEXT.event.discoverEvents}</h1>
-      
+
       {/* Placeholder for Map - this would be a more complex integration */}
       <div className="mb-8 p-4 bg-muted rounded-lg text-center h-64 flex items-center justify-center">
         <p className="text-muted-foreground">{HEBREW_TEXT.event.location} (מפה תופיע כאן)</p>

@@ -39,7 +39,7 @@ const mockEvents: Event[] = [
   },
    {
     id: "2",
-    coupleId: "user1", 
+    coupleId: "user1",
     name: "מסיבת האירוסין של נועה ואיתי",
     numberOfGuests: 15,
     paymentOption: "payWhatYouWant",
@@ -87,7 +87,7 @@ export default function EventDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const eventId = params.id as string;
-  
+
   const [event, setEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [joinRequests, setJoinRequests] = useState<GuestProfile[]>([]); // Simplified: stores profiles of requesters
@@ -124,7 +124,7 @@ export default function EventDetailPage() {
     toast({ title: HEBREW_TEXT.general.success, description: `בקשת האורח נדחתה.` });
     setJoinRequests(prev => prev.filter(g => g.id !== guestId));
   };
-  
+
   const handleRateGuest = (guestId: string, rating: 'positive' | 'negative') => {
     toast({
       title: HEBREW_TEXT.general.success,
@@ -185,7 +185,7 @@ export default function EventDetailPage() {
             <div className="md:col-span-2">
               <h3 className="font-headline text-xl font-semibold mb-3">{HEBREW_TEXT.event.description}</h3>
               <p className="text-foreground/80 leading-relaxed whitespace-pre-line">{event.description}</p>
-              
+
               <Separator className="my-6" />
 
               <h3 className="font-headline text-xl font-semibold mb-4">פרטים נוספים</h3>
@@ -194,7 +194,7 @@ export default function EventDetailPage() {
                 <div className="flex items-start"><Tag className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.paymentOptions}:</strong> {getPriceDisplay(event)}</span></div>
                 <div className="flex items-start"><Utensils className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.foodType}:</strong> {getFoodTypeLabel(event.foodType)}</span></div>
                 <div className="flex items-start"><Info className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.religionStyle}:</strong> {event.religionStyle}</span></div>
-                {event.ageRange && <div className="flex items-start"><Clock className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.ageRange}:</strong> {event.ageRange[0]} - {event.ageRange[1]}</span></div>}
+                <div className="flex items-start"><Clock className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.ageRange}:</strong> {event.ageRange[0]} - {event.ageRange[1]}</span></div>
               </div>
             </div>
 

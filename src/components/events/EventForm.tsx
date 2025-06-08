@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { CalendarIcon, Upload, Loader2 } from "lucide-react";
-import { format } from "date-fns"; 
+import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import React, { useState, useEffect, useCallback } from "react";
 
@@ -63,10 +63,10 @@ const formSchema = z.object({
   location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }),
   dateTime: z.date({ required_error: "תאריך ושעה נדרשים." }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
-  ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([18, 80]).optional(),
+  ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([25, 55]),
   foodType: z.enum(["kosherMeat", "kosherDairy", "kosherParve", "notKosher"]),
   religionStyle: z.enum(["secular", "traditional", "religious", "mixed"]),
-  imageUrl: z.string().optional(), 
+  imageUrl: z.string().optional(),
 }).refine(data => {
     if (data.paymentOption === 'fixed') {
         return data.pricePerGuest !== undefined && data.pricePerGuest > 0;
@@ -104,9 +104,10 @@ export function EventForm() {
       pricePerGuest: 100,
       location: "",
       description: "",
-      ageRange: [25, 55], 
+      ageRange: [25, 55],
       foodType: "kosherParve",
       religionStyle: "mixed",
+      imageUrl: "",
     },
   });
 
@@ -121,13 +122,13 @@ export function EventForm() {
     setIsSuggestionsLoading(true);
     console.log("Simulating API call for:", query);
     setTimeout(() => {
-      const filteredSuggestions = mockLocationSuggestions.filter(s => 
+      const filteredSuggestions = mockLocationSuggestions.filter(s =>
         s.toLowerCase().includes(query.toLowerCase())
       );
       setLocationSuggestions(filteredSuggestions);
       setIsSuggestionsLoading(false);
       setShowSuggestions(true);
-    }, 500); 
+    }, 500);
   }, []);
 
   useEffect(() => {
@@ -138,7 +139,7 @@ export function EventForm() {
         setLocationSuggestions([]);
         setShowSuggestions(false);
       }
-    }, 300); 
+    }, 300);
 
     return () => {
       clearTimeout(handler);
@@ -155,12 +156,12 @@ export function EventForm() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     console.log("Event creation data:", values);
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     toast({
       title: HEBREW_TEXT.general.success,
       description: `אירוע "${values.name}" נוצר בהצלחה!`,
     });
-    router.push("/events"); 
+    router.push("/events");
   };
 
   return (
@@ -294,7 +295,7 @@ export function EventForm() {
                     )}
                 />
             )}
-            
+
             <FormField
               control={form.control}
               name="location"
@@ -303,8 +304,8 @@ export function EventForm() {
                   <FormLabel>{HEBREW_TEXT.event.location}</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Input 
-                        placeholder="התחל להקליד כתובת או שם מקום..." 
+                      <Input
+                        placeholder="התחל להקליד כתובת או שם מקום..."
                         value={locationInput}
                         onChange={(e) => {
                             setLocationInput(e.target.value);
@@ -312,7 +313,7 @@ export function EventForm() {
                             // so we might want to clear the field.onChange if not matching a suggestion later
                             // For now, this just updates the visual input
                         }}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} 
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                         onFocus={() => {
                             if (locationInput && locationSuggestions.length > 0) {
                                 setShowSuggestions(true);
@@ -330,10 +331,10 @@ export function EventForm() {
                       {showSuggestions && locationSuggestions.length > 0 && (
                         <ul className="absolute z-10 w-full bg-background border border-input rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
                           {locationSuggestions.map((suggestion, index) => (
-                            <li 
+                            <li
                               key={index}
                               className="px-3 py-2 text-sm hover:bg-accent cursor-pointer"
-                              onMouseDown={() => handleSuggestionClick(suggestion)} 
+                              onMouseDown={() => handleSuggestionClick(suggestion)}
                             >
                               {suggestion}
                             </li>
@@ -373,35 +374,26 @@ export function EventForm() {
                 <FormField
                   control={form.control}
                   name="ageRange"
-                  render={({ field }) => {
-                    // Ensure field.value is always a two-element array for the Slider
-                    // and for display. Default to a sensible range if undefined or malformed.
-                    const currentAgeRange = (Array.isArray(field.value) && field.value.length === 2)
-                                          ? field.value
-                                          : [18, 80]; // Fallback default
-                    return (
+                  render={({ field }) => (
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.event.ageRange}</FormLabel>
                         <FormControl>
                           <Slider
-                            value={currentAgeRange} // Use the guaranteed array
-                            onValueChange={(newValue) => {
-                                // Radix Slider with two thumbs will call onValueChange with a number[]
-                                field.onChange(newValue);
-                            }}
+                            value={field.value} // field.value is now guaranteed to be [number, number]
+                            onValueChange={field.onChange}
                             min={18}
                             max={80}
                             step={1}
-                            className={cn("py-3")} 
+                            className={cn("py-3")}
                           />
                         </FormControl>
                         <FormDescription className="text-center pt-1">
-                          טווח גילאים נבחר: {currentAgeRange[0]} - {currentAgeRange[1]}
+                           טווח גילאים נבחר: {field.value[0]} - {field.value[1]}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
-                    );
-                  }}
+                    )
+                  }
                 />
                 <FormField
                 control={form.control}
@@ -448,7 +440,7 @@ export function EventForm() {
                 )}
                 />
             </div>
-            
+
             <FormField
                 control={form.control}
                 name="imageUrl"
