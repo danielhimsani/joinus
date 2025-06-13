@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from 'next/image'; // Added for map placeholder
+import Image from 'next/image';
 import { EventCard } from "@/components/events/EventCard";
 import { EventFilters, type Filters } from "@/components/events/EventFilters";
 import type { Event } from "@/types";
@@ -84,7 +84,7 @@ const mockEvents: Event[] = [
     dateTime: new Date(new Date().setDate(new Date().getDate() + 21)),
     description: "חתונה אינטימית ורומנטית בלב הטבע. אווירה פסטורלית ואוכל גורמה צמחוני.",
     ageRange: [20, 40],
-    foodType: "kosherParve", 
+    foodType: "kosherParve",
     religionStyle: "mixed",
     imageUrl: "https://placehold.co/600x400.png?text=Event4",
     createdAt: new Date(),
@@ -101,12 +101,12 @@ export default function EventsPage() {
 
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [isFetchingLocation, setIsFetchingLocation] = useState(false); 
-  const [showMap, setShowMap] = useState(false);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
 
   useEffect(() => {
-    if (showMap && !currentLocation && !locationError && !isFetchingLocation) { 
+    // Fetch location if not already fetched, errored, or currently fetching
+    if (!currentLocation && !locationError && !isFetchingLocation) {
       setIsFetchingLocation(true);
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -129,7 +129,7 @@ export default function EventsPage() {
         setIsFetchingLocation(false);
       }
     }
-  }, [showMap, currentLocation, locationError, isFetchingLocation]); 
+  }, [currentLocation, locationError, isFetchingLocation]);
 
   useEffect(() => {
     setIsLoadingEvents(true);
@@ -143,12 +143,12 @@ export default function EventsPage() {
         eventsToFilter = eventsToFilter.filter(event =>
             event.name.toLowerCase().includes(query) ||
             event.description.toLowerCase().includes(query) ||
-            event.location.toLowerCase().includes(query) 
+            event.location.toLowerCase().includes(query)
         );
       }
 
       // 2. Apply advanced filters from modal
-      if (advancedFilters.searchTerm && advancedFilters.searchTerm.trim()) { 
+      if (advancedFilters.searchTerm && advancedFilters.searchTerm.trim()) {
         const advancedQuery = advancedFilters.searchTerm.toLowerCase().trim();
          eventsToFilter = eventsToFilter.filter(event =>
             event.name.toLowerCase().includes(advancedQuery) ||
@@ -171,7 +171,7 @@ export default function EventsPage() {
                       if (typeof max === 'string' && max.includes('+')) return e.pricePerGuest >= (min as number);
                       return e.pricePerGuest >= (min as number) && e.pricePerGuest <= (max as number);
                   }
-                  return false; 
+                  return false;
               });
           }
       }
@@ -185,7 +185,7 @@ export default function EventsPage() {
 
   const handleAdvancedFilterChange = (newFilters: Filters) => {
     setAdvancedFilters(newFilters);
-    setShowFiltersModal(false); 
+    setShowFiltersModal(false);
   };
 
   const handleSimpleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -206,21 +206,20 @@ export default function EventsPage() {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      
       <div className="flex flex-row-reverse sm:flex-row items-center gap-2 mb-6">
         <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
             <Input
                 type="search"
                 placeholder={HEBREW_TEXT.general.searchEventsSpecificPlaceholder}
-                className="w-full pl-10 pr-3" 
+                className="w-full pl-10 pr-3"
                 value={simpleSearchQuery}
                 onChange={handleSimpleSearchChange}
             />
         </div>
         <Dialog open={showFiltersModal} onOpenChange={setShowFiltersModal}>
           <DialogTrigger asChild>
-            <Button variant="outline" className="shrink-0"> {/* No sm:w-auto, shrink-0 to prevent stretching */}
+            <Button variant="outline" className="shrink-0">
               <FilterIcon className="ml-2 h-4 w-4" />
               {HEBREW_TEXT.event.filters}
             </Button>
@@ -238,43 +237,32 @@ export default function EventsPage() {
         <h2 className="font-headline text-xl font-semibold mb-3 text-center sm:text-right">
             {HEBREW_TEXT.map.searchOnMapTitle}
         </h2>
-        {!showMap && (
-            <div onClick={() => setShowMap(true)} className="cursor-pointer rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
-                <Image
-                    src="https://placehold.co/800x300.png" // Placeholder map image
-                    alt={HEBREW_TEXT.map.searchOnMapTitle}
-                    width={800}
-                    height={300}
-                    className="w-full h-auto object-cover"
-                    data-ai-hint="map location preview"
-                />
-            </div>
-        )}
-        {showMap && (
-            <div onClick={() => setShowMap(false)} className="cursor-pointer"> {/* Make map itself clickable to hide */}
-                {isFetchingLocation && (
-                    <div className="flex items-center text-muted-foreground pt-2">
-                        <Loader2 className="ml-2 h-5 w-5 animate-spin" />
-                        {HEBREW_TEXT.map.fetchingLocation}
-                    </div>
-                )}
-                {locationError && (
-                    <Alert variant="default" className="mt-2">
-                        <MapPin className="h-5 w-5"/>
-                        <AlertTitle>{HEBREW_TEXT.map.errorTitleShort}</AlertTitle>
-                        <AlertDescription>{locationError}</AlertDescription>
-                    </Alert>
-                )}
-                {currentLocation && !locationError && (
-                  <div className="mt-2">
-                    <GoogleMapComponent center={currentLocation} />
-                  </div>
-                )}
-                {!isFetchingLocation && !currentLocation && !locationError && (
-                    <p className="text-muted-foreground pt-2">{HEBREW_TEXT.map.locationUnavailable}</p>
-                )}
-            </div>
-        )}
+        {/* Map section always rendered */}
+        <div>
+            {isFetchingLocation && (
+                <div className="flex items-center text-muted-foreground pt-2">
+                    <Loader2 className="ml-2 h-5 w-5 animate-spin" />
+                    {HEBREW_TEXT.map.fetchingLocation}
+                </div>
+            )}
+            {locationError && (
+                <Alert variant="default" className="mt-2">
+                    <MapPin className="h-5 w-5"/>
+                    <AlertTitle>{HEBREW_TEXT.map.errorTitleShort}</AlertTitle>
+                    <AlertDescription>{locationError}</AlertDescription>
+                </Alert>
+            )}
+            {currentLocation && !locationError && (
+              <div className="mt-2 rounded-lg overflow-hidden shadow-md">
+                <GoogleMapComponent center={currentLocation} />
+              </div>
+            )}
+            {!isFetchingLocation && !currentLocation && !locationError && (
+                 <div className="flex items-center justify-center h-[400px] bg-gray-200 rounded-lg">
+                    <p className="text-muted-foreground">{HEBREW_TEXT.map.locationUnavailable}</p>
+                 </div>
+            )}
+        </div>
       </div>
 
       <Separator className="my-8"/>
@@ -301,5 +289,3 @@ export default function EventsPage() {
     </div>
   );
 }
-
-    
