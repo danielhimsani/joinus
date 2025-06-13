@@ -113,8 +113,10 @@ export function EventForm() {
   useEffect(() => {
     const unsubscribe = firebaseAuthInstance.onAuthStateChanged((user) => {
       if (user) {
+        console.log("EventForm onAuthStateChanged - User:", user.uid);
         setCurrentUser(user);
       } else {
+        console.log("EventForm onAuthStateChanged - No user");
         setCurrentUser(null);
       }
     });
@@ -182,30 +184,35 @@ export function EventForm() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     console.log("onSubmit called with values:", values);
     setIsSubmitting(true);
-    console.log("isSubmitting set to true. Current user for event creation:", currentUser ? currentUser.uid : "No user");
-
-    // Log Firebase App Name and API Key from loaded config for verification
-    console.log("Firebase App Name from db config:", db.app.name); // e.g., "[DEFAULT]"
+    console.log("isSubmitting set to true. Current user from React state:", currentUser ? currentUser.uid : "No user in React state");
+    
+    console.log("Firebase App Name from db config:", db.app.name); 
     console.log("Firebase Project ID from db config:", db.app.options.projectId); 
-    // console.log("Firebase API Key from db config:", db.app.options.apiKey); // Be careful logging API keys in production
 
-    if (!currentUser) {
-      console.log("User not authenticated, redirecting to signin.");
+    const firebaseUser = firebaseAuthInstance.currentUser;
+
+    if (!firebaseUser) {
+      console.log("No user in firebaseAuthInstance.currentUser, redirecting to signin.");
       toast({
         title: HEBREW_TEXT.general.error,
         description: "עליך להיות מחובר כדי ליצור אירוע. מועבר לדף ההתחברות...",
         variant: "destructive",
       });
       setIsSubmitting(false); 
-      console.log("isSubmitting set to false before redirect for unauthenticated user.");
       router.push('/signin');
       return;
     }
+    console.log("Current user from firebaseAuthInstance.currentUser:", firebaseUser.uid);
+
 
     try {
+      console.log(`Forcing ID token refresh for user: ${firebaseUser.uid}`);
+      await firebaseUser.getIdToken(true); // Force refresh of the ID token
+      console.log("ID token refreshed successfully.");
+
       console.log("Preparing event data for Firestore...");
       const eventData = {
-        coupleId: currentUser.uid,
+        coupleId: firebaseUser.uid, // Use UID from firebaseAuthInstance.currentUser
         name: values.name,
         numberOfGuests: values.numberOfGuests,
         paymentOption: values.paymentOption,
@@ -225,7 +232,7 @@ export function EventForm() {
 
       console.log("Attempting to add document to Firestore events collection (with 15s timeout)...");
       const addOperation = addDoc(collection(db, "events"), eventData);
-      const docRef = await promiseWithTimeout(addOperation, 15000); // 15 second timeout
+      const docRef = await promiseWithTimeout(addOperation, 15000); 
       
       console.log("Event created with ID: ", docRef.id);
 
@@ -242,7 +249,10 @@ export function EventForm() {
         errorMessage = "יצירת האירוע ארכה זמן רב מדי. אנא נסה שוב ובדוק את חיבור האינטרנט והגדרות Firebase.";
       } else if (error instanceof Error && (error.message.includes("Bad Request") || (error as any).code === "unavailable" || (error as any).code === "internal") ){
         errorMessage = "שגיאת 'Bad Request' מ-Firestore. אנא ודא שמפתח ה-API שלך מוגדר כראוי ב-Google Cloud Console (כולל הגבלות HTTP referrers ו-API) וש-Firestore מאופשר בפרוייקט.";
-      } else if (error instanceof Error) {
+      } else if (error instanceof Error && error.message.includes("Missing or insufficient permissions")) {
+        errorMessage = "הרשאות חסרות או לא מספיקות. ודא שאתה מחובר ושחוקי האבטחה של Firestore מאפשרים כתיבה.";
+      }
+      else if (error instanceof Error) {
         errorMessage = `שגיאה ביצירת האירוע: ${error.message}`;
       }
       toast({
@@ -567,4 +577,3 @@ export function EventForm() {
     </Card>
   );
 }
-
