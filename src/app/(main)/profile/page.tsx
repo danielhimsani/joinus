@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -5,6 +6,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation"; // Added for redirection
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -21,7 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { UserProfile } from "@/types";
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2 } from "lucide-react";
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut } from "lucide-react"; // Added LogOut
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -55,6 +57,7 @@ const profileFormSchema = z.object({
 
 export default function ProfilePage() {
   const { toast } = useToast();
+  const router = useRouter(); // Initialize router
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -98,6 +101,16 @@ export default function ProfilePage() {
     toast({ title: "העלאת תעודת זהות", description: "פונקציונליות העלאת תעודה תמומש כאן." });
   };
 
+  const handleSignOut = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userName');
+    toast({
+      title: HEBREW_TEXT.auth.signOut,
+      description: "התנתקת בהצלחה. הנך מועבר לדף הבית.",
+    });
+    router.push('/'); // Redirect to homepage
+  };
+
   if (isLoading || !user) {
     return (
       <div className="container mx-auto px-4 py-12">
@@ -107,7 +120,7 @@ export default function ProfilePage() {
                 <Skeleton className="h-8 w-48 mb-2" />
                 <Skeleton className="h-5 w-64" />
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
                 {[...Array(4)].map((_, i) => (
                     <div key={i} className="space-y-1">
                         <Skeleton className="h-4 w-1/4" />
@@ -289,6 +302,17 @@ export default function ProfilePage() {
                   <h3 className="font-headline text-xl font-semibold mb-2">{HEBREW_TEXT.profile.reviews}</h3>
                   <p className="text-muted-foreground">ביקורות ממשתמשים אחרים יופיעו כאן.</p>
                 </div>
+
+                <Separator className="my-8" />
+
+                <Button 
+                  variant="ghost" 
+                  className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 font-body text-base py-3"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="ml-2 h-5 w-5" />
+                  {HEBREW_TEXT.auth.signOut}
+                </Button>
               </div>
             )}
           </CardContent>
@@ -297,3 +321,4 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
+
