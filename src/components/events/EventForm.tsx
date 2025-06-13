@@ -171,20 +171,25 @@ export function EventForm() {
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    console.log("onSubmit called with values:", values);
     setIsSubmitting(true);
+    console.log("isSubmitting set to true");
 
     if (!currentUser) {
+      console.log("User not authenticated, redirecting to signin.");
       toast({
         title: HEBREW_TEXT.general.error,
         description: "עליך להיות מחובר כדי ליצור אירוע. מועבר לדף ההתחברות...",
         variant: "destructive",
       });
       setIsSubmitting(false);
+      console.log("isSubmitting set to false before redirect");
       router.push('/signin');
       return;
     }
 
     try {
+      console.log("Preparing event data for Firestore...");
       const eventData = {
         coupleId: currentUser.uid,
         name: values.name,
@@ -201,7 +206,9 @@ export function EventForm() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+      console.log("Event data prepared:", eventData);
 
+      console.log("Attempting to add document to Firestore events collection...");
       const docRef = await addDoc(collection(db, "events"), eventData);
       console.log("Event created with ID: ", docRef.id);
 
@@ -212,14 +219,18 @@ export function EventForm() {
       router.push("/events");
 
     } catch (error) {
-      console.error("Error creating event:", error);
+      console.error("Error creating event in onSubmit:", error);
       toast({
         title: HEBREW_TEXT.general.error,
-        description: "שגיאה ביצירת האירוע. נסה שוב.",
+        description: "שגיאה ביצירת האירוע. בדוק את הקונסול לפרטים נוספים.",
         variant: "destructive",
       });
+      // Ensure isSubmitting is reset in catch block as well
+      // setIsSubmitting(false); // This will be handled by finally
     } finally {
+      console.log("Executing finally block in onSubmit.");
       setIsSubmitting(false);
+      console.log("isSubmitting set to false in finally block.");
     }
   };
 
@@ -534,5 +545,3 @@ export function EventForm() {
     </Card>
   );
 }
-
-    
