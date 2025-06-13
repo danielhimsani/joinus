@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from 'next/image';
+import Image from 'next/image'; // Added Image import
 import { EventCard } from "@/components/events/EventCard";
 import { EventFilters, type Filters } from "@/components/events/EventFilters";
 import type { Event } from "@/types";
@@ -211,30 +211,38 @@ export default function EventsPage() {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <div className="flex flex-row-reverse sm:flex-row items-center gap-2 mb-6">
-        <Dialog open={showFiltersModal} onOpenChange={setShowFiltersModal}>
-          <DialogTrigger asChild>
-            <Button variant="outline" className="shrink-0">
-              <FilterIcon className="ml-2 h-4 w-4" />
-              {HEBREW_TEXT.event.filters}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[650px]">
-            <DialogHeader>
-              <DialogTitle className="font-headline text-xl">{HEBREW_TEXT.event.filters}</DialogTitle>
-            </DialogHeader>
-            <EventFilters onFilterChange={handleAdvancedFilterChange} initialFilters={advancedFilters} />
-          </DialogContent>
-        </Dialog>
-        <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
-            <Input
-                type="search"
-                placeholder={HEBREW_TEXT.general.searchEventsSpecificPlaceholder}
-                className="w-full pl-10 pr-3" // Ensure padding for the icon
-                value={simpleSearchQuery}
-                onChange={handleSimpleSearchChange}
-            />
+      <div className="flex items-center justify-between mb-6 gap-4">
+        {/* Search and Filters block */}
+        <div className="flex flex-row-reverse sm:flex-row items-center gap-2 flex-grow">
+          <Dialog open={showFiltersModal} onOpenChange={setShowFiltersModal}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="shrink-0">
+                <FilterIcon className="ml-2 h-4 w-4" />
+                {HEBREW_TEXT.event.filters}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[650px]">
+              <DialogHeader>
+                <DialogTitle className="font-headline text-xl">{HEBREW_TEXT.event.filters}</DialogTitle>
+              </DialogHeader>
+              <EventFilters onFilterChange={handleAdvancedFilterChange} initialFilters={advancedFilters} />
+            </DialogContent>
+          </Dialog>
+          <div className="relative flex-grow">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+              <Input
+                  type="search"
+                  placeholder={HEBREW_TEXT.general.searchEventsSpecificPlaceholder}
+                  className="w-full pl-10 pr-3" 
+                  value={simpleSearchQuery}
+                  onChange={handleSimpleSearchChange}
+              />
+          </div>
+        </div>
+
+        {/* Logo */}
+        <div className="flex-shrink-0">
+          <Image src="/join_us_logo.png" alt={HEBREW_TEXT.appName + " Logo"} width={150} height={45} data-ai-hint="app logo" />
         </div>
       </div>
 
