@@ -107,7 +107,7 @@ export const HEBREW_TEXT = {
     optional: "אופציונלי",
     search: "חיפוש...",
     searchEventsSimplePlaceholder: "חיפוש חופשי (שם, מקום, תיאור...)",
-    searchEventsSpecificPlaceholder: "יוגה, פילאטיס, מסאז'...", // New placeholder
+    searchEventsSpecificPlaceholder: "יוגה, פילאטיס, מסאז'...",
     actions: "פעולות",
     details: "פרטים",
     back: "חזור",
@@ -119,7 +119,11 @@ export const HEBREW_TEXT = {
     findOpenSpots: "מצאו מקומות פנויים",
     to: "ל",
     tryAgainLater: "נסו לשנות את תנאי הסינון או בדקו שוב מאוחר יותר.",
-    clearFilters: "נקה סננים", 
+    clearFilters: "נקה סננים",
+    next: "הבא",
+    previous: "הקודם",
+    getStarted: "התחבר והתחל",
+    howItWorks: "איך זה עובד?",
   },
   foodIcons: {
     kosherMeat: "בשרי",
@@ -132,8 +136,8 @@ export const HEBREW_TEXT = {
     thumbsDown: "👎",
   },
   map: {
-    title: "מפת אירועים", // Original title, can be kept if used elsewhere
-    searchOnMapTitle: "חיפוש במפה", // New title for the specific section
+    title: "מפת אירועים", 
+    searchOnMapTitle: "חיפוש במפה", 
     eventsOnMap: "אירועים על המפה",
     fetchingLocation: "מאחזר מיקום נוכחי...",
     locationError: "שגיאה באחזור המיקום. אנא ודא שהרשאות המיקום מאופשרות בדפדפן.",
@@ -150,5 +154,3 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
-
-    
