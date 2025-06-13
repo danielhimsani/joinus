@@ -9,7 +9,7 @@ import type { Event } from "@/types";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { MapPin, SearchX, Loader2, Search, Filter as FilterIcon } from "lucide-react";
+import { MapPin, SearchX, Loader2, Search, Filter as FilterIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { GoogleMapComponent } from "@/components/maps/GoogleMapComponent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,6 +98,7 @@ export default function EventsPage() {
   const [advancedFilters, setAdvancedFilters] = useState<Filters>({});
   const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
   const [showFiltersModal, setShowFiltersModal] = useState(false);
+  const [isMapSectionOpen, setIsMapSectionOpen] = useState(false);
 
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -105,8 +106,8 @@ export default function EventsPage() {
 
 
   useEffect(() => {
-    // Fetch location if not already fetched, errored, or currently fetching
-    if (!currentLocation && !locationError && !isFetchingLocation) {
+    // Fetch location only if map section is open and not already fetched/errored/fetching
+    if (isMapSectionOpen && !currentLocation && !locationError && !isFetchingLocation) {
       setIsFetchingLocation(true);
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -129,7 +130,7 @@ export default function EventsPage() {
         setIsFetchingLocation(false);
       }
     }
-  }, [currentLocation, locationError, isFetchingLocation]);
+  }, [isMapSectionOpen, currentLocation, locationError, isFetchingLocation]);
 
   useEffect(() => {
     setIsLoadingEvents(true);
@@ -192,6 +193,10 @@ export default function EventsPage() {
     setSimpleSearchQuery(event.target.value);
   };
 
+  const toggleMapSection = () => {
+    setIsMapSectionOpen(prev => !prev);
+  };
+
   const renderSkeletons = () => (
     Array.from({ length: 4 }).map((_, index) => (
       <div key={index} className="flex flex-col space-y-3">
@@ -207,16 +212,6 @@ export default function EventsPage() {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="flex flex-row-reverse sm:flex-row items-center gap-2 mb-6">
-        <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
-            <Input
-                type="search"
-                placeholder={HEBREW_TEXT.general.searchEventsSpecificPlaceholder}
-                className="w-full pl-10 pr-3"
-                value={simpleSearchQuery}
-                onChange={handleSimpleSearchChange}
-            />
-        </div>
         <Dialog open={showFiltersModal} onOpenChange={setShowFiltersModal}>
           <DialogTrigger asChild>
             <Button variant="outline" className="shrink-0">
@@ -231,38 +226,55 @@ export default function EventsPage() {
             <EventFilters onFilterChange={handleAdvancedFilterChange} initialFilters={advancedFilters} />
           </DialogContent>
         </Dialog>
+        <div className="relative flex-grow">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+            <Input
+                type="search"
+                placeholder={HEBREW_TEXT.general.searchEventsSpecificPlaceholder}
+                className="w-full pl-10 pr-3" // Ensure padding for the icon
+                value={simpleSearchQuery}
+                onChange={handleSimpleSearchChange}
+            />
+        </div>
       </div>
 
       <div className="mb-8 p-4 bg-muted rounded-lg">
-        <h2 className="font-headline text-xl font-semibold mb-3 text-center sm:text-right">
-            {HEBREW_TEXT.map.searchOnMapTitle}
-        </h2>
-        {/* Map section always rendered */}
-        <div>
-            {isFetchingLocation && (
-                <div className="flex items-center text-muted-foreground pt-2">
-                    <Loader2 className="ml-2 h-5 w-5 animate-spin" />
-                    {HEBREW_TEXT.map.fetchingLocation}
-                </div>
-            )}
-            {locationError && (
-                <Alert variant="default" className="mt-2">
-                    <MapPin className="h-5 w-5"/>
-                    <AlertTitle>{HEBREW_TEXT.map.errorTitleShort}</AlertTitle>
-                    <AlertDescription>{locationError}</AlertDescription>
-                </Alert>
-            )}
-            {currentLocation && !locationError && (
-              <div className="mt-2 rounded-lg overflow-hidden shadow-md">
-                <GoogleMapComponent center={currentLocation} />
-              </div>
-            )}
-            {!isFetchingLocation && !currentLocation && !locationError && (
-                 <div className="flex items-center justify-center h-[400px] bg-gray-200 rounded-lg">
-                    <p className="text-muted-foreground">{HEBREW_TEXT.map.locationUnavailable}</p>
-                 </div>
-            )}
+        <div className="flex justify-between items-center mb-3 cursor-pointer" onClick={toggleMapSection}>
+            <h2 className="font-headline text-xl font-semibold text-center sm:text-right">
+                {HEBREW_TEXT.map.searchOnMapTitle}
+            </h2>
+            <Button variant="ghost" size="icon">
+                {isMapSectionOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            </Button>
         </div>
+        
+        {isMapSectionOpen && (
+            <div>
+                {isFetchingLocation && (
+                    <div className="flex items-center text-muted-foreground pt-2">
+                        <Loader2 className="ml-2 h-5 w-5 animate-spin" />
+                        {HEBREW_TEXT.map.fetchingLocation}
+                    </div>
+                )}
+                {locationError && (
+                    <Alert variant="default" className="mt-2">
+                        <MapPin className="h-5 w-5"/>
+                        <AlertTitle>{HEBREW_TEXT.map.errorTitleShort}</AlertTitle>
+                        <AlertDescription>{locationError}</AlertDescription>
+                    </Alert>
+                )}
+                {currentLocation && !locationError && (
+                  <div className="mt-2 rounded-lg overflow-hidden shadow-md">
+                    <GoogleMapComponent center={currentLocation} />
+                  </div>
+                )}
+                {!isFetchingLocation && !currentLocation && !locationError && (
+                     <div className="flex items-center justify-center h-[400px] bg-gray-200 rounded-lg">
+                        <p className="text-muted-foreground">{HEBREW_TEXT.map.locationUnavailable}</p>
+                     </div>
+                )}
+            </div>
+        )}
       </div>
 
       <Separator className="my-8"/>
@@ -289,3 +301,5 @@ export default function EventsPage() {
     </div>
   );
 }
+
+    
