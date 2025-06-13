@@ -9,7 +9,7 @@ import { CalendarIcon, Upload, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import React, { useState, useEffect, useCallback } from "react";
-import { type User as FirebaseUser } from "firebase/auth";
+import type { User as FirebaseUser } from "firebase/auth";
 import { collection, addDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
 
@@ -90,6 +90,16 @@ const mockLocationSuggestions = [
     "חוף 'ניצנים', אשקלון"
 ];
 
+// Helper function for promise with timeout
+function promiseWithTimeout<T>(promise: Promise<T>, ms: number, timeoutError = new Error('Operation timed out after ' + ms + 'ms')): Promise<T> {
+  const timeout = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(timeoutError);
+    }, ms);
+  });
+  return Promise.race([promise, timeout]);
+}
+
 export function EventForm() {
   const router = useRouter();
   const { toast } = useToast();
@@ -137,7 +147,6 @@ export function EventForm() {
       return;
     }
     setIsSuggestionsLoading(true);
-    // console.log("Simulating API call for:", query);
     setTimeout(() => {
       const filteredSuggestions = mockLocationSuggestions.filter(s =>
         s.toLowerCase().includes(query.toLowerCase())
@@ -173,7 +182,7 @@ export function EventForm() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     console.log("onSubmit called with values:", values);
     setIsSubmitting(true);
-    console.log("isSubmitting set to true");
+    console.log("isSubmitting set to true. Current user for event creation:", currentUser ? currentUser.uid : "No user");
 
     if (!currentUser) {
       console.log("User not authenticated, redirecting to signin.");
@@ -182,8 +191,8 @@ export function EventForm() {
         description: "עליך להיות מחובר כדי ליצור אירוע. מועבר לדף ההתחברות...",
         variant: "destructive",
       });
-      setIsSubmitting(false);
-      console.log("isSubmitting set to false before redirect");
+      setIsSubmitting(false); 
+      console.log("isSubmitting set to false before redirect for unauthenticated user.");
       router.push('/signin');
       return;
     }
@@ -208,8 +217,10 @@ export function EventForm() {
       };
       console.log("Event data prepared:", eventData);
 
-      console.log("Attempting to add document to Firestore events collection...");
-      const docRef = await addDoc(collection(db, "events"), eventData);
+      console.log("Attempting to add document to Firestore events collection (with 15s timeout)...");
+      const addOperation = addDoc(collection(db, "events"), eventData);
+      const docRef = await promiseWithTimeout(addOperation, 15000); // 15 second timeout
+      
       console.log("Event created with ID: ", docRef.id);
 
       toast({
@@ -220,13 +231,15 @@ export function EventForm() {
 
     } catch (error) {
       console.error("Error creating event in onSubmit:", error);
+      let errorMessage = "שגיאה ביצירת האירוע. בדוק את הקונסול לפרטים נוספים.";
+      if (error instanceof Error && error.message.includes("timed out")) {
+        errorMessage = "יצירת האירוע ארכה זמן רב מדי. אנא נסה שוב.";
+      }
       toast({
         title: HEBREW_TEXT.general.error,
-        description: "שגיאה ביצירת האירוע. בדוק את הקונסול לפרטים נוספים.",
+        description: errorMessage,
         variant: "destructive",
       });
-      // Ensure isSubmitting is reset in catch block as well
-      // setIsSubmitting(false); // This will be handled by finally
     } finally {
       console.log("Executing finally block in onSubmit.");
       setIsSubmitting(false);
@@ -376,12 +389,10 @@ export function EventForm() {
                         value={locationInput}
                         onChange={(e) => {
                             setLocationInput(e.target.value);
-                            // Also update the actual form field if suggestions are not used
                             if (!showSuggestions) field.onChange(e.target.value);
                         }}
                         onBlur={() => {
                             setTimeout(() => setShowSuggestions(false), 150);
-                            // Ensure field value is set from input if no suggestion picked
                             field.onChange(locationInput); 
                         }}
                         onFocus={() => {
@@ -405,7 +416,7 @@ export function EventForm() {
                               key={index}
                               className="px-3 py-2 text-sm hover:bg-accent cursor-pointer"
                               onMouseDown={() => {
-                                field.onChange(suggestion); // Update form field value
+                                field.onChange(suggestion);
                                 handleSuggestionClick(suggestion);
                               }}
                             >
@@ -520,7 +531,6 @@ export function EventForm() {
                     <FormItem>
                         <FormLabel>{HEBREW_TEXT.event.uploadImage} ({HEBREW_TEXT.general.optional})</FormLabel>
                         <FormControl>
-                            {/* This button is still a mock. For actual upload, you'd need Firebase Storage. */}
                             <Button type="button" variant="outline" className="w-full" onClick={() => {
                                 const url = prompt("הזן קישור לתמונה:");
                                 if (url) field.onChange(url);
