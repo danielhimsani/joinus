@@ -47,13 +47,16 @@ export function SignUpForm() {
     },
   });
 
-  const handleSignUpSuccess = (user: User, message: string) => {
-    // Note: We don't set localStorage here as user should go through sign-in flow
+  const handleSignUpSuccess = (user: User, userName?: string) => {
+    // Set localStorage to simulate session for current app structure
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('userName', userName || user.displayName || user.email || 'משתמש חדש');
+    
     toast({
       title: HEBREW_TEXT.general.success,
-      description: message,
+      description: "נרשמת והתחברת בהצלחה!",
     });
-    router.push("/signin"); // Redirect to sign-in page after successful sign-up
+    router.push("/events"); // Redirect to events page after successful sign-up and login
   };
   
   const handleAuthError = (error: any, method: string) => {
@@ -97,7 +100,7 @@ export function SignUpForm() {
       // Update profile with name
       await updateProfile(userCredential.user, { displayName: values.name });
       console.log("Email/Password Sign Up Success:", userCredential.user);
-      handleSignUpSuccess(userCredential.user, "נרשמת בהצלחה! אנא התחבר.");
+      handleSignUpSuccess(userCredential.user, values.name); // Pass name for localStorage
     } catch (error: any) {
       handleAuthError(error, "Email/Password");
     } finally {
@@ -108,14 +111,12 @@ export function SignUpForm() {
   const handleGoogleSignUp = async () => {
     setIsSubmittingGoogle(true);
     const provider = new GoogleAuthProvider();
-    console.log("Attempting Google Sign-Up with auth instance:", firebaseAuthInstance); // Debug log
+    console.log("Attempting Google Sign-Up with auth instance:", firebaseAuthInstance);
     try {
       const result = await signInWithPopup(firebaseAuthInstance, provider);
-      // Firebase automatically creates the user if they don't exist.
-      // Their profile (displayName, photoURL) is often pre-filled by Google.
       console.log("Google Sign Up/In Success:", result.user);
-      // For sign-up, we usually redirect to sign-in or directly to app if session is managed post-signup
-      handleSignUpSuccess(result.user, "נרשמת בהצלחה עם גוגל! אנא התחבר כעת.");
+      // For sign-up with Google, we also log them in and redirect
+      handleSignUpSuccess(result.user, result.user.displayName || result.user.email);
     } catch (error: any) {
       handleAuthError(error, "Google");
     } finally {
@@ -128,12 +129,15 @@ export function SignUpForm() {
     console.log("Attempting Apple Sign Up (Mock)");
     toast({ title: "הרשמה עם אפל", description: "תהליך הרשמה עם אפל מופעל (דמה)..." });
     await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-    // Mock success:
-    toast({
-        title: HEBREW_TEXT.general.success,
-        description: "נרשמת בהצלחה עם אפל (דמה)! אנא התחבר.",
-    });
-    router.push("/signin");
+    
+    // Mock user object for Apple sign-up
+    const mockUser = { 
+      uid: 'mock-apple-uid-' + Date.now(), 
+      displayName: 'משתמש אפל', 
+      email: 'apple-user@example.com' 
+    } as User; // Cast to User type for consistency
+
+    handleSignUpSuccess(mockUser, 'משתמש אפל');
     setIsSubmittingApple(false);
   };
 
