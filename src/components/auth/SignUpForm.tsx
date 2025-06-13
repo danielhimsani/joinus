@@ -71,7 +71,7 @@ export function SignUpForm() {
           description = "הסיסמה חלשה מדי. נסה סיסמה חזקה יותר.";
           break;
         case 'auth/popup-closed-by-user':
-          description = "חלון ההרשמה נסגר לפני השלמת התהליך. אנא נסה שוב. אם הבעיה חוזרת, בדוק אם חוסם חלונות קופצים פעיל.";
+          description = "חלון ההרשמה נסגר לפני השלמת התהליך. אנא נסה שוב. אם הבעיה חוזרת, בדוק אם חוסם חלונות קופצים פעיל בדפדפן שלך.";
           break;
         case 'auth/cancelled-popup-request':
             description = "בקשת ההרשמה בוטלה מכיוון שנפתחה בקשה נוספת. אנא נסה שוב.";
@@ -108,6 +108,7 @@ export function SignUpForm() {
   const handleGoogleSignUp = async () => {
     setIsSubmittingGoogle(true);
     const provider = new GoogleAuthProvider();
+    console.log("Attempting Google Sign-Up with auth instance:", firebaseAuthInstance); // Debug log
     try {
       const result = await signInWithPopup(firebaseAuthInstance, provider);
       // Firebase automatically creates the user if they don't exist.

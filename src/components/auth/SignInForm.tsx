@@ -71,7 +71,7 @@ export function SignInForm() {
           description = "כתובת האימייל אינה תקינה.";
           break;
         case 'auth/popup-closed-by-user':
-          description = "חלון ההתחברות נסגר לפני השלמת התהליך. אנא נסה שוב. אם הבעיה חוזרת, בדוק אם חוסם חלונות קופצים פעיל.";
+          description = "חלון ההתחברות נסגר לפני השלמת התהליך. אנא נסה שוב. אם הבעיה חוזרת, בדוק אם חוסם חלונות קופצים פעיל בדפדפן שלך.";
           break;
         case 'auth/cancelled-popup-request':
             description = "בקשת ההתחברות בוטלה מכיוון שנפתחה בקשה נוספת. אנא נסה שוב.";
@@ -105,6 +105,7 @@ export function SignInForm() {
   const handleGoogleSignIn = async () => {
     setIsSubmittingGoogle(true);
     const provider = new GoogleAuthProvider();
+    console.log("Attempting Google Sign-In with auth instance:", firebaseAuthInstance); // Debug log
     try {
       const result = await signInWithPopup(firebaseAuthInstance, provider);
       handleAuthSuccess(result.user);
