@@ -24,7 +24,8 @@ if (!getApps().length) {
 }
 
 const auth: Auth = getAuth(app);
-const db: Firestore = getFirestore(app);
+// Connect to the specific database instance named "joiusdb"
+const db: Firestore = getFirestore(app, "joiusdb");
 // const functions: Functions = getFunctions(app); // You can initialize this when you're ready to use Cloud Functions from client
 
 export { app, auth, db /*, functions */ };
