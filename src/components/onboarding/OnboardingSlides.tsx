@@ -5,7 +5,6 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { ArrowLeft, ArrowRight, PartyPopper } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -66,6 +65,7 @@ export function OnboardingSlides() {
     if (currentSlide < slides.length - 1) {
       setCurrentSlide(currentSlide + 1);
     } else {
+      // This case should ideally be handled by the Sign In button on the last slide
       router.push('/auth/signin');
     }
   };
@@ -77,55 +77,67 @@ export function OnboardingSlides() {
   };
 
   const slide = slides[currentSlide];
+  const isFinalSlide = currentSlide === slides.length - 1;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] py-8 md:py-12 px-4">
-      <Card className="w-full max-w-2xl shadow-2xl">
-        <CardHeader className="text-center">
-          {slide.Icon && <slide.Icon className="mx-auto h-12 w-12 text-primary mb-4" />}
-          <CardTitle className="font-headline text-3xl md:text-4xl">{slide.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center text-center">
-          <div className="relative w-full h-48 md:h-64 mb-6 rounded-lg overflow-hidden">
-            <Image
-              src={slide.imageUrl}
-              alt={slide.title}
-              layout="fill"
-              objectFit="cover"
-              data-ai-hint={slide.imageHint}
-            />
-          </div>
-          <CardDescription className="text-lg text-foreground/80 mb-8 leading-relaxed">
-            {slide.description}
-          </CardDescription>
-          
-          <div className="flex w-full justify-between items-center mt-4">
+    <div className="relative flex flex-col min-h-screen items-center justify-between bg-background text-foreground p-4 md:p-6 overflow-y-auto">
+      {isFinalSlide && (
+        <Button variant="ghost" size="icon" onClick={handlePrev} className="absolute top-6 right-6 z-20">
+          <ArrowRight className="h-5 w-5" /> {/* Visually points left in RTL for "back" */}
+        </Button>
+      )}
+
+      <div className="flex flex-col items-center text-center flex-grow justify-center w-full max-w-2xl pt-10 md:pt-16">
+        {slide.Icon && <slide.Icon className="mx-auto h-10 w-10 md:h-12 md:w-12 text-primary mb-4" />}
+        <h1 className="font-headline text-2xl md:text-4xl font-bold mb-3">{slide.title}</h1>
+        
+        <div className="relative w-full h-40 md:h-64 my-4 md:my-6 rounded-lg overflow-hidden">
+          <Image
+            src={slide.imageUrl}
+            alt={slide.title}
+            layout="fill"
+            objectFit="cover"
+            data-ai-hint={slide.imageHint}
+            priority={currentSlide === 0} // Prioritize first image
+          />
+        </div>
+        <p className="text-base md:text-lg text-foreground/80 mb-6 md:mb-8 leading-relaxed px-2">
+          {slide.description}
+        </p>
+      </div>
+      
+      <div className="flex space-x-2 rtl:space-x-reverse my-6 md:my-8 z-10">
+        {slides.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentSlide(index)}
+            className={cn(
+              "h-2.5 w-2.5 rounded-full transition-all duration-300 ease-in-out",
+              currentSlide === index ? "bg-primary w-6" : "bg-muted hover:bg-primary/50"
+            )}
+            aria-label={`Go to slide ${index + 1}`}
+          />
+        ))}
+      </div>
+
+      <div className="w-full pb-6 pt-2 z-10">
+        {isFinalSlide ? (
+          <Button onClick={() => router.push('/auth/signin')} className="font-body text-lg py-3 w-full max-w-xs mx-auto block">
+            {HEBREW_TEXT.auth.signInButton}
+          </Button>
+        ) : (
+          <div className="flex w-full justify-between items-center max-w-md mx-auto">
             <Button variant="outline" onClick={handlePrev} disabled={currentSlide === 0} className={cn(currentSlide === 0 && "opacity-0 pointer-events-none")}>
-              <ArrowRight className="ml-2 h-4 w-4" /> {/* Icon appears to the left in RTL */}
+              <ArrowRight className="ml-2 h-4 w-4" /> {/* Points left in RTL */}
               {HEBREW_TEXT.general.previous}
             </Button>
-
-            <div className="flex space-x-2 rtl:space-x-reverse">
-                {slides.map((_, index) => (
-                    <button
-                        key={index}
-                        onClick={() => setCurrentSlide(index)}
-                        className={cn(
-                            "h-2.5 w-2.5 rounded-full",
-                            currentSlide === index ? "bg-primary" : "bg-muted hover:bg-primary/50"
-                        )}
-                        aria-label={`Go to slide ${index + 1}`}
-                    />
-                ))}
-            </div>
-
             <Button onClick={handleNext} className="font-body">
-              {currentSlide === slides.length - 1 ? HEBREW_TEXT.general.getStarted : HEBREW_TEXT.general.next}
-              <ArrowLeft className="mr-2 h-4 w-4" /> {/* Icon appears to the right in RTL */}
+              {HEBREW_TEXT.general.next}
+              <ArrowLeft className="mr-2 h-4 w-4" /> {/* Points right in RTL */}
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </div>
   );
 }

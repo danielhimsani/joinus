@@ -3,9 +3,18 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import MainLayout from "@/app/(main)/layout";
 import { OnboardingSlides } from '@/components/onboarding/OnboardingSlides';
 import { Skeleton } from '@/components/ui/skeleton'; // For loading state
+import { cn } from '@/lib/utils';
+import { Rubik } from 'next/font/google'; // Import font for direct use
+
+const rubik = Rubik({
+  subsets: ['latin', 'hebrew'],
+  variable: '--font-rubik',
+  display: 'swap',
+  weight: ['300', '400', '500', '700']
+});
+
 
 // This is the mock authentication check, replace with actual Firebase auth check
 const checkAuthStatus = () => {
@@ -32,30 +41,26 @@ export default function HomePage() {
   // Show loading state while determining auth status
   if (isAuthenticated === undefined) {
     return (
-      <MainLayout>
-        <div className="container mx-auto px-4 py-12 md:py-16 flex justify-center items-center min-h-screen">
-          <Skeleton className="h-64 w-full max-w-md rounded-lg" />
-        </div>
-      </MainLayout>
+      <div className={cn('font-body antialiased min-h-screen flex items-center justify-center bg-background', rubik.variable)}>
+        <Skeleton className="h-64 w-full max-w-md rounded-lg" />
+      </div>
     );
   }
 
-  // If not authenticated, show onboarding slides
+  // If not authenticated, show onboarding slides directly without MainLayout
   if (!isAuthenticated) {
     return (
-      <MainLayout>
+      <div className={cn('font-body antialiased bg-background text-foreground', rubik.variable)}>
         <OnboardingSlides />
-      </MainLayout>
+      </div>
     );
   }
 
   // This part should ideally not be reached if redirection works correctly
   // But as a fallback or if redirection is paused for debugging:
   return (
-     <MainLayout>
-      <div className="container mx-auto px-4 py-12 md:py-16">
-        <p className="text-center">Loading or redirecting...</p>
-      </div>
-    </MainLayout>
+     <div className={cn('font-body antialiased min-h-screen flex items-center justify-center bg-background', rubik.variable)}>
+      <p className="text-center">Loading or redirecting...</p>
+    </div>
   );
 }
