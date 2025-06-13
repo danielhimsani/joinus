@@ -19,7 +19,8 @@ export default function BottomNavigationBar() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 h-16 bg-background border-t border-border md:hidden">
-      <div className="grid h-full max-w-lg grid-cols-4 mx-auto font-medium">
+      {/* Changed from grid to flex for horizontal layout */}
+      <div className="flex h-full max-w-lg mx-auto font-medium items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href === '/events' && pathname.startsWith('/events/'));
           return (
@@ -27,14 +28,14 @@ export default function BottomNavigationBar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "inline-flex flex-col items-center justify-center px-2 hover:bg-muted group",
-                isActive ? "text-primary" : "text-muted-foreground"
+                "inline-flex flex-col items-center justify-center px-1 group", // Reduced px slightly
+                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground/80" // Adjusted hover for non-active
               )}
             >
               <item.icon 
                 className={cn(
                   "w-6 h-6 mb-1",
-                  isActive ? "text-primary" : "text-gray-500 group-hover:text-primary"
+                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground/80" // Adjusted hover for non-active icon
                 )} 
               />
               <span className="text-xs">{item.label}</span>
