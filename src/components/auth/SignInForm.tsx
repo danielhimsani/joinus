@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { GoogleAuthProvider, signInWithPopup, User, signInWithEmailAndPassword } from "firebase/auth"; // Firebase imports
+import { GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, type User } from "firebase/auth"; // Firebase imports
 
 import { Button } from "@/components/ui/button";
 import {
@@ -35,8 +35,7 @@ export function SignInForm() {
   const { toast } = useToast();
   const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
   const [isSubmittingGoogle, setIsSubmittingGoogle] = useState(false);
-  const [isSubmittingApple, setIsSubmittingApple] = useState(false);
-
+  const [isSubmittingApple, setIsSubmittingApple] = useState(false); // Apple sign-in remains mock
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -46,23 +45,52 @@ export function SignInForm() {
     },
   });
 
+  const handleAuthSuccess = (user: User, userName?: string) => {
+    // Mock: Update local storage to simulate session for current app structure
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('userName', userName || user.displayName || user.email || 'משתמש מאומת');
+    
+    toast({
+      title: HEBREW_TEXT.general.success,
+      description: "התחברת בהצלחה!",
+    });
+    router.push("/"); // Redirect to home page or dashboard
+  };
+
+  const handleAuthError = (error: any, method: string) => {
+    console.error(`${method} Sign In Error:`, error);
+    let description = "שגיאה בהתחברות. נסה שוב.";
+    if (error.code) {
+      switch (error.code) {
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+          description = "אימייל או סיסמה שגויים.";
+          break;
+        case 'auth/invalid-email':
+          description = "כתובת האימייל אינה תקינה.";
+          break;
+        case 'auth/popup-closed-by-user':
+          description = "חלון ההתחברות נסגר. נסה שוב.";
+          break;
+        default:
+          description = error.message || description;
+      }
+    }
+    toast({
+      title: HEBREW_TEXT.general.error,
+      description: description,
+      variant: "destructive",
+    });
+  };
+
   const onEmailPasswordSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmittingEmail(true);
     try {
       const userCredential = await signInWithEmailAndPassword(firebaseAuthInstance, values.email, values.password);
-      console.log("Email/Password Sign In Success:", userCredential.user);
-      toast({
-        title: HEBREW_TEXT.general.success,
-        description: "התחברת בהצלחה!",
-      });
-      router.push("/"); // Redirect to home page or dashboard
+      handleAuthSuccess(userCredential.user, values.email); // Pass email as potential username
     } catch (error: any) {
-      console.error("Email/Password Sign In Error:", error);
-      toast({
-        title: HEBREW_TEXT.general.error,
-        description: "שגיאה בהתחברות. בדוק אימייל וסיסמה.",
-        variant: "destructive",
-      });
+      handleAuthError(error, "Email/Password");
     } finally {
       setIsSubmittingEmail(false);
     }
@@ -73,31 +101,22 @@ export function SignInForm() {
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(firebaseAuthInstance, provider);
-      const user = result.user;
-      console.log("Google Sign In Success:", user);
-      toast({
-        title: HEBREW_TEXT.general.success,
-        description: "התחברת בהצלחה!",
-      });
-      router.push("/"); // Redirect to home page or dashboard
+      handleAuthSuccess(result.user);
     } catch (error: any) {
-      console.error("Google Sign In Error:", error);
-      toast({
-        title: HEBREW_TEXT.general.error,
-        description: error.message || "שגיאה בהתחברות עם גוגל.",
-        variant: "destructive",
-      });
+      handleAuthError(error, "Google");
     } finally {
       setIsSubmittingGoogle(false);
     }
   };
 
-  const handleAppleSignIn = async () => {
+  const handleAppleSignIn = async () => { // This remains a mock implementation
     setIsSubmittingApple(true);
     console.log("Attempting Apple Sign In (Mock)");
     toast({ title: "התחברות עם אפל", description: "תהליך התחברות עם אפל מופעל (דמה)..." });
-    // Simulate successful login (mock)
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+    // Mock success:
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('userName', 'משתמש אפל');
     toast({
         title: HEBREW_TEXT.general.success,
         description: "התחברת בהצלחה (דמה)!",
@@ -172,7 +191,7 @@ export function SignInForm() {
           </div>
         </div>
         <div className="mt-6 text-center text-sm">
-          <Link href="/signup" className="underline"> {/* Changed from /auth/signup to /signup based on existing structure */}
+          <Link href="/signup" className="underline">
             {HEBREW_TEXT.auth.noAccount}
           </Link>
         </div>
