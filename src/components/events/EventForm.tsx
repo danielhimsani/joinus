@@ -9,7 +9,7 @@ import { CalendarIcon, Upload, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import React, { useState, useEffect, useCallback } from "react";
-import { getAuth, type User as FirebaseUser } from "firebase/auth";
+import { type User as FirebaseUser } from "firebase/auth";
 import { collection, addDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
 
@@ -101,14 +101,11 @@ export function EventForm() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
 
   useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = firebaseAuthInstance.onAuthStateChanged((user) => {
       if (user) {
         setCurrentUser(user);
       } else {
         setCurrentUser(null);
-        // Optionally redirect if no user, or handle in onSubmit
-        // router.push('/signin'); 
       }
     });
     return () => unsubscribe();
@@ -179,11 +176,11 @@ export function EventForm() {
     if (!currentUser) {
       toast({
         title: HEBREW_TEXT.general.error,
-        description: "עליך להיות מחובר כדי ליצור אירוע.",
+        description: "עליך להיות מחובר כדי ליצור אירוע. מועבר לדף ההתחברות...",
         variant: "destructive",
       });
       setIsSubmitting(false);
-      // router.push('/signin'); // Optionally redirect
+      router.push('/signin');
       return;
     }
 
