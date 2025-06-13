@@ -199,33 +199,57 @@ export function EventForm() {
 
     try {
       console.log("Preparing event data for Firestore...");
+      console.log("Firebase App Name for db:", db.app.name);
+      // console.log("Firebase API Key from config:", db.app.options.apiKey); // Be careful logging API keys
+
+      // DEBUGGING: Send a minimal object
       const eventData = {
         coupleId: currentUser.uid,
         name: values.name,
-        numberOfGuests: values.numberOfGuests,
-        paymentOption: values.paymentOption,
-        pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
-        location: values.location,
-        dateTime: Timestamp.fromDate(values.dateTime),
-        description: values.description,
-        ageRange: values.ageRange,
-        foodType: values.foodType,
-        religionStyle: values.religionStyle,
-        imageUrl: values.imageUrl || "",
+        // numberOfGuests: values.numberOfGuests,
+        // paymentOption: values.paymentOption,
+        // pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
+        // location: values.location,
+        // dateTime: Timestamp.fromDate(values.dateTime),
+        // description: values.description,
+        // ageRange: values.ageRange,
+        // foodType: values.foodType,
+        // religionStyle: values.religionStyle,
+        // imageUrl: values.imageUrl || "",
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        // updatedAt: serverTimestamp(),
       };
-      console.log("Event data prepared:", eventData);
+      console.log("Simplified event data being sent:", eventData);
+
+
+      // const eventDataFull = {
+      //   coupleId: currentUser.uid,
+      //   name: values.name,
+      //   numberOfGuests: values.numberOfGuests,
+      //   paymentOption: values.paymentOption,
+      //   pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
+      //   location: values.location,
+      //   dateTime: Timestamp.fromDate(values.dateTime),
+      //   description: values.description,
+      //   ageRange: values.ageRange,
+      //   foodType: values.foodType,
+      //   religionStyle: values.religionStyle,
+      //   imageUrl: values.imageUrl || "",
+      //   createdAt: serverTimestamp(),
+      //   updatedAt: serverTimestamp(),
+      // };
+      // console.log("Full event data prepared:", eventDataFull);
+
 
       console.log("Attempting to add document to Firestore events collection (with 15s timeout)...");
-      const addOperation = addDoc(collection(db, "events"), eventData);
+      const addOperation = addDoc(collection(db, "events"), eventData); // Using simplified eventData for now
       const docRef = await promiseWithTimeout(addOperation, 15000); // 15 second timeout
       
       console.log("Event created with ID: ", docRef.id);
 
       toast({
         title: HEBREW_TEXT.general.success,
-        description: `אירוע "${values.name}" נוצר בהצלחה!`,
+        description: `אירוע "${values.name}" נוצר בהצלחה (עם נתונים מופשטים לבדיקה)!`,
       });
       router.push("/events");
 
@@ -234,6 +258,8 @@ export function EventForm() {
       let errorMessage = "שגיאה ביצירת האירוע. בדוק את הקונסול לפרטים נוספים.";
       if (error instanceof Error && error.message.includes("timed out")) {
         errorMessage = "יצירת האירוע ארכה זמן רב מדי. אנא נסה שוב.";
+      } else if (error instanceof Error) {
+        errorMessage = `שגיאה ביצירת האירוע: ${error.message}`;
       }
       toast({
         title: HEBREW_TEXT.general.error,
@@ -310,16 +336,18 @@ export function EventForm() {
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) => date < new Date() || date < new Date("1900-01-01")}
+                          disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) } // Disable past dates
                           initialFocus
                           locale={he}
                         />
                         <div className="p-2 border-t">
                            <Input type="time" defaultValue={field.value ? format(field.value, 'HH:mm') : "19:00"} onChange={(e) => {
                                const [hours, minutes] = e.target.value.split(':').map(Number);
-                               const newDate = new Date(field.value || new Date());
+                               const newDate = field.value ? new Date(field.value) : new Date();
                                newDate.setHours(hours);
                                newDate.setMinutes(minutes);
+                               newDate.setSeconds(0);
+                               newDate.setMilliseconds(0);
                                field.onChange(newDate);
                            }} />
                         </div>
@@ -555,3 +583,4 @@ export function EventForm() {
     </Card>
   );
 }
+
