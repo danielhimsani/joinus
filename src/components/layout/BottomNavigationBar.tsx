@@ -7,11 +7,12 @@ import { Search, PlusSquare, MessageSquare, UserCircle } from 'lucide-react';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { cn } from '@/lib/utils';
 
+// Reversed order of navItems
 const navItems = [
-  { href: '/events', label: HEBREW_TEXT.navigation.events, icon: Search },
-  { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: PlusSquare },
-  { href: '/messages', label: HEBREW_TEXT.navigation.messages, icon: MessageSquare },
   { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: UserCircle },
+  { href: '/messages', label: HEBREW_TEXT.navigation.messages, icon: MessageSquare },
+  { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: PlusSquare },
+  { href: '/events', label: HEBREW_TEXT.navigation.events, icon: Search },
 ];
 
 export default function BottomNavigationBar() {
