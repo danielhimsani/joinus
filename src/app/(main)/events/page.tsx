@@ -233,7 +233,7 @@ export default function EventsPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
               <Input
                   type="search"
-                  placeholder={HEBREW_TEXT.general.searchEventsSpecificPlaceholder}
+                  placeholder={HEBREW_TEXT.general.search}
                   className="w-full pl-10 pr-3" 
                   value={simpleSearchQuery}
                   onChange={handleSimpleSearchChange}
@@ -243,7 +243,7 @@ export default function EventsPage() {
 
         {/* Logo */}
         <div className="flex-shrink-0">
-          <Image src="/app_logo.png" alt="App Logo" width={150} height={54} data-ai-hint="app logo" />
+          <Image src="/app_logo.png" alt="App Logo" width={150} height={45} data-ai-hint="app logo" />
         </div>
       </div>
 
