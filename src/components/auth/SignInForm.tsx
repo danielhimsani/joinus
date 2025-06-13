@@ -71,8 +71,14 @@ export function SignInForm() {
           description = "כתובת האימייל אינה תקינה.";
           break;
         case 'auth/popup-closed-by-user':
-          description = "חלון ההתחברות נסגר. נסה שוב.";
+          description = "חלון ההתחברות נסגר לפני השלמת התהליך. אנא נסה שוב. אם הבעיה חוזרת, בדוק אם חוסם חלונות קופצים פעיל.";
           break;
+        case 'auth/cancelled-popup-request':
+            description = "בקשת ההתחברות בוטלה מכיוון שנפתחה בקשה נוספת. אנא נסה שוב.";
+            break;
+        case 'auth/operation-not-allowed':
+            description = "סוג התחברות זה אינו מאופשר כרגע. פנה לתמיכה.";
+            break;
         default:
           description = error.message || description;
       }

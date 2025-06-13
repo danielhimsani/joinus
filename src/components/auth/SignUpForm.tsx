@@ -71,8 +71,14 @@ export function SignUpForm() {
           description = "הסיסמה חלשה מדי. נסה סיסמה חזקה יותר.";
           break;
         case 'auth/popup-closed-by-user':
-          description = "חלון ההתחברות נסגר. נסה שוב.";
+          description = "חלון ההרשמה נסגר לפני השלמת התהליך. אנא נסה שוב. אם הבעיה חוזרת, בדוק אם חוסם חלונות קופצים פעיל.";
           break;
+        case 'auth/cancelled-popup-request':
+            description = "בקשת ההרשמה בוטלה מכיוון שנפתחה בקשה נוספת. אנא נסה שוב.";
+            break;
+        case 'auth/operation-not-allowed':
+            description = "סוג הרשמה זה אינו מאופשר כרגע. פנה לתמיכה.";
+            break;
         default:
           description = error.message || description;
       }
