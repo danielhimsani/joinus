@@ -19,36 +19,36 @@
     --border: 214 20% 85%; /* Softer border */
     --input: 214 20% 90%; /* Slightly lighter input background */
 
-    --primary: 205 75% 45%; /* Strong, confident blue */
-    --primary-foreground: 210 40% 98%; /* White/very light gray */
+    --primary: 339 77% 65%; /* New Primary: #EA638C */
+    --primary-foreground: 210 40% 98%; /* White/very light gray - good contrast */
 
-    --secondary: 215 30% 92%; /* Light, muted blue-gray */
-    --secondary-foreground: 222 47% 11%; /* Dark blue */
+    --secondary: 331 97% 27%; /* New Secondary: #89023E */
+    --secondary-foreground: 210 40% 98%; /* Light gray/white for contrast on dark secondary */
 
-    --accent: 35 100% 60%; /* Warm, inviting orange/gold */
-    --accent-foreground: 222 47% 11%; /* Dark for contrast on accent */
+    --accent: 35 100% 60%; /* Warm, inviting orange/gold - unchanged */
+    --accent-foreground: 222 47% 11%; /* Dark for contrast on accent - unchanged */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --ring: 205 70% 55%; /* Related to primary */
+    --ring: 339 70% 60%; /* Derived from new primary */
 
     --radius: 0.5rem;
 
-    --chart-1: 205 75% 45%;
-    --chart-2: 35 100% 60%;
-    --chart-3: 205 75% 65%;
-    --chart-4: 35 100% 75%;
-    --chart-5: 215 50% 55%;
+    --chart-1: 339 77% 65%; /* Updated to new primary */
+    --chart-2: 35 100% 60%; /* Unchanged Accent */
+    --chart-3: 205 75% 65%; /* Keeping other chart colors for variety or future use */
+    --chart-4: 35 100% 75%; /* Keeping other chart colors */
+    --chart-5: 215 50% 55%; /* Keeping other chart colors */
 
     --sidebar-background: 210 35% 96%;
     --sidebar-foreground: 222 47% 15%;
-    --sidebar-primary: 205 75% 45%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 35 100% 60%;
-    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-primary: 339 77% 65%; /* Updated to new primary */
+    --sidebar-primary-foreground: 210 40% 98%; /* Updated to new primary-foreground */
+    --sidebar-accent: 35 100% 60%; /* Unchanged Accent */
+    --sidebar-accent-foreground: 222 47% 11%; /* Unchanged Accent Foreground */
     --sidebar-border: 214 20% 80%;
-    --sidebar-ring: 205 70% 55%;
+    --sidebar-ring: 339 70% 60%; /* Updated to new ring color */
   }
 
   .dark {
@@ -67,34 +67,34 @@
     --border: 217 33% 25%; /* Darker border */
     --input: 217 33% 20%; /* Darker input */
 
-    --primary: 205 65% 55%; /* Slightly lighter blue for dark mode */
-    --primary-foreground: 222 47% 11%; /* Dark blue for contrast on primary */
+    --primary: 339 70% 60%; /* Adjusted new primary for dark mode */
+    --primary-foreground: 222 47% 11%; /* Dark blue for contrast on new dark primary */
 
-    --secondary: 222 40% 20%; /* Darker muted blue-gray */
-    --secondary-foreground: 210 40% 98%; /* Light gray/white text */
+    --secondary: 331 80% 35%; /* Adjusted new secondary for dark mode (lighter) */
+    --secondary-foreground: 210 40% 98%; /* Light gray/white text for contrast */
 
-    --accent: 35 90% 65%; /* Slightly lighter orange for dark mode */
-    --accent-foreground: 222 47% 11%; /* Dark for contrast */
+    --accent: 35 90% 65%; /* Slightly lighter orange for dark mode - unchanged */
+    --accent-foreground: 222 47% 11%; /* Dark for contrast - unchanged */
 
     --destructive: 0 70% 50%; /* Adjusted destructive for dark mode */
     --destructive-foreground: 0 0% 98%;
 
-    --ring: 205 60% 65%; /* Related to primary */
+    --ring: 339 65% 65%; /* Derived from new dark primary */
 
-    --chart-1: 205 65% 55%;
-    --chart-2: 35 90% 65%;
-    --chart-3: 205 65% 70%;
-    --chart-4: 35 90% 75%;
-    --chart-5: 215 40% 65%;
+    --chart-1: 339 70% 60%; /* Updated to new dark primary */
+    --chart-2: 35 90% 65%; /* Unchanged Dark Accent */
+    --chart-3: 205 65% 70%; /* Keeping other chart colors */
+    --chart-4: 35 90% 75%; /* Keeping other chart colors */
+    --chart-5: 215 40% 65%; /* Keeping other chart colors */
 
     --sidebar-background: 222 45% 10%;
     --sidebar-foreground: 210 35% 90%;
-    --sidebar-primary: 205 65% 55%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 35 90% 65%;
-    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-primary: 339 70% 60%; /* Updated to new dark primary */
+    --sidebar-primary-foreground: 222 47% 11%; /* Updated to new dark primary-foreground */
+    --sidebar-accent: 35 90% 65%; /* Unchanged Dark Accent */
+    --sidebar-accent-foreground: 222 47% 11%; /* Unchanged Dark Accent Foreground */
     --sidebar-border: 217 33% 20%;
-    --sidebar-ring: 205 60% 65%;
+    --sidebar-ring: 339 65% 65%; /* Updated to new dark ring */
   }
 }
 
