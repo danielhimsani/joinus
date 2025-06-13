@@ -9,6 +9,9 @@ import { CalendarIcon, Upload, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import React, { useState, useEffect, useCallback } from "react";
+import { getAuth, type User as FirebaseUser } from "firebase/auth";
+import { collection, addDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
 
 
 import { Button } from "@/components/ui/button";
@@ -27,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Card, CardContent } from "@/components/ui/card"; // CardHeader removed
+import { Card, CardContent } from "@/components/ui/card";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { PaymentOption, FoodType, ReligionStyle } from "@/types";
 import { cn } from "@/lib/utils";
@@ -94,6 +97,23 @@ export function EventForm() {
   const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
   const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        setCurrentUser(user);
+      } else {
+        setCurrentUser(null);
+        // Optionally redirect if no user, or handle in onSubmit
+        // router.push('/signin'); 
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -120,7 +140,7 @@ export function EventForm() {
       return;
     }
     setIsSuggestionsLoading(true);
-    console.log("Simulating API call for:", query);
+    // console.log("Simulating API call for:", query);
     setTimeout(() => {
       const filteredSuggestions = mockLocationSuggestions.filter(s =>
         s.toLowerCase().includes(query.toLowerCase())
@@ -154,20 +174,61 @@ export function EventForm() {
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    console.log("Event creation data:", values);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsSubmitting(true);
 
-    toast({
-      title: HEBREW_TEXT.general.success,
-      description: `אירוע "${values.name}" נוצר בהצלחה!`,
-    });
-    router.push("/events");
+    if (!currentUser) {
+      toast({
+        title: HEBREW_TEXT.general.error,
+        description: "עליך להיות מחובר כדי ליצור אירוע.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      // router.push('/signin'); // Optionally redirect
+      return;
+    }
+
+    try {
+      const eventData = {
+        coupleId: currentUser.uid,
+        name: values.name,
+        numberOfGuests: values.numberOfGuests,
+        paymentOption: values.paymentOption,
+        pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
+        location: values.location,
+        dateTime: Timestamp.fromDate(values.dateTime),
+        description: values.description,
+        ageRange: values.ageRange,
+        foodType: values.foodType,
+        religionStyle: values.religionStyle,
+        imageUrl: values.imageUrl || "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      const docRef = await addDoc(collection(db, "events"), eventData);
+      console.log("Event created with ID: ", docRef.id);
+
+      toast({
+        title: HEBREW_TEXT.general.success,
+        description: `אירוע "${values.name}" נוצר בהצלחה!`,
+      });
+      router.push("/events");
+
+    } catch (error) {
+      console.error("Error creating event:", error);
+      toast({
+        title: HEBREW_TEXT.general.error,
+        description: "שגיאה ביצירת האירוע. נסה שוב.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <Card className="w-full max-w-3xl mx-auto">
-      {/* CardHeader removed as it was empty */}
-      <CardContent className="pt-6"> {/* Added pt-6 to CardContent to maintain similar spacing as before when CardHeader was present */}
+      <CardContent className="pt-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <FormField
@@ -286,7 +347,7 @@ export function EventForm() {
                     <FormItem>
                         <FormLabel>{HEBREW_TEXT.event.pricePerGuest} (בש"ח)</FormLabel>
                         <FormControl>
-                        <Input type="number" placeholder="150" {...field} />
+                        <Input type="number" placeholder="150" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -307,8 +368,14 @@ export function EventForm() {
                         value={locationInput}
                         onChange={(e) => {
                             setLocationInput(e.target.value);
+                            // Also update the actual form field if suggestions are not used
+                            if (!showSuggestions) field.onChange(e.target.value);
                         }}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                        onBlur={() => {
+                            setTimeout(() => setShowSuggestions(false), 150);
+                            // Ensure field value is set from input if no suggestion picked
+                            field.onChange(locationInput); 
+                        }}
                         onFocus={() => {
                             if (locationInput && locationSuggestions.length > 0) {
                                 setShowSuggestions(true);
@@ -329,7 +396,10 @@ export function EventForm() {
                             <li
                               key={index}
                               className="px-3 py-2 text-sm hover:bg-accent cursor-pointer"
-                              onMouseDown={() => handleSuggestionClick(suggestion)}
+                              onMouseDown={() => {
+                                field.onChange(suggestion); // Update form field value
+                                handleSuggestionClick(suggestion);
+                              }}
                             >
                               {suggestion}
                             </li>
@@ -374,7 +444,7 @@ export function EventForm() {
                       <FormLabel>{HEBREW_TEXT.event.ageRange}</FormLabel>
                       <FormControl>
                          <Slider
-                            value={field.value || [18, 80]} // Fallback if field.value is not a proper array
+                            value={field.value || [18, 80]}
                             onValueChange={field.onChange}
                             min={18}
                             max={80}
@@ -442,18 +512,23 @@ export function EventForm() {
                     <FormItem>
                         <FormLabel>{HEBREW_TEXT.event.uploadImage} ({HEBREW_TEXT.general.optional})</FormLabel>
                         <FormControl>
-                            <Button type="button" variant="outline" className="w-full" onClick={() => alert("File upload functionality to be implemented.")}>
+                            {/* This button is still a mock. For actual upload, you'd need Firebase Storage. */}
+                            <Button type="button" variant="outline" className="w-full" onClick={() => {
+                                const url = prompt("הזן קישור לתמונה:");
+                                if (url) field.onChange(url);
+                            }}>
                                 <Upload className="ml-2 h-4 w-4" />
-                                בחר קובץ
+                                {field.value ? "שנה תמונה (הזן קישור)" : "העלה תמונה (הזן קישור)"}
                             </Button>
                         </FormControl>
-                        {field.value && <FormDescription>תמונה נבחרה: {field.value.split('/').pop()}</FormDescription>}
+                        {field.value && <FormDescription>קישור תמונה: {field.value}</FormDescription>}
                         <FormMessage />
                     </FormItem>
                 )} />
 
 
-            <Button type="submit" className="w-full font-body text-lg py-6">
+            <Button type="submit" className="w-full font-body text-lg py-6" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
               {HEBREW_TEXT.event.createEventButton}
             </Button>
           </form>
