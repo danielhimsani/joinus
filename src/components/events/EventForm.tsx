@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card"; // CardTitle removed
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { PaymentOption, FoodType, ReligionStyle } from "@/types";
 import { cn } from "@/lib/utils";
@@ -104,7 +104,7 @@ export function EventForm() {
       pricePerGuest: 100,
       location: "",
       description: "",
-      ageRange: [25, 55], // Ensured default for RHF
+      ageRange: [25, 55], 
       foodType: "kosherParve",
       religionStyle: "mixed",
       imageUrl: "",
@@ -167,7 +167,7 @@ export function EventForm() {
   return (
     <Card className="w-full max-w-3xl mx-auto">
       <CardHeader>
-        <CardTitle className="font-headline text-2xl">{HEBREW_TEXT.event.createEventTitle}</CardTitle>
+        {/* CardTitle removed as per request. The page context is provided by bottom navigation. */}
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -309,16 +309,13 @@ export function EventForm() {
                         value={locationInput}
                         onChange={(e) => {
                             setLocationInput(e.target.value);
-                            // If user types, we assume they are changing the selection,
-                            // so we might want to clear the field.onChange if not matching a suggestion later
-                            // For now, this just updates the visual input
                         }}
                         onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                         onFocus={() => {
                             if (locationInput && locationSuggestions.length > 0) {
                                 setShowSuggestions(true);
                             } else if (locationInput) {
-                                fetchSuggestions(locationInput); // Fetch suggestions if input has text on focus
+                                fetchSuggestions(locationInput); 
                             }
                         }}
                         autoComplete="off"
@@ -379,8 +376,8 @@ export function EventForm() {
                       <FormLabel>{HEBREW_TEXT.event.ageRange}</FormLabel>
                       <FormControl>
                         <Slider
-                          value={field.value} // Directly use field.value from RHF
-                          onValueChange={field.onChange} // Directly use field.onChange from RHF
+                          value={field.value} 
+                          onValueChange={field.onChange} 
                           min={18}
                           max={80}
                           step={1}
@@ -388,7 +385,7 @@ export function EventForm() {
                         />
                       </FormControl>
                       <FormDescription className="text-center pt-1">
-                         טווח גילאים נבחר: {Array.isArray(field.value) && field.value.length === 2 ? `${field.value[0]} - ${field.value[1]}` : 'טוען...'}
+                         טווח גילאים נבחר: {field.value ? `${field.value[0]} - ${field.value[1]}` : 'טוען...'}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -467,4 +464,3 @@ export function EventForm() {
     </Card>
   );
 }
-

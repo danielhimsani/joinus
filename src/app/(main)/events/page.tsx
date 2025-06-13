@@ -18,8 +18,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 
@@ -102,12 +100,12 @@ export default function EventsPage() {
 
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [isFetchingLocation, setIsFetchingLocation] = useState(false); // Set to false initially
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false); 
   const [showMap, setShowMap] = useState(false);
 
 
   useEffect(() => {
-    if (showMap && !currentLocation && !locationError) { // Fetch location only if map is shown and not already fetched/errored
+    if (showMap && !currentLocation && !locationError) { 
       setIsFetchingLocation(true);
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -130,7 +128,7 @@ export default function EventsPage() {
         setIsFetchingLocation(false);
       }
     }
-  }, [showMap, currentLocation, locationError]); // Re-run if showMap changes
+  }, [showMap, currentLocation, locationError]); 
 
   useEffect(() => {
     setIsLoadingEvents(true);
@@ -149,7 +147,7 @@ export default function EventsPage() {
       }
 
       // 2. Apply advanced filters from modal
-      if (advancedFilters.searchTerm && advancedFilters.searchTerm.trim()) { // searchTerm from advanced filters
+      if (advancedFilters.searchTerm && advancedFilters.searchTerm.trim()) { 
         const advancedQuery = advancedFilters.searchTerm.toLowerCase().trim();
          eventsToFilter = eventsToFilter.filter(event =>
             event.name.toLowerCase().includes(advancedQuery) ||
@@ -186,7 +184,7 @@ export default function EventsPage() {
 
   const handleAdvancedFilterChange = (newFilters: Filters) => {
     setAdvancedFilters(newFilters);
-    setShowFiltersModal(false); // Close modal on apply
+    setShowFiltersModal(false); 
   };
 
   const handleSimpleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,7 +205,7 @@ export default function EventsPage() {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <h1 className="font-headline text-4xl font-bold mb-4 text-center">{HEBREW_TEXT.event.discoverEvents}</h1>
+      {/* Title removed as per request */}
       
       <div className="flex flex-col sm:flex-row gap-2 mb-6">
         <div className="relative flex-grow">
