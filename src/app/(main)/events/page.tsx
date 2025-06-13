@@ -8,7 +8,8 @@ import type { Event } from "@/types";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { SearchX } from "lucide-react";
+import { MapPin, SearchX, Loader2 } from "lucide-react";
+import { GoogleMapComponent } from "@/components/maps/GoogleMapComponent";
 
 // Mock data
 const mockEvents: Event[] = [
@@ -54,7 +55,7 @@ const mockEvents: Event[] = [
     location: "בית כנסת 'אוהל מועד', חיפה",
     dateTime: new Date(new Date().setDate(new Date().getDate() + 30)), // In a month
     description: "אירוע מרגש לחידוש נדרים לאחר 20 שנות נישואין. כיבוד קל ואווירה משפחתית.",
-    ageRange: [30, 60], // Added default age range
+    ageRange: [30, 60],
     foodType: "kosherDairy",
     religionStyle: "religious",
     imageUrl: "https://placehold.co/600x400.png?text=Event3",
@@ -71,8 +72,8 @@ const mockEvents: Event[] = [
     location: "יער בן שמן",
     dateTime: new Date(new Date().setDate(new Date().getDate() + 21)),
     description: "חתונה אינטימית ורומנטית בלב הטבע. אווירה פסטורלית ואוכל גורמה צמחוני.",
-    ageRange: [20, 40], // Added default age range
-    foodType: "kosherParve", // Assuming vegetarian can be parve
+    ageRange: [20, 40],
+    foodType: "kosherParve", 
     religionStyle: "mixed",
     imageUrl: "https://placehold.co/600x400.png?text=Event4",
     createdAt: new Date(),
@@ -82,13 +83,38 @@ const mockEvents: Event[] = [
 
 export default function EventsPage() {
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [currentFilters, setCurrentFilters] = useState<Filters>({});
 
-  // Simulate fetching events
+  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(true);
+
   useEffect(() => {
-    setIsLoading(true);
-    // Simulate API call with filters
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+          setLocationError(null);
+          setIsFetchingLocation(false);
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          setLocationError(HEBREW_TEXT.map.locationError);
+          setIsFetchingLocation(false);
+        }
+      );
+    } else {
+      setLocationError(HEBREW_TEXT.map.geolocationNotSupported);
+      setIsFetchingLocation(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setIsLoadingEvents(true);
     setTimeout(() => {
       let events = mockEvents;
       if (currentFilters.searchTerm) {
@@ -113,18 +139,15 @@ export default function EventsPage() {
                       if (typeof max === 'string' && max.includes('+')) return e.pricePerGuest >= (min as number);
                       return e.pricePerGuest >= (min as number) && e.pricePerGuest <= (max as number);
                   }
-                  return false; // Only filter fixed price for range, unless "free" is selected
+                  return false; 
               });
           }
       }
        if (currentFilters.foodType && currentFilters.foodType !== "any") {
         events = events.filter(event => event.foodType === currentFilters.foodType);
       }
-      // Note: Age range filtering logic is not implemented in EventFilters yet.
-      // If it were, it would need to handle the new ageRange: [min, max] format.
-
       setFilteredEvents(events);
-      setIsLoading(false);
+      setIsLoadingEvents(false);
     }, 1000);
   }, [currentFilters]);
 
@@ -148,14 +171,35 @@ export default function EventsPage() {
     <div className="container mx-auto px-4 py-12">
       <h1 className="font-headline text-4xl font-bold mb-8 text-center">{HEBREW_TEXT.event.discoverEvents}</h1>
 
-      {/* Placeholder for Map - this would be a more complex integration */}
-      <div className="mb-8 p-4 bg-muted rounded-lg text-center h-64 flex items-center justify-center">
-        <p className="text-muted-foreground">{HEBREW_TEXT.event.location} (מפה תופיע כאן)</p>
+      <div className="mb-8 p-4 bg-muted rounded-lg">
+        <h2 className="font-headline text-xl font-semibold mb-3 flex items-center">
+            <MapPin className="ml-2 h-5 w-5 text-primary" />
+            {HEBREW_TEXT.map.title}
+        </h2>
+        {isFetchingLocation && (
+            <div className="flex items-center text-muted-foreground">
+                <Loader2 className="ml-2 h-5 w-5 animate-spin" />
+                {HEBREW_TEXT.map.fetchingLocation}
+            </div>
+        )}
+        {locationError && (
+            <Alert variant="default" className="mt-2">
+                <MapPin className="h-5 w-5"/>
+                <AlertTitle>{HEBREW_TEXT.map.errorTitleShort}</AlertTitle>
+                <AlertDescription>{locationError}</AlertDescription>
+            </Alert>
+        )}
+        {currentLocation && !locationError && (
+            <GoogleMapComponent center={currentLocation} />
+        )}
+         {!isFetchingLocation && !currentLocation && !locationError && (
+             <p className="text-muted-foreground">{HEBREW_TEXT.map.locationUnavailable}</p>
+         )}
       </div>
 
       <EventFilters onFilterChange={handleFilterChange} />
 
-      {isLoading ? (
+      {isLoadingEvents ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {renderSkeletons()}
         </div>
@@ -170,7 +214,7 @@ export default function EventsPage() {
             <SearchX className="h-5 w-5" />
           <AlertTitle className="font-headline">{HEBREW_TEXT.event.noEventsFound}</AlertTitle>
           <AlertDescription>
-            נסו לשנות את תנאי הסינון או בדקו שוב מאוחר יותר.
+            {HEBREW_TEXT.general.tryAgainLater}
           </AlertDescription>
         </Alert>
       )}

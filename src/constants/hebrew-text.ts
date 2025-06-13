@@ -18,11 +18,11 @@ export const HEBREW_TEXT = {
   navigation: {
     home: "דף הבית",
     events: "אירועים",
-    createEvent: "פרסום", // Changed for brevity on bottom nav
+    createEvent: "פרסום", 
     profile: "פרופיל",
     leaderboard: "טבלת מובילים",
     mobileMenuTitle: "תפריט",
-    messages: "הודעות", // Added
+    messages: "הודעות", 
   },
   event: {
     createEventTitle: "יצירת אירוע חדש",
@@ -115,9 +115,9 @@ export const HEBREW_TEXT = {
     createYourEvent: "צרו את האירוע שלכם",
     findOpenSpots: "מצאו מקומות פנויים",
     to: "ל",
+    tryAgainLater: "נסו לשנות את תנאי הסינון או בדקו שוב מאוחר יותר.",
   },
   foodIcons: {
-    // Using text for clarity as specific kosher icons are hard to standardize
     kosherMeat: "בשרי",
     kosherDairy: "חלבי",
     kosherParve: "פרווה",
@@ -126,5 +126,21 @@ export const HEBREW_TEXT = {
   emojis: {
     thumbsUp: "👍",
     thumbsDown: "👎",
+  },
+  map: {
+    title: "מפת אירועים",
+    fetchingLocation: "מאחזר מיקום נוכחי...",
+    locationError: "שגיאה באחזור המיקום. אנא ודא שהרשאות המיקום מאופשרות בדפדפן.",
+    geolocationNotSupported: "שירותי מיקום אינם נתמכים בדפדפן זה.",
+    yourLocationMarker: "המיקום שלך",
+    eventLocationMarker: "מיקום האירוע",
+    apiKeyMissing: "מפתח ה-API של גוגל מפות חסר. המפה לא יכולה להיטען.",
+    loadError: "שגיאה בטעינת גוגל מפות. נסה לרענן את הדף.",
+    errorTitle: "שגיאת מפה",
+    errorTitleShort: "שגיאה",
+    locationUnavailable: "המיקום אינו זמין.",
+    yourCurrentLocation: "המיקום הנוכחי שלך:",
+    latitude: "קו רוחב",
+    longitude: "קו אורך",
   }
 };
