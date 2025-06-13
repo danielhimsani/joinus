@@ -102,30 +102,35 @@ export default function EventsPage() {
 
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [isFetchingLocation, setIsFetchingLocation] = useState(true);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false); // Set to false initially
+  const [showMap, setShowMap] = useState(false);
+
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCurrentLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-          setLocationError(null);
-          setIsFetchingLocation(false);
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          setLocationError(HEBREW_TEXT.map.locationError);
-          setIsFetchingLocation(false);
-        }
-      );
-    } else {
-      setLocationError(HEBREW_TEXT.map.geolocationNotSupported);
-      setIsFetchingLocation(false);
+    if (showMap && !currentLocation && !locationError) { // Fetch location only if map is shown and not already fetched/errored
+      setIsFetchingLocation(true);
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setCurrentLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+            setLocationError(null);
+            setIsFetchingLocation(false);
+          },
+          (error) => {
+            console.error("Error getting location:", error);
+            setLocationError(HEBREW_TEXT.map.locationError);
+            setIsFetchingLocation(false);
+          }
+        );
+      } else {
+        setLocationError(HEBREW_TEXT.map.geolocationNotSupported);
+        setIsFetchingLocation(false);
+      }
     }
-  }, []);
+  }, [showMap, currentLocation, locationError]); // Re-run if showMap changes
 
   useEffect(() => {
     setIsLoadingEvents(true);
@@ -227,7 +232,6 @@ export default function EventsPage() {
               <DialogTitle className="font-headline text-xl">{HEBREW_TEXT.event.filters}</DialogTitle>
             </DialogHeader>
             <EventFilters onFilterChange={handleAdvancedFilterChange} initialFilters={advancedFilters} />
-            {/* The "Apply Filters" button is now inside EventFilters component */}
           </DialogContent>
         </Dialog>
       </div>
@@ -238,30 +242,36 @@ export default function EventsPage() {
                 <MapPin className="ml-2 h-5 w-5 text-primary" />
                 {HEBREW_TEXT.map.title}
             </h2>
-            <Button variant="outline" size="sm" onClick={() => alert(HEBREW_TEXT.map.eventsOnMap + " - TBD")}>
+            <Button variant="outline" size="sm" onClick={() => setShowMap(!showMap)}>
                 <MapPin className="ml-1.5 h-4 w-4" />
                 {HEBREW_TEXT.map.eventsOnMap}
             </Button>
         </div>
-        {isFetchingLocation && (
-            <div className="flex items-center text-muted-foreground">
-                <Loader2 className="ml-2 h-5 w-5 animate-spin" />
-                {HEBREW_TEXT.map.fetchingLocation}
-            </div>
+        {showMap && (
+            <>
+                {isFetchingLocation && (
+                    <div className="flex items-center text-muted-foreground pt-2">
+                        <Loader2 className="ml-2 h-5 w-5 animate-spin" />
+                        {HEBREW_TEXT.map.fetchingLocation}
+                    </div>
+                )}
+                {locationError && (
+                    <Alert variant="default" className="mt-2">
+                        <MapPin className="h-5 w-5"/>
+                        <AlertTitle>{HEBREW_TEXT.map.errorTitleShort}</AlertTitle>
+                        <AlertDescription>{locationError}</AlertDescription>
+                    </Alert>
+                )}
+                {currentLocation && !locationError && (
+                  <div className="mt-2">
+                    <GoogleMapComponent center={currentLocation} />
+                  </div>
+                )}
+                {!isFetchingLocation && !currentLocation && !locationError && (
+                    <p className="text-muted-foreground pt-2">{HEBREW_TEXT.map.locationUnavailable}</p>
+                )}
+            </>
         )}
-        {locationError && (
-            <Alert variant="default" className="mt-2">
-                <MapPin className="h-5 w-5"/>
-                <AlertTitle>{HEBREW_TEXT.map.errorTitleShort}</AlertTitle>
-                <AlertDescription>{locationError}</AlertDescription>
-            </Alert>
-        )}
-        {currentLocation && !locationError && (
-            <GoogleMapComponent center={currentLocation} />
-        )}
-         {!isFetchingLocation && !currentLocation && !locationError && (
-             <p className="text-muted-foreground">{HEBREW_TEXT.map.locationUnavailable}</p>
-         )}
       </div>
 
       <Separator className="my-8"/>
