@@ -20,9 +20,15 @@ export const AppLogo: React.FC<AppLogoProps> = ({ width, height, ...props }) => 
       <title>Join Us Logo</title>
       <defs>
         <style>
+          {/* Removed @import, will use CSS variable for font-family */}
           {`
-            @import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
-            .t0-joinus-svg { font-size: 150px; fill: #ea638c; font-weight: 400; font-family: "Pacifico", "Pacifico-Regular", cursive; white-space: pre; }
+            .t0-joinus-svg { 
+              font-size: 150px; 
+              fill: #ea638c; 
+              font-weight: 400; 
+              font-family: var(--font-pacifico), cursive; /* Use CSS variable */
+              white-space: pre; 
+            }
           `}
         </style>
       </defs>

@@ -1,15 +1,23 @@
+
 import type { Metadata } from 'next';
-import { Rubik } from 'next/font/google'; // Changed from Alegreya to Rubik
+import { Rubik, Pacifico } from 'next/font/google'; // Import Pacifico
 import { Toaster } from "@/components/ui/toaster";
 import './globals.css';
 import { cn } from '@/lib/utils';
 
-// Changed font import and configuration
 const rubik = Rubik({
   subsets: ['latin', 'hebrew'],
-  variable: '--font-rubik', // Changed variable name
+  variable: '--font-rubik',
   display: 'swap',
-  weight: ['300', '400', '500', '700'] // Added common weights
+  weight: ['300', '400', '500', '700']
+});
+
+// Add Pacifico font configuration
+const pacifico = Pacifico({
+  subsets: ['latin'],
+  variable: '--font-pacifico',
+  weight: '400', // Pacifico is typically only available in 400 weight
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -25,10 +33,10 @@ export default function RootLayout({
   return (
     <html lang="he" dir="rtl">
       <head>
-        {/* Note: Next/font is used, so direct Google Font links are not needed here if using next/font correctly. */}
+        {/* Next/font handles font loading */}
       </head>
-      {/* Updated className to use the new font variable */}
-      <body className={cn('font-body antialiased', rubik.variable)}>
+      {/* Add pacifico.variable to the body class */}
+      <body className={cn('font-body antialiased', rubik.variable, pacifico.variable)}>
         {children}
         <Toaster />
       </body>
