@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-// Image import removed as it's replaced by SVG component
+import Image from 'next/image'; // Added for PNG logo
 import { EventCard } from "@/components/events/EventCard";
 import { EventFilters, type Filters } from "@/components/events/EventFilters";
 import type { Event } from "@/types";
@@ -21,7 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { AppLogo } from '@/components/icons/AppLogo'; // Import the SVG logo component
+// AppLogo import removed
 
 // Mock data
 const mockEvents: Event[] = [
@@ -243,7 +243,7 @@ export default function EventsPage() {
 
         {/* Logo */}
         <div className="flex-shrink-0">
-          <AppLogo width="150" height="54" data-ai-hint="app logo svg" />
+          <Image src="/app_logo.png" alt="App Logo" width={150} height={54} data-ai-hint="app logo" />
         </div>
       </div>
 

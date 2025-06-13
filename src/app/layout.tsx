@@ -1,6 +1,6 @@
 
 import type { Metadata } from 'next';
-import { Rubik, Pacifico } from 'next/font/google'; // Import Pacifico
+import { Rubik } from 'next/font/google'; // Removed Pacifico
 import { Toaster } from "@/components/ui/toaster";
 import './globals.css';
 import { cn } from '@/lib/utils';
@@ -12,13 +12,7 @@ const rubik = Rubik({
   weight: ['300', '400', '500', '700']
 });
 
-// Add Pacifico font configuration
-const pacifico = Pacifico({
-  subsets: ['latin'],
-  variable: '--font-pacifico',
-  weight: '400', // Pacifico is typically only available in 400 weight
-  display: 'swap',
-});
+// Pacifico font configuration removed
 
 export const metadata: Metadata = {
   title: 'Join us',
@@ -35,8 +29,8 @@ export default function RootLayout({
       <head>
         {/* Next/font handles font loading */}
       </head>
-      {/* Add pacifico.variable to the body class */}
-      <body className={cn('font-body antialiased', rubik.variable, pacifico.variable)}>
+      {/* Removed pacifico.variable from the body class */}
+      <body className={cn('font-body antialiased', rubik.variable)}>
         {children}
         <Toaster />
       </body>
