@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from 'next/image'; // Added for map placeholder
 import { EventCard } from "@/components/events/EventCard";
 import { EventFilters, type Filters } from "@/components/events/EventFilters";
 import type { Event } from "@/types";
@@ -105,7 +106,7 @@ export default function EventsPage() {
 
 
   useEffect(() => {
-    if (showMap && !currentLocation && !locationError) { 
+    if (showMap && !currentLocation && !locationError && !isFetchingLocation) { 
       setIsFetchingLocation(true);
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -128,7 +129,7 @@ export default function EventsPage() {
         setIsFetchingLocation(false);
       }
     }
-  }, [showMap, currentLocation, locationError]); 
+  }, [showMap, currentLocation, locationError, isFetchingLocation]); 
 
   useEffect(() => {
     setIsLoadingEvents(true);
@@ -205,22 +206,21 @@ export default function EventsPage() {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      {/* Title removed as per request */}
       
-      <div className="flex flex-col sm:flex-row gap-2 mb-6">
+      <div className="flex flex-row-reverse sm:flex-row items-center gap-2 mb-6">
         <div className="relative flex-grow">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
             <Input
                 type="search"
-                placeholder={HEBREW_TEXT.general.searchEventsSimplePlaceholder}
-                className="w-full pr-10" 
+                placeholder={HEBREW_TEXT.general.searchEventsSpecificPlaceholder}
+                className="w-full pl-10 pr-3" 
                 value={simpleSearchQuery}
                 onChange={handleSimpleSearchChange}
             />
         </div>
         <Dialog open={showFiltersModal} onOpenChange={setShowFiltersModal}>
           <DialogTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-auto">
+            <Button variant="outline" className="shrink-0"> {/* No sm:w-auto, shrink-0 to prevent stretching */}
               <FilterIcon className="ml-2 h-4 w-4" />
               {HEBREW_TEXT.event.filters}
             </Button>
@@ -235,18 +235,23 @@ export default function EventsPage() {
       </div>
 
       <div className="mb-8 p-4 bg-muted rounded-lg">
-        <div className="flex justify-between items-center mb-3">
-            <h2 className="font-headline text-xl font-semibold flex items-center">
-                <MapPin className="ml-2 h-5 w-5 text-primary" />
-                {HEBREW_TEXT.map.title}
-            </h2>
-            <Button variant="outline" size="sm" onClick={() => setShowMap(!showMap)}>
-                <MapPin className="ml-1.5 h-4 w-4" />
-                {HEBREW_TEXT.map.eventsOnMap}
-            </Button>
-        </div>
+        <h2 className="font-headline text-xl font-semibold mb-3 text-center sm:text-right">
+            {HEBREW_TEXT.map.searchOnMapTitle}
+        </h2>
+        {!showMap && (
+            <div onClick={() => setShowMap(true)} className="cursor-pointer rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+                <Image
+                    src="https://placehold.co/800x300.png" // Placeholder map image
+                    alt={HEBREW_TEXT.map.searchOnMapTitle}
+                    width={800}
+                    height={300}
+                    className="w-full h-auto object-cover"
+                    data-ai-hint="map location preview"
+                />
+            </div>
+        )}
         {showMap && (
-            <>
+            <div onClick={() => setShowMap(false)} className="cursor-pointer"> {/* Make map itself clickable to hide */}
                 {isFetchingLocation && (
                     <div className="flex items-center text-muted-foreground pt-2">
                         <Loader2 className="ml-2 h-5 w-5 animate-spin" />
@@ -268,12 +273,11 @@ export default function EventsPage() {
                 {!isFetchingLocation && !currentLocation && !locationError && (
                     <p className="text-muted-foreground pt-2">{HEBREW_TEXT.map.locationUnavailable}</p>
                 )}
-            </>
+            </div>
         )}
       </div>
 
       <Separator className="my-8"/>
-
 
       {isLoadingEvents ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -297,3 +301,5 @@ export default function EventsPage() {
     </div>
   );
 }
+
+    
