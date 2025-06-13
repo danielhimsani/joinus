@@ -2,6 +2,7 @@
 "use client";
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // Added for redirection
 import { Button } from '@/components/ui/button';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Home, CalendarPlus, UserCircle, LogIn, LogOut, Menu, PartyPopper } from 'lucide-react';
@@ -21,6 +22,7 @@ import { useState, useEffect } from 'react';
 const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
+  const router = useRouter(); // Initialize router
 
   useEffect(() => {
     // Simulate checking auth status
@@ -43,6 +45,7 @@ const useAuth = () => {
     localStorage.removeItem('userName');
     setIsAuthenticated(false);
     setUserName(null);
+    router.push('/'); // Redirect to homepage after sign out
   };
 
   return { isAuthenticated, userName, signIn, signOut };
