@@ -18,10 +18,11 @@ export const HEBREW_TEXT = {
   navigation: {
     home: "דף הבית",
     events: "אירועים",
-    createEvent: "יצירת אירוע",
+    createEvent: "פרסום", // Changed for brevity on bottom nav
     profile: "פרופיל",
     leaderboard: "טבלת מובילים",
     mobileMenuTitle: "תפריט",
+    messages: "הודעות", // Added
   },
   event: {
     createEventTitle: "יצירת אירוע חדש",
