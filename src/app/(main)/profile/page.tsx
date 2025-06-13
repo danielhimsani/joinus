@@ -33,7 +33,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged, type User as FirebaseUser, updateProfile } from "firebase/auth";
 import { auth as firebaseAuthInstance } from "@/lib/firebase";
 
 const profileFormSchema = z.object({
@@ -60,81 +60,98 @@ export default function ProfilePage() {
   
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (fbUser) => {
+      setIsLoading(true); // Set loading true while processing auth state
       if (fbUser) {
+        console.log("Firebase User Object in ProfilePage:", fbUser); // Log the user object
         setFirebaseUser(fbUser);
         const profileData: UserProfile = {
-          id: fbUser.uid, // Use Firebase UID as ID
+          id: fbUser.uid, 
           firebaseUid: fbUser.uid,
           name: fbUser.displayName || "משתמש",
           email: fbUser.email || "לא סופק אימייל",
           profileImageUrl: fbUser.photoURL || "https://placehold.co/150x150.png",
-          // Birthday, bio, phone, isVerified would come from your Firestore DB
-          // For now, they remain user-editable or default
-          bio: "", // Or fetch from your DB
-          phone: "", // Or fetch from your DB
-          isVerified: fbUser.emailVerified, // Use Firebase email verification status
+          bio: user?.bio || "", // Preserve existing bio if user re-auths
+          phone: user?.phone || "", // Preserve existing phone
+          birthday: user?.birthday || "", // Preserve existing birthday
+          isVerified: fbUser.emailVerified,
         };
         setUser(profileData);
         form.reset({
           name: profileData.name,
           email: profileData.email,
-          birthday: profileData.birthday || "", // Will be empty initially
+          birthday: profileData.birthday || "", 
           bio: profileData.bio || "",
           phone: profileData.phone || "",
         });
       } else {
-        // No user is signed in.
         setUser(null);
         setFirebaseUser(null);
-        router.push('/signin'); // Redirect to sign-in if not authenticated
+        router.push('/signin'); 
       }
       setIsLoading(false);
     });
 
-    return () => unsubscribe(); // Cleanup subscription on unmount
-  }, [form, router]);
+    return () => unsubscribe();
+  }, [form, router, user?.bio, user?.phone, user?.birthday]); // Added user properties to deps for preserving edits
 
   const onSubmit = async (values: z.infer<typeof profileFormSchema>) => {
     setIsSubmitting(true);
-    console.log("Profile update data:", values);
-    // TODO: Implement actual profile update to Firestore
-    // For example: await updateUserProfileInFirestore(firebaseUser.uid, values);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Update local state to reflect changes. Ideally, re-fetch from Firestore.
-    setUser(prevUser => prevUser ? { 
-        ...prevUser, 
-        name: values.name,
-        // email is usually not updated here directly if managed by Firebase Auth
-        birthday: values.birthday,
-        bio: values.bio,
-        phone: values.phone,
-    } : null);
+    if (!firebaseUser) {
+      toast({ title: HEBREW_TEXT.general.error, description: "משתמש לא מאומת.", variant: "destructive" });
+      setIsSubmitting(false);
+      return;
+    }
 
-    toast({
-      title: HEBREW_TEXT.general.success,
-      description: "הפרופיל עודכן בהצלחה!",
-    });
-    setIsEditing(false);
-    setIsSubmitting(false);
+    try {
+      // Update Firebase Auth profile if name changed
+      if (values.name !== firebaseUser.displayName) {
+        await updateProfile(firebaseUser, { displayName: values.name });
+      }
+      // TODO: Implement actual profile update to Firestore for bio, phone, birthday
+      // For example: await updateUserProfileInFirestore(firebaseUser.uid, { bio: values.bio, phone: values.phone, birthday: values.birthday });
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate Firestore update
+      
+      setUser(prevUser => prevUser ? { 
+          ...prevUser, 
+          name: values.name,
+          // email is not updated here
+          birthday: values.birthday,
+          bio: values.bio,
+          phone: values.phone,
+      } : null);
+      // Re-sync form with potentially updated firebaseUser (e.g., displayName) if needed,
+      // but for now, values are the source of truth post-submit for the form.
+      form.reset(values);
+
+
+      toast({
+        title: HEBREW_TEXT.general.success,
+        description: "הפרופיל עודכן בהצלחה!",
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בעדכון הפרופיל.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleIdUpload = () => {
-    // This would involve uploading to Firebase Storage and updating a Firestore doc
     toast({ title: "העלאת תעודת זהות", description: "פונקציונליות העלאת תעודה תמומש כאן." });
   };
 
   const handleSignOut = async () => {
     try {
       await firebaseAuthInstance.signOut();
-      // Clear any local mock auth state if still used elsewhere
+      // localStorage items related to mock auth are less relevant now, but good to clear
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('userName');
       toast({
         title: HEBREW_TEXT.auth.signOut,
         description: "התנתקת בהצלחה. הנך מועבר לדף הבית.",
       });
-      router.push('/'); // Redirect to homepage
+      router.push('/'); 
     } catch (error) {
       console.error("Error signing out: ", error);
       toast({
@@ -145,7 +162,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading || !user) {
+  if (isLoading || !user) { // Keep !user check to prevent rendering before user data is ready
     return (
       <div className="container mx-auto px-4 py-12">
          <Card className="max-w-3xl mx-auto">
@@ -185,7 +202,7 @@ export default function ProfilePage() {
                       <Button variant="outline" size="icon" className="absolute bottom-0 left-0 bg-background rounded-full">
                           <Camera className="h-5 w-5"/>
                           <span className="sr-only">{HEBREW_TEXT.profile.uploadProfileImage}</span>
-                          {/* TODO: Implement image upload functionality */}
+                          {/* TODO: Implement image upload functionality & updateProfile for photoURL */}
                       </Button>
                   )}
                 </div>
@@ -312,7 +329,7 @@ export default function ProfilePage() {
                 
                 <Separator/>
                 
-                {!user.isVerified && ( // Consider if firebaseUser.emailVerified is what you mean by "isVerified" for the ID upload section
+                {!user.isVerified && ( 
                   <Card className="bg-accent/50 p-4">
                       <CardTitle className="text-lg mb-2 flex items-center">
                           <ShieldCheck className="ml-2 h-5 w-5 text-primary"/>
@@ -328,7 +345,6 @@ export default function ProfilePage() {
                   </Card>
                 )}
 
-                {/* Placeholder for past events and reviews */}
                 <div className="mt-6">
                   <h3 className="font-headline text-xl font-semibold mb-2">{HEBREW_TEXT.profile.pastEventsAttended}</h3>
                   <p className="text-muted-foreground">רשימת אירועים תופיע כאן.</p>
