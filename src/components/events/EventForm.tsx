@@ -184,6 +184,11 @@ export function EventForm() {
     setIsSubmitting(true);
     console.log("isSubmitting set to true. Current user for event creation:", currentUser ? currentUser.uid : "No user");
 
+    // Log Firebase App Name and API Key from loaded config for verification
+    console.log("Firebase App Name from db config:", db.app.name); // e.g., "[DEFAULT]"
+    console.log("Firebase Project ID from db config:", db.app.options.projectId); 
+    // console.log("Firebase API Key from db config:", db.app.options.apiKey); // Be careful logging API keys in production
+
     if (!currentUser) {
       console.log("User not authenticated, redirecting to signin.");
       toast({
@@ -199,57 +204,34 @@ export function EventForm() {
 
     try {
       console.log("Preparing event data for Firestore...");
-      console.log("Firebase App Name for db:", db.app.name);
-      // console.log("Firebase API Key from config:", db.app.options.apiKey); // Be careful logging API keys
-
-      // DEBUGGING: Send a minimal object
       const eventData = {
         coupleId: currentUser.uid,
         name: values.name,
-        // numberOfGuests: values.numberOfGuests,
-        // paymentOption: values.paymentOption,
-        // pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
-        // location: values.location,
-        // dateTime: Timestamp.fromDate(values.dateTime),
-        // description: values.description,
-        // ageRange: values.ageRange,
-        // foodType: values.foodType,
-        // religionStyle: values.religionStyle,
-        // imageUrl: values.imageUrl || "",
+        numberOfGuests: values.numberOfGuests,
+        paymentOption: values.paymentOption,
+        pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
+        location: values.location,
+        dateTime: Timestamp.fromDate(values.dateTime),
+        description: values.description,
+        ageRange: values.ageRange,
+        foodType: values.foodType,
+        religionStyle: values.religionStyle,
+        imageUrl: values.imageUrl || "",
         createdAt: serverTimestamp(),
-        // updatedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
-      console.log("Simplified event data being sent:", eventData);
-
-
-      // const eventDataFull = {
-      //   coupleId: currentUser.uid,
-      //   name: values.name,
-      //   numberOfGuests: values.numberOfGuests,
-      //   paymentOption: values.paymentOption,
-      //   pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
-      //   location: values.location,
-      //   dateTime: Timestamp.fromDate(values.dateTime),
-      //   description: values.description,
-      //   ageRange: values.ageRange,
-      //   foodType: values.foodType,
-      //   religionStyle: values.religionStyle,
-      //   imageUrl: values.imageUrl || "",
-      //   createdAt: serverTimestamp(),
-      //   updatedAt: serverTimestamp(),
-      // };
-      // console.log("Full event data prepared:", eventDataFull);
+      console.log("Full event data being sent:", eventData);
 
 
       console.log("Attempting to add document to Firestore events collection (with 15s timeout)...");
-      const addOperation = addDoc(collection(db, "events"), eventData); // Using simplified eventData for now
+      const addOperation = addDoc(collection(db, "events"), eventData);
       const docRef = await promiseWithTimeout(addOperation, 15000); // 15 second timeout
       
       console.log("Event created with ID: ", docRef.id);
 
       toast({
         title: HEBREW_TEXT.general.success,
-        description: `אירוע "${values.name}" נוצר בהצלחה (עם נתונים מופשטים לבדיקה)!`,
+        description: `אירוע "${values.name}" נוצר בהצלחה!`,
       });
       router.push("/events");
 
@@ -257,7 +239,9 @@ export function EventForm() {
       console.error("Error creating event in onSubmit:", error);
       let errorMessage = "שגיאה ביצירת האירוע. בדוק את הקונסול לפרטים נוספים.";
       if (error instanceof Error && error.message.includes("timed out")) {
-        errorMessage = "יצירת האירוע ארכה זמן רב מדי. אנא נסה שוב.";
+        errorMessage = "יצירת האירוע ארכה זמן רב מדי. אנא נסה שוב ובדוק את חיבור האינטרנט והגדרות Firebase.";
+      } else if (error instanceof Error && (error.message.includes("Bad Request") || (error as any).code === "unavailable" || (error as any).code === "internal") ){
+        errorMessage = "שגיאת 'Bad Request' מ-Firestore. אנא ודא שמפתח ה-API שלך מוגדר כראוי ב-Google Cloud Console (כולל הגבלות HTTP referrers ו-API) וש-Firestore מאופשר בפרוייקט.";
       } else if (error instanceof Error) {
         errorMessage = `שגיאה ביצירת האירוע: ${error.message}`;
       }
