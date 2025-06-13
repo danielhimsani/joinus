@@ -8,8 +8,20 @@ import type { Event } from "@/types";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { MapPin, SearchX, Loader2 } from "lucide-react";
+import { MapPin, SearchX, Loader2, Search, Filter as FilterIcon } from "lucide-react";
 import { GoogleMapComponent } from "@/components/maps/GoogleMapComponent";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 // Mock data
 const mockEvents: Event[] = [
@@ -84,7 +96,9 @@ const mockEvents: Event[] = [
 export default function EventsPage() {
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
-  const [currentFilters, setCurrentFilters] = useState<Filters>({});
+  const [advancedFilters, setAdvancedFilters] = useState<Filters>({});
+  const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
 
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -115,26 +129,40 @@ export default function EventsPage() {
 
   useEffect(() => {
     setIsLoadingEvents(true);
+    // Simulate API fetch
     setTimeout(() => {
-      let events = mockEvents;
-      if (currentFilters.searchTerm) {
-        events = events.filter(event =>
-            event.name.toLowerCase().includes(currentFilters.searchTerm!.toLowerCase()) ||
-            event.description.toLowerCase().includes(currentFilters.searchTerm!.toLowerCase())
+      let eventsToFilter = mockEvents;
+
+      // 1. Apply simple search query
+      if (simpleSearchQuery.trim()) {
+        const query = simpleSearchQuery.toLowerCase().trim();
+        eventsToFilter = eventsToFilter.filter(event =>
+            event.name.toLowerCase().includes(query) ||
+            event.description.toLowerCase().includes(query) ||
+            event.location.toLowerCase().includes(query) 
         );
       }
-      if (currentFilters.location) {
-        events = events.filter(event => event.location.toLowerCase().includes(currentFilters.location!.toLowerCase()));
+
+      // 2. Apply advanced filters from modal
+      if (advancedFilters.searchTerm && advancedFilters.searchTerm.trim()) { // searchTerm from advanced filters
+        const advancedQuery = advancedFilters.searchTerm.toLowerCase().trim();
+         eventsToFilter = eventsToFilter.filter(event =>
+            event.name.toLowerCase().includes(advancedQuery) ||
+            event.description.toLowerCase().includes(advancedQuery)
+        );
       }
-      if (currentFilters.date) {
-        events = events.filter(event => new Date(event.dateTime).toDateString() === currentFilters.date!.toDateString());
+      if (advancedFilters.location && advancedFilters.location.trim()) {
+        eventsToFilter = eventsToFilter.filter(event => event.location.toLowerCase().includes(advancedFilters.location!.toLowerCase().trim()));
       }
-      if (currentFilters.priceRange) {
-          if (currentFilters.priceRange === "free") {
-              events = events.filter(e => e.paymentOption === "free");
-          } else if (currentFilters.priceRange !== "any") {
-              const [min, max] = currentFilters.priceRange.split('-').map(p => p === 'any' || p.includes('+') ? p : Number(p));
-              events = events.filter(e => {
+      if (advancedFilters.date) {
+        eventsToFilter = eventsToFilter.filter(event => new Date(event.dateTime).toDateString() === advancedFilters.date!.toDateString());
+      }
+      if (advancedFilters.priceRange) {
+          if (advancedFilters.priceRange === "free") {
+              eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "free");
+          } else if (advancedFilters.priceRange !== "any") {
+              const [min, max] = advancedFilters.priceRange.split('-').map(p => p === 'any' || p.includes('+') ? p : Number(p));
+              eventsToFilter = eventsToFilter.filter(e => {
                   if (e.paymentOption === "fixed" && e.pricePerGuest) {
                       if (typeof max === 'string' && max.includes('+')) return e.pricePerGuest >= (min as number);
                       return e.pricePerGuest >= (min as number) && e.pricePerGuest <= (max as number);
@@ -143,16 +171,21 @@ export default function EventsPage() {
               });
           }
       }
-       if (currentFilters.foodType && currentFilters.foodType !== "any") {
-        events = events.filter(event => event.foodType === currentFilters.foodType);
+       if (advancedFilters.foodType && advancedFilters.foodType !== "any") {
+        eventsToFilter = eventsToFilter.filter(event => event.foodType === advancedFilters.foodType);
       }
-      setFilteredEvents(events);
+      setFilteredEvents(eventsToFilter);
       setIsLoadingEvents(false);
-    }, 1000);
-  }, [currentFilters]);
+    }, 700);
+  }, [simpleSearchQuery, advancedFilters]);
 
-  const handleFilterChange = (filters: Filters) => {
-    setCurrentFilters(filters);
+  const handleAdvancedFilterChange = (newFilters: Filters) => {
+    setAdvancedFilters(newFilters);
+    setShowFiltersModal(false); // Close modal on apply
+  };
+
+  const handleSimpleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSimpleSearchQuery(event.target.value);
   };
 
   const renderSkeletons = () => (
@@ -169,13 +202,47 @@ export default function EventsPage() {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <h1 className="font-headline text-4xl font-bold mb-8 text-center">{HEBREW_TEXT.event.discoverEvents}</h1>
+      <h1 className="font-headline text-4xl font-bold mb-4 text-center">{HEBREW_TEXT.event.discoverEvents}</h1>
+      
+      <div className="flex flex-col sm:flex-row gap-2 mb-6">
+        <div className="relative flex-grow">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+                type="search"
+                placeholder={HEBREW_TEXT.general.searchEventsSimplePlaceholder}
+                className="w-full pr-10" 
+                value={simpleSearchQuery}
+                onChange={handleSimpleSearchChange}
+            />
+        </div>
+        <Dialog open={showFiltersModal} onOpenChange={setShowFiltersModal}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="w-full sm:w-auto">
+              <FilterIcon className="ml-2 h-4 w-4" />
+              {HEBREW_TEXT.event.filters}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[650px]">
+            <DialogHeader>
+              <DialogTitle className="font-headline text-xl">{HEBREW_TEXT.event.filters}</DialogTitle>
+            </DialogHeader>
+            <EventFilters onFilterChange={handleAdvancedFilterChange} initialFilters={advancedFilters} />
+            {/* The "Apply Filters" button is now inside EventFilters component */}
+          </DialogContent>
+        </Dialog>
+      </div>
 
       <div className="mb-8 p-4 bg-muted rounded-lg">
-        <h2 className="font-headline text-xl font-semibold mb-3 flex items-center">
-            <MapPin className="ml-2 h-5 w-5 text-primary" />
-            {HEBREW_TEXT.map.title}
-        </h2>
+        <div className="flex justify-between items-center mb-3">
+            <h2 className="font-headline text-xl font-semibold flex items-center">
+                <MapPin className="ml-2 h-5 w-5 text-primary" />
+                {HEBREW_TEXT.map.title}
+            </h2>
+            <Button variant="outline" size="sm" onClick={() => alert(HEBREW_TEXT.map.eventsOnMap + " - TBD")}>
+                <MapPin className="ml-1.5 h-4 w-4" />
+                {HEBREW_TEXT.map.eventsOnMap}
+            </Button>
+        </div>
         {isFetchingLocation && (
             <div className="flex items-center text-muted-foreground">
                 <Loader2 className="ml-2 h-5 w-5 animate-spin" />
@@ -197,7 +264,8 @@ export default function EventsPage() {
          )}
       </div>
 
-      <EventFilters onFilterChange={handleFilterChange} />
+      <Separator className="my-8"/>
+
 
       {isLoadingEvents ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

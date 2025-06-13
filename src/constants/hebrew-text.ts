@@ -47,7 +47,8 @@ export const HEBREW_TEXT = {
     uploadImage: "העלאת תמונה",
     createEventButton: "צור אירוע",
     discoverEvents: "גלה אירועים",
-    filters: "סינון",
+    filters: "סנן", // Changed
+    applyFilters: "החל סננים", // New
     filterByLocation: "סינון לפי מיקום",
     filterByTime: "סינון לפי זמן",
     filterByPrice: "סינון לפי מחיר",
@@ -105,6 +106,7 @@ export const HEBREW_TEXT = {
     close: "סגור",
     optional: "אופציונלי",
     search: "חיפוש...",
+    searchEventsSimplePlaceholder: "חיפוש חופשי (שם, מקום, תיאור...)", // New
     actions: "פעולות",
     details: "פרטים",
     back: "חזור",
@@ -116,6 +118,7 @@ export const HEBREW_TEXT = {
     findOpenSpots: "מצאו מקומות פנויים",
     to: "ל",
     tryAgainLater: "נסו לשנות את תנאי הסינון או בדקו שוב מאוחר יותר.",
+    clearFilters: "נקה סננים", // New
   },
   foodIcons: {
     kosherMeat: "בשרי",
@@ -129,6 +132,7 @@ export const HEBREW_TEXT = {
   },
   map: {
     title: "מפת אירועים",
+    eventsOnMap: "אירועים על המפה", // New
     fetchingLocation: "מאחזר מיקום נוכחי...",
     locationError: "שגיאה באחזור המיקום. אנא ודא שהרשאות המיקום מאופשרות בדפדפן.",
     geolocationNotSupported: "שירותי מיקום אינם נתמכים בדפדפן זה.",
