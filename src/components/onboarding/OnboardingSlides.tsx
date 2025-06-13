@@ -65,8 +65,7 @@ export function OnboardingSlides() {
     if (currentSlide < slides.length - 1) {
       setCurrentSlide(currentSlide + 1);
     } else {
-      // This case should ideally be handled by the Sign In button on the last slide
-      router.push('/auth/signin');
+      router.push('/signin');
     }
   };
 
@@ -122,7 +121,7 @@ export function OnboardingSlides() {
 
       <div className="w-full pb-6 pt-2 z-10">
         {isFinalSlide ? (
-          <Button onClick={() => router.push('/auth/signin')} className="font-body text-lg py-3 w-full max-w-xs mx-auto block">
+          <Button onClick={() => router.push('/signin')} className="font-body text-lg py-3 w-full max-w-xs mx-auto block">
             {HEBREW_TEXT.auth.signInButton}
           </Button>
         ) : (
