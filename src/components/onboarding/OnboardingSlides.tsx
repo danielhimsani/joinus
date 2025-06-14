@@ -30,7 +30,7 @@ const slides: SlideContent[] = [
   {
     title: HEBREW_TEXT.general.forCouples,
     description: "יש לכם מקומות פנויים בחתונה? אל תתנו להם להתבזבז! פרסמו את האירוע שלכם במחוברים ומצאו אורחים שישמחו להצטרף ולכסות את העלויות.",
-    imageUrl: "https://placehold.co/600x400.png",
+    imageUrl: "/onboarding-couples.png", // Updated image path
     imageHint: "wedding couple",
   },
   {
