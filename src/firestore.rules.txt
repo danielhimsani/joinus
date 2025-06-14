@@ -36,14 +36,13 @@ service cloud.firestore {
       // Who can create a chat document? (Typically the guest initiating the request)
       allow create: if request.auth.uid == request.resource.data.guestUid &&
                        request.resource.data.eventId != null &&
-                       request.resource.data.ownerUids is list &&
+                       request.resource.data.ownerUids is list && // Ensure ownerUids is a list
                        request.resource.data.ownerUids.size() > 0 &&
-                       // New validation for participants
-                       request.resource.data.participants is list &&
+                       request.resource.data.participants is list && // Ensure participants is a list
                        request.resource.data.participants.size() == (request.resource.data.ownerUids.size() + 1) &&
                        request.resource.data.guestUid in request.resource.data.participants &&
-                       request.resource.data.ownerUids.all(ownerId, ownerId in request.resource.data.participants) &&
-                       // End of new validation for participants
+                       // Ensure all ownerUids are in participants
+                       request.resource.data.ownerUids.all(ownerIdFromList, ownerIdFromList in request.resource.data.participants) &&
                        request.resource.data.status == 'pending_request' &&
                        request.resource.data.keys().hasAll([
                          'eventId', 'guestUid', 'ownerUids', 'participants', 'status',
@@ -54,11 +53,12 @@ service cloud.firestore {
                        request.resource.data.updatedAt == request.time &&
                        request.resource.data.lastMessageTimestamp == request.time &&
                        request.resource.data.lastMessageSenderId == request.auth.uid &&
-                       request.resource.data.unreadCount is map &&
+                       request.resource.data.unreadCount is map && // Ensure unreadCount is a map
                        request.resource.data.unreadCount.keys().size() == request.resource.data.ownerUids.size() &&
-                       (request.resource.data.ownerUids.size() == 0 || // Handles case of no owners, though ownerUids.size() > 0 is checked above.
-                        request.resource.data.ownerUids.all(ownerIdIterVariable,
-                           ownerIdIterVariable is string && request.resource.data.unreadCount[ownerIdIterVariable] == 1
+                       // Ensure unreadCount has entries for all owners with value 1
+                       (request.resource.data.ownerUids.size() == 0 || // Handles edge case if ownerUids could be empty (though size > 0 is checked)
+                        request.resource.data.ownerUids.all(iterOwnerId,
+                           iterOwnerId is string && request.resource.data.unreadCount[iterOwnerId] == 1
                         )
                        );
 
@@ -100,12 +100,12 @@ service cloud.firestore {
                              )
                            ) &&
                            request.resource.data.unreadCount is map && // Basic check that unreadCount is a map
-                           request.resource.data.unreadCount.values().all(countVal, countVal is int) && // And its values are integers
+                           request.resource.data.unreadCount.values().all(ucValue, ucValue is int) && // And its values are integers
                            // Prevent guests/owners from maliciously editing denormalized info of the other party if it's not part of a status change or message send
                            (!isGuestOfExistingChat() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['eventInfo'])) &&
                            (!isOwnerOfExistingChat() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['guestInfo']))
                          )
-                       ); // Semicolon terminates the 'if' conditions for update here.
+                       );
 
       // Rules for 'messages' subcollection
       match /messages/{messageId} {
