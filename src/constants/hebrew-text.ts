@@ -91,6 +91,7 @@ export const HEBREW_TEXT = {
     saveChanges: "שמור שינויים",
     settings: "הגדרות",
     darkMode: "מצב כהה",
+    lightMode: "מצב בהיר",
   },
   notifications: {
     title: "התראות",

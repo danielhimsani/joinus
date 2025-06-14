@@ -65,7 +65,6 @@ export default function ProfilePage() {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (fbUser) => {
       setIsLoading(true); 
       if (fbUser) {
-        console.log("Firebase User Object in ProfilePage:", fbUser); 
         setFirebaseUser(fbUser);
         const profileData: UserProfile = {
           id: fbUser.uid, 
@@ -98,13 +97,14 @@ export default function ProfilePage() {
   }, [form, router, user?.bio, user?.phone, user?.birthday]);
 
   useEffect(() => {
+    // Initialize theme based on localStorage
     const currentTheme = localStorage.getItem("theme");
     if (currentTheme === "dark") {
       setIsDarkMode(true);
-      document.documentElement.classList.add("dark");
+      // document.documentElement.classList.add("dark"); // This is handled by ThemeInitializer now
     } else {
       setIsDarkMode(false);
-      document.documentElement.classList.remove("dark");
+      // document.documentElement.classList.remove("dark"); // This is handled by ThemeInitializer now
     }
   }, []);
 
@@ -131,16 +131,18 @@ export default function ProfilePage() {
       if (values.name !== firebaseUser.displayName) {
         await updateProfile(firebaseUser, { displayName: values.name });
       }
+      // Simulate other profile updates (bio, phone, birthday) as Firestore/backend calls would go here
       await new Promise(resolve => setTimeout(resolve, 1000)); 
       
       setUser(prevUser => prevUser ? { 
           ...prevUser, 
           name: values.name,
+          // email is not editable through this form
           birthday: values.birthday,
           bio: values.bio,
           phone: values.phone,
       } : null);
-      form.reset(values);
+      form.reset(values); // Reset form with new values
 
       toast({
         title: HEBREW_TEXT.general.success,
@@ -156,14 +158,15 @@ export default function ProfilePage() {
   };
 
   const handleIdUpload = () => {
+    // Mock functionality
     toast({ title: "העלאת תעודת זהות", description: "פונקציונליות העלאת תעודה תמומש כאן." });
   };
 
   const handleSignOut = async () => {
     try {
       await firebaseAuthInstance.signOut();
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('userName');
+      localStorage.removeItem('isAuthenticated'); // Clean up mock auth if used
+      localStorage.removeItem('userName'); // Clean up mock auth if used
       toast({
         title: HEBREW_TEXT.auth.signOut,
         description: "התנתקת בהצלחה. הנך מועבר לדף הבית.",
@@ -179,7 +182,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading || !user) { 
+  if (isLoading || !user) { // Check for user as well
     return (
       <div className="container mx-auto px-4 py-12">
          <Card className="max-w-3xl mx-auto">
@@ -377,14 +380,14 @@ export default function ProfilePage() {
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                        {isDarkMode ? <Moon className="h-5 w-5 text-primary" /> : <Sun className="h-5 w-5 text-primary" />}
                        <Label htmlFor="dark-mode-switch" className="text-base">
-                         {HEBREW_TEXT.profile.darkMode}
+                         {isDarkMode ? HEBREW_TEXT.profile.darkMode : HEBREW_TEXT.profile.lightMode}
                        </Label>
                     </div>
                     <Switch
                       id="dark-mode-switch"
                       checked={isDarkMode}
                       onCheckedChange={handleThemeToggle}
-                      aria-label={HEBREW_TEXT.profile.darkMode}
+                      aria-label={isDarkMode ? HEBREW_TEXT.profile.lightMode : HEBREW_TEXT.profile.darkMode}
                     />
                   </div>
                 </div>
