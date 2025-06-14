@@ -218,14 +218,15 @@ export function EventForm({
     setIsLoadingOwnerDetails(true);
     try {
       const fetchedProfiles: UserProfile[] = [];
+      // Create a new array for current iteration to avoid modifying ownerProfileDetails in dependency array directly
+      const currentProfilesSnapshot = [...ownerProfileDetails];
+
       for (const uid of uids) {
-        // Check if profile already exists to avoid re-fetching
-        const existingProfile = ownerProfileDetails.find(p => p.firebaseUid === uid);
+        const existingProfile = currentProfilesSnapshot.find(p => p.firebaseUid === uid);
         if (existingProfile) {
             fetchedProfiles.push(existingProfile);
             continue;
         }
-        // Check if user has self in current user state (for initial create)
         if (currentUser && currentUser.uid === uid) {
             fetchedProfiles.push({
                 id: uid, firebaseUid: uid, name: currentUser.displayName || "משתמש נוכחי",
@@ -239,7 +240,6 @@ export function EventForm({
         if (userDocSnap.exists()) {
           fetchedProfiles.push({ id: userDocSnap.id, ...userDocSnap.data() } as UserProfile);
         } else {
-          // Fallback if user document doesn't exist (should ideally not happen for owners)
           fetchedProfiles.push({ id: uid, firebaseUid: uid, name: "בעלים לא ידוע", email: "", profileImageUrl: "" });
         }
       }
@@ -250,26 +250,22 @@ export function EventForm({
     } finally {
       setIsLoadingOwnerDetails(false);
     }
-  }, [currentUser, toast, ownerProfileDetails]); // ownerProfileDetails in dep array to help with existing profiles check
+  }, [currentUser, toast, ownerProfileDetails]);
 
   useEffect(() => {
     if (watchedOwnerUids && watchedOwnerUids.length > 0) {
       fetchOwnerProfiles(watchedOwnerUids);
     } else if (currentUser && !isEditMode && (!watchedOwnerUids || watchedOwnerUids.length === 0)) {
-        // Ensure current user is set as owner on initial load for create mode
         form.setValue("ownerUids", [currentUser.uid]);
-        fetchOwnerProfiles([currentUser.uid]);
+        // fetchOwnerProfiles will be called by the change in watchedOwnerUids
     } else {
         setOwnerProfileDetails([]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedOwnerUids, fetchOwnerProfiles, currentUser, isEditMode]); // Removed form from deps, managed through watchedOwnerUids
+  }, [watchedOwnerUids, fetchOwnerProfiles, currentUser, isEditMode, form]);
 
   const handleAddOwnerToForm = (newOwner: UserProfile) => {
     if (!watchedOwnerUids.includes(newOwner.firebaseUid)) {
       form.setValue("ownerUids", [...watchedOwnerUids, newOwner.firebaseUid], { shouldValidate: true, shouldDirty: true });
-      // The useEffect watching ownerUids will handle fetching the profile if not already present
-      // For immediate UI update, we can add it to ownerProfileDetails if not already there by UID
       if (!ownerProfileDetails.some(p => p.firebaseUid === newOwner.firebaseUid)) {
           setOwnerProfileDetails(prev => [...prev, newOwner]);
       }
@@ -284,7 +280,6 @@ export function EventForm({
         return;
     }
     form.setValue("ownerUids", watchedOwnerUids.filter(uid => uid !== uidToRemove), { shouldValidate: true, shouldDirty: true });
-    // Let useEffect handle ownerProfileDetails update
     setOwnerToRemove(null);
   };
 
@@ -414,7 +409,7 @@ export function EventForm({
 
     const eventDataPayload = {
         ...values,
-        ownerUids: values.ownerUids, // Ensure this is from the form values
+        ownerUids: values.ownerUids, 
         pricePerGuest: values.paymentOption === 'fixed' ? (values.pricePerGuest ?? 0) : null,
         location: trueFormattedAddress || values.location,
         locationDisplayName: values.locationDisplayName || values.location.split(',')[0] || "מיקום לא ידוע",
@@ -463,14 +458,24 @@ export function EventForm({
       variant: "destructive",
     });
 
-    const firstInvalidElement = document.querySelector('[aria-invalid="true"]') as HTMLElement;
-    if (firstInvalidElement) {
-      firstInvalidElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      try {
-        firstInvalidElement.focus({ preventScroll: true });
-      } catch (e) {
-        console.warn("Could not focus on invalid element:", firstInvalidElement, e);
-      }
+    // Try to find the first element with an error
+    const firstErrorField = Object.keys(errors)[0];
+    if (firstErrorField) {
+        // Attempt to find the element by name or a related label
+        // This is a best-effort approach and might need adjustment based on your specific form structure
+        const fieldElement = document.querySelector(`[name="${firstErrorField}"], [for="${firstErrorField}"]`) as HTMLElement;
+        
+        if (fieldElement) {
+            fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            try {
+                // Try focusing, but be mindful that not all elements are focusable or might be hidden
+                if (typeof fieldElement.focus === 'function') {
+                    fieldElement.focus({ preventScroll: true });
+                }
+            } catch (e) {
+                console.warn("Could not focus on invalid element:", fieldElement, e);
+            }
+        }
     }
   };
 
@@ -625,11 +630,10 @@ export function EventForm({
           )}
 
           <CardContent className="pt-6 space-y-8">
-             {/* Owners Section */}
             <FormField
                 control={form.control}
                 name="ownerUids"
-                render={() => ( // field prop not directly used for display here, but needed for react-hook-form
+                render={() => (
                     <FormItem>
                         <div className="flex justify-between items-center mb-2">
                             <FormLabel className="text-lg font-semibold flex items-center">
@@ -681,7 +685,7 @@ export function EventForm({
                                 {isEditMode ? "לא נמצאו בעלי אירוע. (יש להוסיף לפחות אחד)" : "אתה תהיה הבעלים הראשון של האירוע."}
                             </p>
                         )}
-                        <FormMessage /> {/* For ownerUids validation errors */}
+                        <FormMessage />
                     </FormItem>
                 )}
             />
@@ -721,14 +725,12 @@ export function EventForm({
                         className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-4 rtl:md:space-x-reverse pt-2"
                         >
                         {paymentOptions.map(option => (
-                            <FormItem key={option.value} className="flex items-center space-x-2 rtl:space-x-reverse">
-                                <FormLabel className="font-normal">
+                            <div key={option.value} className="flex items-center space-x-2 rtl:space-x-reverse">
+                                <RadioGroupItem value={option.value} id={`paymentOption-${option.value}`} />
+                                <label htmlFor={`paymentOption-${option.value}`} className="font-normal cursor-pointer">
                                     {option.label}
-                                </FormLabel>
-                                <FormControl>
-                                    <RadioGroupItem value={option.value} />
-                                </FormControl>
-                            </FormItem>
+                                </label>
+                            </div>
                         ))}
                         </RadioGroup>
                     </FormControl>
