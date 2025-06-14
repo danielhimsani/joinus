@@ -48,7 +48,7 @@ export function EventCard({ event }: EventCardProps) {
         <CardTitle className="font-headline text-xl mb-1">{event.name}</CardTitle>
         <CardDescription className="flex items-center text-sm text-muted-foreground mb-1">
           <CalendarDays className="ml-1.5 h-4 w-4" />
-          {format(new Date(event.dateTime), 'eeee, d MMMM yyyy, HH:mm', { locale: he })}
+          {format(new Date(event.dateTime), 'eeee, d MMMM yyyy', { locale: he })}
         </CardDescription>
         <CardDescription className="flex items-center text-sm text-muted-foreground">
           <MapPin className="ml-1.5 h-4 w-4" />

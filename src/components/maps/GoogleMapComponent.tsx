@@ -62,9 +62,9 @@ export function GoogleMapComponent({
   useEffect(() => {
     if (isLoaded && typeof window !== 'undefined' && window.google && window.google.maps) {
       setEventMarkerIcon({
-        url: '/ring-marker.png', // Path to your PNG in the public folder
-        scaledSize: new window.google.maps.Size(36, 48), // Adjust as needed (width, height)
-        anchor: new window.google.maps.Point(18, 48),     // Adjust anchor (half of width, full height for bottom-center)
+        url: '/ring-marker.png', 
+        scaledSize: new window.google.maps.Size(36, 48), 
+        anchor: new window.google.maps.Point(18, 48),     
       });
     }
   }, [isLoaded]);
@@ -104,7 +104,7 @@ export function GoogleMapComponent({
     );
   }
 
-  if (!isLoaded || !eventMarkerIcon) { // Wait for custom icon to be ready too
+  if (!isLoaded || !eventMarkerIcon) { 
     return <Skeleton className="h-[400px] w-full rounded-lg" />;
   }
 
@@ -125,7 +125,7 @@ export function GoogleMapComponent({
           key={loc.id + '-' + loc.lat + '-' + loc.lng} 
           position={{ lat: loc.lat, lng: loc.lng }}
           onClick={() => handleMarkerClick(loc)}
-          icon={eventMarkerIcon} // Use the custom PNG icon
+          icon={eventMarkerIcon} 
         />
       ))}
 
@@ -134,7 +134,7 @@ export function GoogleMapComponent({
           position={infoWindowPosition}
           onCloseClick={handleMapClick} 
           options={{ 
-            pixelOffset: new window.google.maps.Size(0, -50), // Adjusted for the custom icon height
+            pixelOffset: new window.google.maps.Size(0, -50), 
             disableAutoPan: true 
           }} 
         >
@@ -145,7 +145,7 @@ export function GoogleMapComponent({
                   {event.name}
                 </Link>
                 <p className="text-xs text-muted-foreground">
-                  {format(new Date(event.dateTime), 'EEEE, d MMMM HH:mm', { locale: he })}
+                  {format(new Date(event.dateTime), 'dd.MM.yyyy', { locale: he })}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {HEBREW_TEXT.event.numberOfGuests}: {event.numberOfGuests}
