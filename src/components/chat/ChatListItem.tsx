@@ -8,7 +8,7 @@ import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns'; // Changed from formatDistanceToNow
 import { he } from 'date-fns/locale';
 import { MessageSquareText, Hash, Contact as UserPlaceholderIcon } from 'lucide-react';
 
@@ -30,8 +30,9 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
 
   const unreadMessages = chat.unreadCount?.[currentUserId] || 0;
 
+  // Changed to HH:mm format as per previous request
   const lastMessageTimestamp = chat.lastMessageTimestamp
-    ? formatDistanceToNow(new Date(chat.lastMessageTimestamp), { addSuffix: true, locale: he })
+    ? format(new Date(chat.lastMessageTimestamp), 'HH:mm', { locale: he })
     : '';
 
   return (
@@ -47,7 +48,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               </AvatarFallback>
             )}
           </Avatar>
-          <div className="flex-1 min-w-0 flex flex-col gap-1">
+          <div className="flex-1 min-w-0 flex flex-col gap-1.5"> {/* Increased gap here */}
             <div className="flex justify-between items-start">
               <p className="text-md font-semibold truncate text-foreground">{displayName}</p>
               {unreadMessages > 0 && (
