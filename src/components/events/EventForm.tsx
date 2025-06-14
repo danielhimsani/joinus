@@ -67,8 +67,8 @@ const formSchema = z.object({
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
   paymentOption: z.enum(["fixed", "payWhatYouWant", "free"]),
   pricePerGuest: z.coerce.number().optional(),
-  location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }), // This will store the display name or typed input
-  locationDisplayName: z.string().optional(), // This will store place.name or typed input
+  location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }),
+  locationDisplayName: z.string().optional(),
   dateTime: z.date({ required_error: "תאריך ושעה נדרשים." }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
   ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([25, 55]),
@@ -117,7 +117,7 @@ export function EventForm() {
   const locationInputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
+    id: 'google-map-script', // Consistent ID
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries, 
     language: 'iw',
@@ -175,11 +175,13 @@ export function EventForm() {
         setImageFile(compressedFile);
         const previewUrl = URL.createObjectURL(compressedFile);
         setImagePreviewUrl(previewUrl);
+        form.setValue("imageUrl", "file-selected"); // Indicate file is selected for validation if needed
       } catch (error) {
         console.error("Error compressing image:", error);
         toast({ title: "שגיאה בדחיסת תמונה", description: (error instanceof Error) ? error.message : String(error), variant: "destructive" });
         setImageFile(null); 
         setImagePreviewUrl(null);
+        form.setValue("imageUrl", undefined);
       }
     }
   };
@@ -187,20 +189,19 @@ export function EventForm() {
  const handlePlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
-      if (place && place.geometry && place.formatted_address) {
-        const displayName = place.name || place.formatted_address.split(',')[0];
-        const formattedAddress = place.formatted_address;
+      if (place && place.geometry && (place.name || place.formatted_address)) {
+        const displayName = place.name || place.formatted_address?.split(',')[0] || "מיקום לא ידוע";
+        const formattedAddress = place.formatted_address || displayName;
 
-        form.setValue("location", displayName, { shouldValidate: true });
+        form.setValue("location", displayName, { shouldValidate: true }); // Input shows display name
         form.setValue("locationDisplayName", displayName, { shouldValidate: true });
-        setTrueFormattedAddress(formattedAddress);
+        setTrueFormattedAddress(formattedAddress); // Store full address separately
         
         setLatitude(place.geometry.location.lat());
         setLongitude(place.geometry.location.lng());
       } else {
-        // User might have cleared the input, or selection was invalid
         setTrueFormattedAddress(null);
-        const currentLocationValue = form.getValues("location"); // What's currently typed in the input
+        const currentLocationValue = form.getValues("location"); 
         form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false });
         setLatitude(null);
         setLongitude(null);
@@ -268,7 +269,7 @@ export function EventForm() {
         ...values, 
         coupleId: firebaseUser.uid,
         pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
-        location: trueFormattedAddress || values.location, // Use true formatted address if available
+        location: trueFormattedAddress || values.location, 
         locationDisplayName: values.locationDisplayName || values.location.split(',')[0] || "מיקום לא ידוע",
         latitude: latitude,
         longitude: longitude,
@@ -326,6 +327,7 @@ export function EventForm() {
               className="transition-opacity duration-300 ease-in-out"
               data-ai-hint="event cover"
               key={displayImageUrl} 
+              priority
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
             
@@ -471,13 +473,13 @@ export function EventForm() {
                         className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-4 rtl:md:space-x-reverse pt-2"
                         >
                         {paymentOptions.map(option => (
-                            <FormItem key={option.value} className="flex items-center space-x-3 space-y-0 rtl:space-x-reverse">
-                                <FormControl>
-                                    <RadioGroupItem value={option.value} />
-                                </FormControl>
+                            <FormItem key={option.value} className="flex items-center space-x-2 rtl:space-x-reverse">
                                 <FormLabel className="font-normal">
                                     {option.label}
                                 </FormLabel>
+                                <FormControl>
+                                    <RadioGroupItem value={option.value} />
+                                </FormControl>
                             </FormItem>
                         ))}
                         </RadioGroup>
@@ -541,13 +543,11 @@ export function EventForm() {
                                 locationInputRef.current = e;
                             }}
                             onChange={(e) => {
-                                field.onChange(e); // Propagate change to RHF
-                                // If user types manually after selection, clear specific Google Place data
-                                if (trueFormattedAddress) {
+                                field.onChange(e); 
+                                if (trueFormattedAddress || latitude || longitude) {
                                     setTrueFormattedAddress(null);
                                     setLatitude(null);
                                     setLongitude(null);
-                                    // form.setValue("locationDisplayName", e.target.value); // locationDisplayName tracks input
                                 }
                                 form.setValue("locationDisplayName", e.target.value, { shouldValidate: false });
                             }}
@@ -631,5 +631,3 @@ export function EventForm() {
     </Form>
   );
 }
-
-    
