@@ -31,11 +31,11 @@ const defaultMapContainerStyle: React.CSSProperties = {
   borderRadius: '0.5rem',
 };
 
-const libraries: ("places" | "marker")[] = ['places', 'marker']; // Include marker library
+const libraries: ("places" | "marker")[] = ['places', 'marker'];
 
 export function GoogleMapComponent({ 
   center, 
-  zoom = 12, // Default zoom adjusted to show a wider area for events
+  zoom = 12,
   mapContainerStyle = defaultMapContainerStyle,
   eventLocations = []
 }: GoogleMapComponentProps) {
@@ -43,7 +43,7 @@ export function GoogleMapComponent({
   const [selectedMarker, setSelectedMarker] = useState<MapLocation | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
+    id: 'google-map-script', // Consistent ID
     googleMapsApiKey: apiKey || "",
     libraries,
     language: 'iw', 
@@ -87,20 +87,16 @@ export function GoogleMapComponent({
       }}
       onClick={() => setSelectedMarker(null)} // Close InfoWindow when map is clicked
     >
-      <MarkerF 
-        position={center} 
-        title={HEBREW_TEXT.map.yourLocationMarker} 
-        // Optional: Differentiate user's location marker (e.g., different icon or color)
-        // icon={{
-        //   url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png" 
-        // }}
-      />
+      {/* The explicit MarkerF for the user's 'center' location has been removed. */}
+      {/* The map will now use its default indicator (usually a blue dot) for the 'center'. */}
+
       {eventLocations.map((loc, index) => (
         <MarkerF
           key={index}
           position={{ lat: loc.lat, lng: loc.lng }}
           title={loc.name || HEBREW_TEXT.map.eventLocationMarker}
           onClick={() => setSelectedMarker(loc)}
+          // Event markers will use the default red pin
         />
       ))}
 
@@ -119,3 +115,4 @@ export function GoogleMapComponent({
     </GoogleMap>
   );
 }
+
