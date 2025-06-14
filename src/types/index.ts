@@ -18,7 +18,7 @@ export type ReligionStyle = 'secular' | 'traditional' | 'religious' | 'mixed'; /
 
 export interface Event {
   id: string;
-  ownerUids: string[]; // Changed from coupleId to ownerUids
+  ownerUids: string[];
   name: string;
   numberOfGuests: number;
   pricePerGuest?: number;
@@ -37,13 +37,53 @@ export interface Event {
   updatedAt: Date;
 }
 
-export interface JoinRequest {
-  id: string;
+// Represents a conversation between a guest and event owner(s)
+export interface EventChat {
+  id: string; // Firestore document ID (can be eventId_guestUid or auto-generated)
   eventId: string;
-  guestId: string; // Firebase UID of the guest
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
-  requestedAt: Date;
-  respondedAt?: Date;
+  guestUid: string;
+  ownerUids: string[]; // UIDs of event owners involved in this chat
+  participants: string[]; // Combined [guestUid, ...ownerUids] for easy querying/rules
+
+  status: 'pending_request' | 'active' | 'request_approved' | 'request_rejected' | 'closed';
+
+  lastMessageText?: string;
+  lastMessageTimestamp?: Date; // Firestore Timestamp will be converted to Date
+  lastMessageSenderId?: string;
+
+  // Denormalized info for chat lists
+  eventInfo?: {
+    name: string;
+    imageUrl?: string;
+  };
+  guestInfo?: {
+    name: string;
+    profileImageUrl?: string;
+  };
+
+  // Unread counts for each participant
+  // e.g., { "guestUid1": 0, "ownerUidA": 2 }
+  unreadCount?: { [userId: string]: number };
+
+  createdAt: Date; // Firestore Timestamp will be converted to Date
+  updatedAt: Date; // Firestore Timestamp will be converted to Date
+}
+
+// Represents a single message within an EventChat
+export interface EventChatMessage {
+  id: string; // Firestore document ID
+  chatId: string; // ID of the parent EventChat document
+  senderId: string; // UID of the guest or one of the owners
+  text: string;
+  timestamp: Date; // Firestore Timestamp will be converted to Date
+  imageUrl?: string; // If supporting image messages
+
+  // Denormalized sender info for quick display in message bubbles
+  senderInfo?: {
+    name: string;
+    profileImageUrl?: string;
+  };
+  isReadBy?: { [userId: string]: boolean }; // Optional: track read status per participant
 }
 
 export interface Review {
@@ -54,16 +94,6 @@ export interface Review {
   rating: 'positive' | 'negative'; // or 'thumbsUp' | 'thumbsDown'
   comment?: string;
   createdAt: Date;
-}
-
-export interface ChatMessage {
-  id: string;
-  chatId: string; // eventId or direct chat ID
-  senderId: string; // Firebase UID
-  receiverId?: string; // For direct messages, or null for broadcast
-  text: string;
-  timestamp: Date;
-  isRead?: boolean;
 }
 
 export interface LeaderboardEntry {
