@@ -97,14 +97,11 @@ export default function ProfilePage() {
   }, [form, router, user?.bio, user?.phone, user?.birthday]);
 
   useEffect(() => {
-    // Initialize theme based on localStorage
     const currentTheme = localStorage.getItem("theme");
     if (currentTheme === "dark") {
       setIsDarkMode(true);
-      // document.documentElement.classList.add("dark"); // This is handled by ThemeInitializer now
     } else {
       setIsDarkMode(false);
-      // document.documentElement.classList.remove("dark"); // This is handled by ThemeInitializer now
     }
   }, []);
 
@@ -131,18 +128,16 @@ export default function ProfilePage() {
       if (values.name !== firebaseUser.displayName) {
         await updateProfile(firebaseUser, { displayName: values.name });
       }
-      // Simulate other profile updates (bio, phone, birthday) as Firestore/backend calls would go here
       await new Promise(resolve => setTimeout(resolve, 1000)); 
       
       setUser(prevUser => prevUser ? { 
           ...prevUser, 
           name: values.name,
-          // email is not editable through this form
           birthday: values.birthday,
           bio: values.bio,
           phone: values.phone,
       } : null);
-      form.reset(values); // Reset form with new values
+      form.reset(values); 
 
       toast({
         title: HEBREW_TEXT.general.success,
@@ -158,15 +153,14 @@ export default function ProfilePage() {
   };
 
   const handleIdUpload = () => {
-    // Mock functionality
     toast({ title: "העלאת תעודת זהות", description: "פונקציונליות העלאת תעודה תמומש כאן." });
   };
 
   const handleSignOut = async () => {
     try {
       await firebaseAuthInstance.signOut();
-      localStorage.removeItem('isAuthenticated'); // Clean up mock auth if used
-      localStorage.removeItem('userName'); // Clean up mock auth if used
+      localStorage.removeItem('isAuthenticated'); 
+      localStorage.removeItem('userName'); 
       toast({
         title: HEBREW_TEXT.auth.signOut,
         description: "התנתקת בהצלחה. הנך מועבר לדף הבית.",
@@ -182,7 +176,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading || !user) { // Check for user as well
+  if (isLoading || !user) { 
     return (
       <div className="container mx-auto px-4 py-12">
          <Card className="max-w-3xl mx-auto">
@@ -209,8 +203,8 @@ export default function ProfilePage() {
     <TooltipProvider>
       <div className="container mx-auto px-4 py-12">
         <Card className="max-w-3xl mx-auto">
-          <CardHeader>
-            <div className="flex justify-between items-start">
+          <CardHeader className="items-center text-center">
+            <div className="flex justify-between items-start w-full">
               <div className="flex-grow text-center">
                 <div className="relative inline-block mb-4">
                   <Avatar className="h-32 w-32 border-4 border-primary shadow-md">
@@ -387,7 +381,7 @@ export default function ProfilePage() {
                       id="dark-mode-switch"
                       checked={isDarkMode}
                       onCheckedChange={handleThemeToggle}
-                      aria-label={isDarkMode ? HEBREW_TEXT.profile.lightMode : HEBREW_TEXT.profile.darkMode}
+                      aria-label={isDarkMode ? `העבר ל${HEBREW_TEXT.profile.lightMode}` : `העבר ל${HEBREW_TEXT.profile.darkMode}`}
                     />
                   </div>
                 </div>
@@ -410,3 +404,4 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
+
