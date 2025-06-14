@@ -253,7 +253,7 @@ export default function ChatPage() {
             <CardHeader className="border-b p-3 md:p-4">
                 <div className="flex items-center space-x-3 rtl:space-x-reverse">
                     <Skeleton className="h-10 w-10 rounded-full" />
-                    <Skeleton className="h-6 w-40" />
+                    <CardTitle className="font-headline text-lg md:text-xl leading-tight">{HEBREW_TEXT.chat.loadingChatDetails}</CardTitle>
                 </div>
             </CardHeader>
             <CardContent className="flex-1 p-3 md:p-4 overflow-y-auto">
@@ -352,7 +352,6 @@ export default function ChatPage() {
           </div>
         </CardHeader>
         
-        {/* AlertDialog for Close Chat confirmation - can remain outside dropdown for state management */}
         <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -379,7 +378,6 @@ export default function ChatPage() {
           <div className="flex flex-col space-y-1">
             {showOwnerActionBlock && (
                 <div className="my-3 p-3 bg-muted/60 dark:bg-muted/40 rounded-lg shadow-sm w-full self-center max-w-md mx-auto">
-                  {/* Removed <p>{HEBREW_TEXT.chat.requestManagement}</p> */}
                   <div className="flex gap-3 justify-center">
                     <Button 
                       size="sm" 
