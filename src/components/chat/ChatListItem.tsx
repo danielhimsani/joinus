@@ -7,10 +7,10 @@ import type { EventChat } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card'; // Added Card for better structure
+import { Card, CardContent } from '@/components/ui/card'; 
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { MessageSquareText, Hash } from 'lucide-react'; // Icons
+import { MessageSquareText, Hash, UserCircle as UserPlaceholderIcon } from 'lucide-react';
 
 interface ChatListItemProps {
   chat: EventChat;
@@ -47,9 +47,10 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             {displayImageUrl ? (
               <AvatarImage src={displayImageUrl} alt={displayName} data-ai-hint={isCurrentUserOwner ? "guest profile" : "event image"}/>
             ) : (
-              isCurrentUserOwner ? <MessageSquareText className="h-6 w-6 text-muted-foreground"/> : <Hash className="h-6 w-6 text-muted-foreground"/>
+              <AvatarFallback className="bg-muted">
+                <UserPlaceholderIcon className="h-7 w-7 text-muted-foreground" />
+              </AvatarFallback>
             )}
-            <AvatarFallback className="text-lg">{fallbackInitial.toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-start">
@@ -73,3 +74,4 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     </Link>
   );
 }
+

@@ -4,9 +4,10 @@
 import type { EventChatMessage } from '@/types';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import type { User as FirebaseUser } from 'firebase/auth';
+import { UserCircle as UserPlaceholderIcon } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: EventChatMessage;
@@ -18,7 +19,7 @@ export function MessageBubble({ message, currentUser }: MessageBubbleProps) {
   const senderName = message.senderInfo?.name || "משתמש";
   const senderInitial = senderName.charAt(0).toUpperCase();
   const timestamp = message.timestamp 
-    ? formatDistanceToNow(new Date(message.timestamp), { addSuffix: true, locale: he })
+    ? format(new Date(message.timestamp), 'HH:mm', { locale: he }) // Changed to HH:mm format
     : '';
 
   return (
@@ -28,11 +29,13 @@ export function MessageBubble({ message, currentUser }: MessageBubbleProps) {
         isCurrentUserSender ? "self-end flex-row-reverse" : "self-start"
       )}
     >
-      <Avatar className={cn("h-8 w-8", isCurrentUserSender ? "ml-2" : "mr-2")}>
+      <Avatar className={cn("h-8 w-8 border", isCurrentUserSender ? "ml-2" : "mr-2")}>
         {message.senderInfo?.profileImageUrl ? (
           <AvatarImage src={message.senderInfo.profileImageUrl} alt={senderName} data-ai-hint="sender avatar"/>
         ) : (
-          <AvatarFallback className="text-xs">{senderInitial}</AvatarFallback>
+          <AvatarFallback className="bg-muted"> 
+            <UserPlaceholderIcon className="h-5 w-5 text-muted-foreground" />
+          </AvatarFallback>
         )}
       </Avatar>
       <div
@@ -59,3 +62,4 @@ export function MessageBubble({ message, currentUser }: MessageBubbleProps) {
     </div>
   );
 }
+
