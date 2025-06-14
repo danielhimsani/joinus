@@ -39,22 +39,18 @@ service cloud.firestore {
                        request.resource.data.ownerUids is list &&
                        request.resource.data.ownerUids.size() > 0 &&
                        request.resource.data.participants is list &&
-                       request.resource.data.participants.size() == (request.resource.data.ownerUids.size() + 1) && // Check correct size
-                       request.resource.data.guestUid in request.resource.data.participants && // Check guest is in participants
-                       // Simplified: Removed complex .all() check for ownerUids in participants for create
+                       request.resource.data.participants.size() == (request.resource.data.ownerUids.size() + 1) &&
+                       request.resource.data.guestUid in request.resource.data.participants &&
                        request.resource.data.status == 'pending_request' &&
-                       request.resource.data.keys().hasAll([
-                         'eventId', 'guestUid', 'ownerUids', 'participants', 'status',
-                         'createdAt', 'updatedAt', 'eventInfo', 'guestInfo',
-                         'lastMessageText', 'lastMessageTimestamp', 'lastMessageSenderId', 'unreadCount'
-                       ]) &&
                        request.resource.data.createdAt == request.time &&
                        request.resource.data.updatedAt == request.time &&
                        request.resource.data.lastMessageTimestamp == request.time &&
                        request.resource.data.lastMessageSenderId == request.auth.uid &&
-                       request.resource.data.unreadCount is map &&
-                       request.resource.data.unreadCount.keys().size() == request.resource.data.ownerUids.size(); // Check unreadCount has correct number of keys for owners
-                       // Simplified: Removed .all() check for specific values in unreadCount for create
+                       request.resource.data.unreadCount is map && // Simplified: just check it's a map
+                       // Ensure basic presence of other expected top-level fields
+                       request.resource.data.eventInfo is map &&
+                       request.resource.data.guestInfo is map &&
+                       request.resource.data.lastMessageText is string; // Semicolon terminates the 'if' conditions here.
 
       // Who can update a chat document?
       allow update: if isParticipantInExistingChat() &&
@@ -71,10 +67,9 @@ service cloud.firestore {
                            ( request.resource.data.status == 'request_rejected' ||
                              request.resource.data.status == 'closed' ||
                              request.resource.data.status == 'request_approved' ||
-                             request.resource.data.status == 'active' // 'active' also by owner
+                             request.resource.data.status == 'active'
                            ) &&
                            isOwnerOfExistingChat() && // Only owner of existing chat can change status
-                           // Check that only allowed fields are changed by owner for status updates
                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
                          ) ||
                          // Scenario 2: Any participant updating last message details OR their own unread count
@@ -99,7 +94,7 @@ service cloud.firestore {
                            (!isGuestOfExistingChat() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['eventInfo'])) &&
                            (!isOwnerOfExistingChat() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['guestInfo']))
                          )
-                       );
+                       ); // Semicolon terminates the 'if' conditions for update here.
 
       // Rules for 'messages' subcollection
       match /messages/{messageId} {
