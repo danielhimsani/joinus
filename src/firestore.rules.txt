@@ -21,26 +21,27 @@ service cloud.firestore {
     // Rules for the 'eventChats' collection
     match /eventChats/{chatId} {
       // Helper functions for readability
-      function isParticipant() {
+      function isParticipantInExistingChat() {
         return resource.data != null && resource.data.participants != null && request.auth.uid in resource.data.participants;
       }
-      function isOwner() {
+      function isOwnerOfExistingChat() {
         return resource.data != null && resource.data.ownerUids != null && request.auth.uid in resource.data.ownerUids;
       }
-      function isGuest() {
+      function isGuestOfExistingChat() {
         return resource.data != null && request.auth.uid == resource.data.guestUid;
       }
 
-      allow read: if isParticipant();
+      allow read: if isParticipantInExistingChat();
 
       // Who can create a chat document? (Typically the guest initiating the request)
       allow create: if request.auth.uid == request.resource.data.guestUid &&
                        request.resource.data.eventId != null &&
-                       request.auth.uid in request.resource.data.participants &&
                        request.resource.data.ownerUids is list &&
                        request.resource.data.ownerUids.size() > 0 &&
                        request.resource.data.participants is list &&
-                       request.resource.data.participants.size() == request.resource.data.ownerUids.size() + 1 &&
+                       // Ensure participants list is guestUid + all ownerUids exactly
+                       request.resource.data.participants.hasOnly([request.resource.data.guestUid] + request.resource.data.ownerUids) &&
+                       request.resource.data.participants.size() == (request.resource.data.ownerUids.size() + 1) &&
                        request.resource.data.status == 'pending_request' &&
                        request.resource.data.keys().hasAll([
                          'eventId', 'guestUid', 'ownerUids', 'participants', 'status',
@@ -55,21 +56,22 @@ service cloud.firestore {
                        request.resource.data.unreadCount is map &&
                        request.resource.data.unreadCount.keys().size() == request.resource.data.ownerUids.size() &&
                        // Ensure all ownerUids in unreadCount map to the integer 1, and no other keys exist.
-                       (request.resource.data.ownerUids.size() == 0 || // handles case of no owners, though previous rule checks size > 0
-                        request.resource.data.ownerUids.all(uid,
-                           uid is string && request.resource.data.unreadCount.get(uid, 0) == 1
+                       (request.resource.data.ownerUids.size() == 0 || // handles case of no owners (though previous rule checks size > 0)
+                        request.resource.data.ownerUids.all(ownerIdIterVariable,
+                           ownerIdIterVariable is string && request.resource.data.unreadCount.get(ownerIdIterVariable, 0) == 1
                         )
                        );
 
 
       // Who can update a chat document?
-      allow update: if isParticipant() &&
+      allow update: if isParticipantInExistingChat() &&
                        // Check for immutable fields that should not change after creation
                        request.resource.data.eventId == resource.data.eventId &&
                        request.resource.data.guestUid == resource.data.guestUid &&
                        request.resource.data.ownerUids == resource.data.ownerUids &&
                        request.resource.data.participants == resource.data.participants &&
                        request.resource.data.createdAt == resource.data.createdAt &&
+                       request.resource.data.updatedAt == request.time && // updatedAt must be server timestamp
                        (
                          // Scenario 1: Owner changing status (approve, reject, close, active)
                          (
@@ -78,52 +80,49 @@ service cloud.firestore {
                              request.resource.data.status == 'request_approved' ||
                              request.resource.data.status == 'active'
                            ) &&
-                           isOwner() &&
-                           // Owners can also update unreadCount (e.g., if they send a system message implicitly, or to reset their own)
-                           // And general last message details if they are the ones sending a system message or final message.
+                           isOwnerOfExistingChat() && // Only owner of existing chat can change status
                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'unreadCount', 'lastMessageText', 'lastMessageTimestamp', 'lastMessageSenderId'])
                          ) ||
-                         // Scenario 2: Any participant updating last message details and their own unread count (or other's on send)
+                         // Scenario 2: Any participant updating last message details and unread counts (e.g., sending/reading messages)
                          (
                            ( request.resource.data.status == resource.data.status ) && // Status not changing by non-owner
-                           request.resource.data.diff(resource.data).affectedKeys().hasAny(
+                           request.resource.data.diff(resource.data).affectedKeys().hasAny( // Must affect at least one of these
+                             ['lastMessageText', 'lastMessageTimestamp', 'lastMessageSenderId', 'unreadCount']
+                           ) &&
+                           // Ensure only allowed fields are changed in this scenario
+                           request.resource.data.diff(resource.data).affectedKeys().hasOnly(
                              ['lastMessageText', 'lastMessageTimestamp', 'lastMessageSenderId', 'updatedAt', 'unreadCount']
                            ) &&
-                           // Ensure unreadCount update is valid:
-                           // User can set their own unread count to 0.
-                           ( request.resource.data.unreadCount[request.auth.uid] == 0 ||
-                             // Or, for other participants, count can be incremented by 1 (when user sends a message).
-                             resource.data.participants.filter(p => p != request.auth.uid).all(
-                                 p, request.resource.data.unreadCount[p] == (resource.data.unreadCount[p] + 1) ||
-                                    request.resource.data.unreadCount[p] == resource.data.unreadCount[p] // no change
-                             )
-                           ) &&
-                           // Ensure other fields are not touched unexpectedly by guests when updating these
-                           (!isGuest() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['eventInfo'])) &&
-                           (!isOwner() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['guestInfo']))
+                           request.resource.data.unreadCount is map &&
+                           request.resource.data.unreadCount.values().all(countVal, countVal is int) && // All unread counts must be integers
+                           // Prevent guests/owners from maliciously editing denormalized info of the other party
+                           (!isGuestOfExistingChat() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['eventInfo'])) &&
+                           (!isOwnerOfExistingChat() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['guestInfo']))
                          )
-                       ) &&
-                       request.resource.data.updatedAt == request.time;
+                       );
 
       // Rules for 'messages' subcollection
       match /messages/{messageId} {
-        function isSender() {
+        function isSenderOfNewMessage() {
           return request.auth.uid == request.resource.data.senderId;
         }
 
         allow read: if exists(/databases/$(database)/documents/eventChats/$(chatId)) &&
                        request.auth.uid in get(/databases/$(database)/documents/eventChats/$(chatId)).data.participants;
 
-        allow create: if isSender() &&
+        allow create: if isSenderOfNewMessage() &&
                          request.resource.data.timestamp == request.time &&
                          request.resource.data.chatId == chatId &&
                          request.resource.data.keys().hasAll(['chatId', 'senderId', 'text', 'timestamp', 'senderInfo']) &&
                          (
                            // Scenario 1: First message in a batch with parent chat creation.
                            // Parent chat document does not exist *before* this write.
-                           // We rely on the parent's create rule to validate the sender (guest) and initial status.
-                           !exists(/databases/$(database)/documents/eventChats/$(chatId)) ||
-                           // Scenario 2: Subsequent messages to an existing, active/pending chat.
+                           (
+                             !exists(/databases/$(database)/documents/eventChats/$(chatId)) &&
+                             // Ensure the parent chat being created is 'pending_request' (validated by parent create rule)
+                             getAfter(/databases/$(database)/documents/eventChats/$(chatId)).data.status == 'pending_request'
+                           ) ||
+                           // Scenario 2: Subsequent messages to an existing, active/approved/pending chat.
                            (
                              exists(/databases/$(database)/documents/eventChats/$(chatId)) &&
                              request.auth.uid in get(/databases/$(database)/documents/eventChats/$(chatId)).data.participants &&
