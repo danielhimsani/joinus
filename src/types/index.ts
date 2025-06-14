@@ -1,3 +1,4 @@
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -22,10 +23,12 @@ export interface Event {
   numberOfGuests: number;
   pricePerGuest?: number;
   paymentOption: PaymentOption;
-  location: string; // Could be more complex with GeoPoint
+  location: string; // Formatted address
+  latitude?: number | null; // For map coordinates
+  longitude?: number | null; // For map coordinates
   dateTime: Date;
   description: string;
-  ageRange: [number, number]; // Updated from string to [number, number] and made non-optional
+  ageRange: [number, number];
   foodType: FoodType;
   religionStyle: ReligionStyle;
   imageUrl?: string;

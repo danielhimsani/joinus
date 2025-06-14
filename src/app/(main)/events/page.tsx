@@ -44,9 +44,7 @@ export default function EventsPage() {
       return (timestampField as Timestamp).toDate();
     }
     if (timestampField instanceof Date) return timestampField;
-    // Fallback for missing or invalid date fields, adjust as needed for your data integrity
-    // console.warn("Invalid or missing timestamp encountered, using current date as fallback:", timestampField);
-    return new Date();
+    return new Date(); 
   };
 
   // Effect for fetching initial data from Firestore
@@ -56,7 +54,7 @@ export default function EventsPage() {
       setFetchError(null);
       try {
         const eventsCollectionRef = collection(db, "events");
-        const q = query(eventsCollectionRef, orderBy("dateTime", "asc")); // Upcoming events first
+        const q = query(eventsCollectionRef, orderBy("dateTime", "asc")); 
         const querySnapshot = await getDocs(q);
         const fetchedEvents = querySnapshot.docs.map(doc => {
           const data = doc.data();
@@ -66,16 +64,16 @@ export default function EventsPage() {
             dateTime: safeToDate(data.dateTime),
             createdAt: safeToDate(data.createdAt),
             updatedAt: safeToDate(data.updatedAt),
-            // Ensure all other fields conform to the Event type, add defaults if necessary
             name: data.name || "Unnamed Event",
             numberOfGuests: data.numberOfGuests || 0,
             paymentOption: data.paymentOption || "free",
             location: data.location || "No location specified",
+            latitude: data.latitude || null,
+            longitude: data.longitude || null,
             description: data.description || "",
             ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
             foodType: data.foodType || "notKosher",
             religionStyle: data.religionStyle || "mixed",
-
           } as Event;
         });
         setAllEvents(fetchedEvents);
@@ -88,14 +86,13 @@ export default function EventsPage() {
     };
 
     fetchEventsFromFirestore();
-  }, []); // Empty dependency array: fetch only once on mount
+  }, []); 
 
 
   // Effect for client-side filtering
   useEffect(() => {
     let eventsToFilter = [...allEvents];
 
-    // 1. Apply simple search query
     if (simpleSearchQuery.trim()) {
       const queryText = simpleSearchQuery.toLowerCase().trim();
       eventsToFilter = eventsToFilter.filter(event =>
@@ -105,7 +102,6 @@ export default function EventsPage() {
       );
     }
 
-    // 2. Apply advanced filters from modal
     if (advancedFilters.searchTerm && advancedFilters.searchTerm.trim()) {
       const advancedQueryText = advancedFilters.searchTerm.toLowerCase().trim();
        eventsToFilter = eventsToFilter.filter(event =>
@@ -152,7 +148,6 @@ export default function EventsPage() {
 
 
   useEffect(() => {
-    // Fetch location only if map section is open and not already fetched/errored/fetching
     if (isMapSectionOpen && !currentLocation && !locationError && !isFetchingLocation) {
       setIsFetchingLocation(true);
       if (navigator.geolocation) {
@@ -207,7 +202,6 @@ export default function EventsPage() {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="flex items-center justify-between mb-6 gap-4">
-        {/* Search and Filters block */}
         <div className="flex flex-row-reverse sm:flex-row items-center gap-2 flex-grow">
           <Dialog open={showFiltersModal} onOpenChange={setShowFiltersModal}>
             <DialogTrigger asChild>
@@ -235,7 +229,6 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* Logo - Only shown on mobile (screens smaller than md) */}
         <div className="flex-shrink-0 md:hidden">
           <Image src="/app_logo.png" alt="App Logo" width={150} height={45} data-ai-hint="app logo"/>
         </div>
@@ -268,7 +261,10 @@ export default function EventsPage() {
                 )}
                 {currentLocation && !locationError && (
                   <div className="mt-2 rounded-lg overflow-hidden shadow-md">
-                    <GoogleMapComponent center={currentLocation} />
+                    <GoogleMapComponent 
+                        center={currentLocation} 
+                        eventLocations={filteredEvents.filter(e => e.latitude && e.longitude).map(e => ({lat: e.latitude!, lng: e.longitude!, name: e.name}))}
+                    />
                   </div>
                 )}
                 {!isFetchingLocation && !currentLocation && !locationError && (

@@ -8,11 +8,11 @@ import { useRouter } from "next/navigation";
 import { CalendarIcon, Upload, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from 'date-fns/locale';
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { User as FirebaseUser } from "firebase/auth";
 import { collection, addDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
-
+import { Autocomplete, useJsApiLoader } from "@react-google-maps/api";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -63,7 +63,7 @@ const formSchema = z.object({
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
   paymentOption: z.enum(["fixed", "payWhatYouWant", "free"]),
   pricePerGuest: z.coerce.number().optional(),
-  location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }),
+  location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }), // This will store formatted_address
   dateTime: z.date({ required_error: "תאריך ושעה נדרשים." }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
   ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([25, 55]),
@@ -80,16 +80,6 @@ const formSchema = z.object({
     path: ["pricePerGuest"],
 });
 
-
-// Mock suggestions - replace with actual API call
-const mockLocationSuggestions = [
-    "אולמי 'הדקל', תל אביב",
-    "אולמי 'הפאר', ירושלים",
-    "גן אירועים 'החורשה', חיפה",
-    "לופט 'אורבן', תל אביב",
-    "חוף 'ניצנים', אשקלון"
-];
-
 // Helper function for promise with timeout
 function promiseWithTimeout<T>(promise: Promise<T>, ms: number, timeoutError = new Error('Operation timed out after ' + ms + 'ms')): Promise<T> {
   const timeout = new Promise<never>((_, reject) => {
@@ -100,23 +90,31 @@ function promiseWithTimeout<T>(promise: Promise<T>, ms: number, timeoutError = n
   return Promise.race([promise, timeout]);
 }
 
+const libraries: ("places")[] = ['places'];
+
 export function EventForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const [locationInput, setLocationInput] = useState("");
-  const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
-  const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const locationInputRef = useRef<HTMLInputElement | null>(null);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries,
+    language: 'iw',
+    region: 'IL',
+  });
 
   useEffect(() => {
     const unsubscribe = firebaseAuthInstance.onAuthStateChanged((user) => {
       if (user) {
-        console.log("EventForm onAuthStateChanged - User:", user.uid);
         setCurrentUser(user);
       } else {
-        console.log("EventForm onAuthStateChanged - No user");
         setCurrentUser(null);
       }
     });
@@ -142,57 +140,32 @@ export function EventForm() {
 
   const paymentOptionValue = form.watch("paymentOption");
 
-  const fetchSuggestions = useCallback((query: string) => {
-    if (!query.trim()) {
-      setLocationSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-    setIsSuggestionsLoading(true);
-    setTimeout(() => {
-      const filteredSuggestions = mockLocationSuggestions.filter(s =>
-        s.toLowerCase().includes(query.toLowerCase())
-      );
-      setLocationSuggestions(filteredSuggestions);
-      setIsSuggestionsLoading(false);
-      setShowSuggestions(true);
-    }, 500);
-  }, []);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      if (locationInput && locationInput !== form.getValues("location")) {
-        fetchSuggestions(locationInput);
-      } else if (!locationInput) {
-        setLocationSuggestions([]);
-        setShowSuggestions(false);
+  const handlePlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      if (place && place.formatted_address && place.geometry?.location) {
+        form.setValue("location", place.formatted_address, { shouldValidate: true });
+        setLatitude(place.geometry.location.lat());
+        setLongitude(place.geometry.location.lng());
+      } else {
+        // If a user types something but doesn't select a suggestion, 
+        // or if the place has no geometry, clear coordinates.
+        // The form.location will still hold what they typed.
+        setLatitude(null);
+        setLongitude(null);
       }
-    }, 300);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [locationInput, fetchSuggestions, form]);
-
-  const handleSuggestionClick = (suggestion: string) => {
-    form.setValue("location", suggestion);
-    setLocationInput(suggestion);
-    setLocationSuggestions([]);
-    setShowSuggestions(false);
+    }
+  };
+  
+  const onAutocompleteLoad = (autocompleteInstance: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocompleteInstance;
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    console.log("onSubmit called with values:", values);
     setIsSubmitting(true);
-    console.log("isSubmitting set to true. Current user from React state:", currentUser ? currentUser.uid : "No user in React state");
-    
-    console.log("Firebase App Name from db config:", db.app.name); 
-    console.log("Firebase Project ID from db config:", db.app.options.projectId); 
-
     const firebaseUser = firebaseAuthInstance.currentUser;
 
     if (!firebaseUser) {
-      console.log("No user in firebaseAuthInstance.currentUser, redirecting to signin.");
       toast({
         title: HEBREW_TEXT.general.error,
         description: "עליך להיות מחובר כדי ליצור אירוע. מועבר לדף ההתחברות...",
@@ -202,22 +175,19 @@ export function EventForm() {
       router.push('/signin');
       return;
     }
-    console.log("Current user from firebaseAuthInstance.currentUser:", firebaseUser.uid);
-
 
     try {
-      console.log(`Forcing ID token refresh for user: ${firebaseUser.uid}`);
-      await firebaseUser.getIdToken(true); // Force refresh of the ID token
-      console.log("ID token refreshed successfully.");
+      await firebaseUser.getIdToken(true); 
 
-      console.log("Preparing event data for Firestore...");
       const eventData = {
-        coupleId: firebaseUser.uid, // Use UID from firebaseAuthInstance.currentUser
+        coupleId: firebaseUser.uid,
         name: values.name,
         numberOfGuests: values.numberOfGuests,
         paymentOption: values.paymentOption,
         pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
-        location: values.location,
+        location: values.location, // Formatted address
+        latitude: latitude,       // Coordinates
+        longitude: longitude,     // Coordinates
         dateTime: Timestamp.fromDate(values.dateTime),
         description: values.description,
         ageRange: values.ageRange,
@@ -227,15 +197,10 @@ export function EventForm() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
-      console.log("Full event data being sent:", eventData);
 
-
-      console.log("Attempting to add document to Firestore events collection (with 15s timeout)...");
       const addOperation = addDoc(collection(db, "events"), eventData);
       const docRef = await promiseWithTimeout(addOperation, 15000); 
       
-      console.log("Event created with ID: ", docRef.id);
-
       toast({
         title: HEBREW_TEXT.general.success,
         description: `אירוע "${values.name}" נוצר בהצלחה!`,
@@ -261,11 +226,30 @@ export function EventForm() {
         variant: "destructive",
       });
     } finally {
-      console.log("Executing finally block in onSubmit.");
       setIsSubmitting(false);
-      console.log("isSubmitting set to false in finally block.");
     }
   };
+  
+  if (loadError) {
+    return (
+        <Card className="w-full max-w-3xl mx-auto p-6">
+            <p className="text-destructive text-center">
+                שגיאה בטעינת Google Maps API. אנא ודא שמפתח ה-API תקין והחיבור לאינטרנט פעיל.
+                <br/>
+                {HEBREW_TEXT.map.loadError}
+            </p>
+        </Card>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+        <Card className="w-full max-w-3xl mx-auto p-6 text-center">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary mb-2" />
+            <p>{HEBREW_TEXT.general.loading} רכיב המיקום...</p>
+        </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-3xl mx-auto">
@@ -330,7 +314,7 @@ export function EventForm() {
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) } // Disable past dates
+                          disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) } 
                           initialFocus
                           locale={he}
                         />
@@ -397,65 +381,42 @@ export function EventForm() {
                     )}
                 />
             )}
+            
+            {isLoaded && (
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{HEBREW_TEXT.event.location}</FormLabel>
+                    <FormControl>
+                      <Autocomplete
+                        onLoad={onAutocompleteLoad}
+                        onPlaceChanged={handlePlaceChanged}
+                        options={{
+                            componentRestrictions: { country: "il" }, // Restrict to Israel
+                            fields: ["formatted_address", "geometry.location"], // Request only needed fields
+                        }}
+                      >
+                        <Input
+                          placeholder="התחל להקליד כתובת או שם מקום..."
+                          {...field} // Spread field props here for RHF to control the input
+                          ref={locationInputRef} // Use this if you need direct access to input DOM element
+                                                // but Autocomplete binds to the child Input directly
+                        />
+                      </Autocomplete>
+                    </FormControl>
+                    {latitude && longitude && (
+                        <FormDescription>
+                            קואורדינטות: {latitude.toFixed(6)}, {longitude.toFixed(6)}
+                        </FormDescription>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{HEBREW_TEXT.event.location}</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input
-                        placeholder="התחל להקליד כתובת או שם מקום..."
-                        value={locationInput}
-                        onChange={(e) => {
-                            setLocationInput(e.target.value);
-                            if (!showSuggestions) field.onChange(e.target.value);
-                        }}
-                        onBlur={() => {
-                            setTimeout(() => setShowSuggestions(false), 150);
-                            field.onChange(locationInput); 
-                        }}
-                        onFocus={() => {
-                            if (locationInput && locationSuggestions.length > 0) {
-                                setShowSuggestions(true);
-                            } else if (locationInput) {
-                                fetchSuggestions(locationInput); 
-                            }
-                        }}
-                        autoComplete="off"
-                      />
-                      {isSuggestionsLoading && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        </div>
-                      )}
-                      {showSuggestions && locationSuggestions.length > 0 && (
-                        <ul className="absolute z-10 w-full bg-background border border-input rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
-                          {locationSuggestions.map((suggestion, index) => (
-                            <li
-                              key={index}
-                              className="px-3 py-2 text-sm hover:bg-accent cursor-pointer"
-                              onMouseDown={() => {
-                                field.onChange(suggestion);
-                                handleSuggestionClick(suggestion);
-                              }}
-                            >
-                              {suggestion}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    עם שירות מיקום אמיתי, תוכלו לחפש כתובות מדויקות.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}
@@ -567,7 +528,7 @@ export function EventForm() {
                 )} />
 
 
-            <Button type="submit" className="w-full font-body text-lg py-6" disabled={isSubmitting}>
+            <Button type="submit" className="w-full font-body text-lg py-6" disabled={isSubmitting || !isLoaded}>
               {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
               {HEBREW_TEXT.event.createEventButton}
             </Button>

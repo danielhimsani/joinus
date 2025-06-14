@@ -2,11 +2,18 @@
 "use client";
 
 import type React from 'react';
-import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-maps/api';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { MapPin } from 'lucide-react';
+import { useState } from 'react';
+
+interface MapLocation {
+  lat: number;
+  lng: number;
+  name?: string; // For event names
+}
 
 interface GoogleMapComponentProps {
   center: {
@@ -15,6 +22,7 @@ interface GoogleMapComponentProps {
   };
   zoom?: number;
   mapContainerStyle?: React.CSSProperties;
+  eventLocations?: MapLocation[];
 }
 
 const defaultMapContainerStyle: React.CSSProperties = {
@@ -23,18 +31,23 @@ const defaultMapContainerStyle: React.CSSProperties = {
   borderRadius: '0.5rem',
 };
 
+const libraries: ("places" | "marker")[] = ['places', 'marker']; // Include marker library
+
 export function GoogleMapComponent({ 
   center, 
-  zoom = 15,
-  mapContainerStyle = defaultMapContainerStyle
+  zoom = 12, // Default zoom adjusted to show a wider area for events
+  mapContainerStyle = defaultMapContainerStyle,
+  eventLocations = []
 }: GoogleMapComponentProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const [selectedMarker, setSelectedMarker] = useState<MapLocation | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: apiKey || "",
-    language: 'iw', // Hebrew
-    region: 'IL', // Israel
+    libraries,
+    language: 'iw', 
+    region: 'IL', 
   });
 
   if (loadError) {
@@ -71,11 +84,38 @@ export function GoogleMapComponent({
         streetViewControl: false,
         mapTypeControl: false,
         fullscreenControl: false,
-        // You can add more options here
       }}
+      onClick={() => setSelectedMarker(null)} // Close InfoWindow when map is clicked
     >
-      <MarkerF position={center} title={HEBREW_TEXT.map.yourLocationMarker} />
-      {/* TODO: Add markers for events */}
+      <MarkerF 
+        position={center} 
+        title={HEBREW_TEXT.map.yourLocationMarker} 
+        // Optional: Differentiate user's location marker (e.g., different icon or color)
+        // icon={{
+        //   url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png" 
+        // }}
+      />
+      {eventLocations.map((loc, index) => (
+        <MarkerF
+          key={index}
+          position={{ lat: loc.lat, lng: loc.lng }}
+          title={loc.name || HEBREW_TEXT.map.eventLocationMarker}
+          onClick={() => setSelectedMarker(loc)}
+        />
+      ))}
+
+      {selectedMarker && (
+        <InfoWindowF
+          position={{ lat: selectedMarker.lat, lng: selectedMarker.lng }}
+          onCloseClick={() => setSelectedMarker(null)}
+          options={{ pixelOffset: new window.google.maps.Size(0, -30) }}
+        >
+          <div>
+            <h4 className="font-semibold">{selectedMarker.name || 'אירוע'}</h4>
+            {/* Add more details here if needed, e.g., link to event page */}
+          </div>
+        </InfoWindowF>
+      )}
     </GoogleMap>
   );
 }
