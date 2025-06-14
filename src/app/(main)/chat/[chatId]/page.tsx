@@ -39,7 +39,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, Send, UserX, CheckCircle, XCircle, Info, ShieldAlert, MessageSquareDashed, ChevronLeft, Ban, UserCircle as UserPlaceholderIcon, MoreVertical } from 'lucide-react';
+import { Loader2, Send, UserX, CheckCircle, XCircle, Info, ShieldAlert, MessageSquareDashed, ChevronLeft, Ban, Contact as UserPlaceholderIcon, MoreVertical } from 'lucide-react';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import Link from 'next/link';
 
@@ -82,7 +82,7 @@ export default function ChatPage() {
         try {
           await updateDoc(chatDocRef, {
             [`unreadCount.${currentUser.uid}`]: 0,
-            updatedAt: serverTimestamp(), 
+            updatedAt: serverTimestamp(),
           });
         } catch (e) {
           console.error("Error updating unread count:", e);
@@ -117,7 +117,7 @@ export default function ChatPage() {
             return;
         }
         setChatDetails(formattedChat);
-        updateUnreadCount(); 
+        updateUnreadCount();
       } else {
         setError(HEBREW_TEXT.chat.errorFetchingChat + ": " + "השיחה לא נמצאה.");
         setChatDetails(null);
@@ -170,7 +170,7 @@ export default function ChatPage() {
     const newMessageRef = doc(collection(db, "eventChats", chatId, "messages"));
 
     const senderName = currentUser.displayName || currentUser.email || "משתמש";
-    const senderProfileImageUrl = currentUser.photoURL || ""; 
+    const senderProfileImageUrl = currentUser.photoURL || "";
 
     batch.set(newMessageRef, {
       chatId: chatId,
@@ -206,7 +206,7 @@ export default function ChatPage() {
     } catch (e) {
       console.error("Error sending message:", e);
       toast({ title: HEBREW_TEXT.general.error, description: HEBREW_TEXT.chat.failedToSendMessage, variant: "destructive" });
-      setNewMessage(messageText); 
+      setNewMessage(messageText);
     } finally {
       setIsSendingMessage(false);
     }
@@ -232,19 +232,18 @@ export default function ChatPage() {
       setIsUpdatingStatus(false);
     }
   };
-  
+
   const isCurrentUserOwner = chatDetails?.ownerUids.includes(currentUser?.uid || "") || false;
   const canSendMessage = chatDetails && chatDetails.status !== 'closed' && chatDetails.status !== 'request_rejected';
-  
-  const headerTitle = isLoadingChat || !chatDetails ? HEBREW_TEXT.general.loading :
-    (isCurrentUserOwner ? `${HEBREW_TEXT.chat.chatWith} ${chatDetails.guestInfo?.name || HEBREW_TEXT.chat.guest}` :
-                           `${HEBREW_TEXT.event.eventName}: ${chatDetails.eventInfo?.name || 'אירוע'}`);
 
-  const headerImage = isLoadingChat || !chatDetails ? undefined :
-    (isCurrentUserOwner ? chatDetails.guestInfo?.profileImageUrl : chatDetails.eventInfo?.imageUrl);
-  
-  const headerFallbackText = isLoadingChat || !chatDetails ? "?" :
-    (isCurrentUserOwner ? (chatDetails.guestInfo?.name?.charAt(0) || 'G') : (chatDetails.eventInfo?.name?.charAt(0) || 'E')).toUpperCase();
+  const headerTitle = (isLoadingChat && !chatDetails) ? HEBREW_TEXT.chat.loadingChatDetails :
+    (isCurrentUserOwner ? `${HEBREW_TEXT.chat.chatWith} ${chatDetails?.guestInfo?.name || HEBREW_TEXT.chat.guest}` :
+                           `${HEBREW_TEXT.event.eventName}: ${chatDetails?.eventInfo?.name || 'אירוע'}`);
+
+  const headerImage = (isLoadingChat && !chatDetails) ? undefined :
+    (isCurrentUserOwner ? chatDetails?.guestInfo?.profileImageUrl : chatDetails?.eventInfo?.imageUrl);
+
+  const showOwnerActionBlock = isCurrentUserOwner && chatDetails?.status === 'pending_request';
 
   if (isLoadingChat && !chatDetails) {
     return (
@@ -289,7 +288,7 @@ export default function ChatPage() {
     );
   }
 
-  if (!chatDetails) { 
+  if (!chatDetails) {
     return (
         <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[calc(100vh-150px)]">
             <MessageSquareDashed className="h-12 w-12 text-muted-foreground mb-4" />
@@ -301,9 +300,6 @@ export default function ChatPage() {
         </div>
     );
   }
-
-
-  const showOwnerActionBlock = isCurrentUserOwner && chatDetails.status === 'pending_request';
 
   return (
     <div className="container mx-auto px-0 md:px-4 py-0 md:py-8 h-screen md:h-[calc(100vh-120px)] flex flex-col">
@@ -342,7 +338,7 @@ export default function ChatPage() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setShowCloseDialog(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                        <DropdownMenuItem onSelect={() => setShowCloseDialog(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer">
                             <Ban className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
                             {HEBREW_TEXT.chat.closeChat}
                         </DropdownMenuItem>
@@ -351,7 +347,7 @@ export default function ChatPage() {
             )}
           </div>
         </CardHeader>
-        
+
         <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -360,7 +356,7 @@ export default function ChatPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-row-reverse">
                     <AlertDialogCancel disabled={isUpdatingStatus}>{HEBREW_TEXT.general.cancel}</AlertDialogCancel>
-                    <AlertDialogAction 
+                    <AlertDialogAction
                         onClick={() => handleUpdateStatus('closed', HEBREW_TEXT.chat.chatClosedMessage)}
                         disabled={isUpdatingStatus}
                         className="bg-destructive hover:bg-destructive/90"
@@ -379,9 +375,9 @@ export default function ChatPage() {
             {showOwnerActionBlock && (
                 <div className="my-3 p-3 bg-muted/60 dark:bg-muted/40 rounded-lg shadow-sm w-full self-center max-w-md mx-auto">
                   <div className="flex gap-3 justify-center">
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleUpdateStatus('request_approved', HEBREW_TEXT.chat.requestApprovedMessage)} 
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateStatus('request_approved', HEBREW_TEXT.chat.requestApprovedMessage)}
                       disabled={isUpdatingStatus}
                       className="bg-green-600 hover:bg-green-700 text-white flex-1"
                     >
@@ -391,9 +387,9 @@ export default function ChatPage() {
                     </Button>
                     <AlertDialog open={showDeclineDialog} onOpenChange={setShowDeclineDialog}>
                       <AlertDialogTrigger asChild>
-                          <Button 
-                              size="sm" 
-                              variant="destructive" 
+                          <Button
+                              size="sm"
+                              variant="destructive"
                               disabled={isUpdatingStatus}
                               className="flex-1"
                           >
@@ -410,7 +406,7 @@ export default function ChatPage() {
                           </AlertDialogHeader>
                           <AlertDialogFooter className="flex-row-reverse">
                               <AlertDialogCancel disabled={isUpdatingStatus}>{HEBREW_TEXT.general.cancel}</AlertDialogCancel>
-                              <AlertDialogAction 
+                              <AlertDialogAction
                                   onClick={() => handleUpdateStatus('request_rejected', HEBREW_TEXT.chat.requestDeclinedMessage)}
                                   disabled={isUpdatingStatus}
                                   className="bg-destructive hover:bg-destructive/90"
@@ -446,7 +442,7 @@ export default function ChatPage() {
                     }
                 }}
                 rows={1}
-                className="min-h-[40px] max-h-[100px] w-full resize-none" 
+                className="min-h-[40px] max-h-[100px] resize-none"
                 disabled={isSendingMessage}
                 />
                 <Button type="button" size="icon" onClick={handleSendMessage} disabled={isSendingMessage || !newMessage.trim()}>
@@ -467,4 +463,3 @@ export default function ChatPage() {
     </div>
   );
 }
-

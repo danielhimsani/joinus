@@ -7,10 +7,10 @@ import type { EventChat } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card'; 
+import { Card, CardContent } from '@/components/ui/card';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { MessageSquareText, Hash, UserCircle as UserPlaceholderIcon } from 'lucide-react';
+import { MessageSquareText, Hash, Contact as UserPlaceholderIcon } from 'lucide-react';
 
 interface ChatListItemProps {
   chat: EventChat;
@@ -19,24 +19,19 @@ interface ChatListItemProps {
 
 export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   const isCurrentUserOwner = chat.ownerUids.includes(currentUserId);
-  
-  const displayName = isCurrentUserOwner 
+
+  const displayName = isCurrentUserOwner
     ? chat.guestInfo?.name || HEBREW_TEXT.chat.guest
     : chat.eventInfo?.name || HEBREW_TEXT.event.eventName;
 
-  const displayImageUrl = isCurrentUserOwner 
+  const displayImageUrl = isCurrentUserOwner
     ? chat.guestInfo?.profileImageUrl
     : chat.eventInfo?.imageUrl;
-  
-  const fallbackInitial = (isCurrentUserOwner
-    ? chat.guestInfo?.name?.charAt(0)
-    : chat.eventInfo?.name?.charAt(0)
-  ) || '?';
 
   const unreadMessages = chat.unreadCount?.[currentUserId] || 0;
 
-  const lastMessageTimestamp = chat.lastMessageTimestamp 
-    ? formatDistanceToNow(new Date(chat.lastMessageTimestamp), { addSuffix: true, locale: he }) 
+  const lastMessageTimestamp = chat.lastMessageTimestamp
+    ? formatDistanceToNow(new Date(chat.lastMessageTimestamp), { addSuffix: true, locale: he })
     : '';
 
   return (
@@ -47,7 +42,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             {displayImageUrl ? (
               <AvatarImage src={displayImageUrl} alt={displayName} data-ai-hint={isCurrentUserOwner ? "guest profile" : "event image"}/>
             ) : (
-              <AvatarFallback className="bg-muted">
+              <AvatarFallback className="bg-muted flex items-center justify-center">
                 <UserPlaceholderIcon className="h-7 w-7 text-muted-foreground" />
               </AvatarFallback>
             )}
@@ -74,4 +69,3 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     </Link>
   );
 }
-
