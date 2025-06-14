@@ -6,7 +6,8 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, type User } from "firebase/auth"; // Firebase imports
+import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, type User } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore"; // Firestore imports
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Apple, Chrome, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { auth as firebaseAuthInstance } from "@/lib/firebase"; // Import your initialized auth instance
+import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; // Import your initialized auth and db instances
 import { useState } from "react";
 
 const formSchema = z.object({
@@ -47,16 +48,43 @@ export function SignUpForm() {
     },
   });
 
-  const handleSignUpSuccess = (user: User, userName?: string) => {
-    // Set localStorage to simulate session for current app structure
+  const createUserDocument = async (user: User, name?: string, profileImageUrl?: string) => {
+    const userDocRef = doc(db, "users", user.uid);
+    const userData = {
+      firebaseUid: user.uid,
+      name: name || user.displayName || "משתמש חדש",
+      email: user.email,
+      profileImageUrl: profileImageUrl || user.photoURL || `https://placehold.co/150x150.png?text=${(name || user.displayName || "U").charAt(0)}`,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      // You can add other default fields for a new user profile here
+      // e.g., bio: "", phone: "", birthday: ""
+    };
+    try {
+      await setDoc(userDocRef, userData);
+      console.log("User document created/updated in Firestore for UID:", user.uid);
+    } catch (error) {
+      console.error("Error creating/updating user document in Firestore:", error);
+      toast({
+        title: "שגיאת שמירת פרופיל",
+        description: "הייתה בעיה בשמירת פרטי הפרופיל שלך. ייתכן שתצטרך לעדכן אותם ידנית.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
+  const handleSignUpSuccess = async (user: User, formValues?: { name: string }) => {
     localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userName', userName || user.displayName || user.email || 'משתמש חדש');
+    localStorage.setItem('userName', formValues?.name || user.displayName || user.email || 'משתמש חדש');
     
+    await createUserDocument(user, formValues?.name);
+
     toast({
       title: HEBREW_TEXT.general.success,
       description: "נרשמת והתחברת בהצלחה!",
     });
-    router.push("/events"); // Redirect to events page after successful sign-up and login
+    router.push("/events"); 
   };
   
   const handleAuthError = (error: any, method: string) => {
@@ -97,10 +125,9 @@ export function SignUpForm() {
     setIsSubmittingEmail(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(firebaseAuthInstance, values.email, values.password);
-      // Update profile with name
       await updateProfile(userCredential.user, { displayName: values.name });
       console.log("Email/Password Sign Up Success:", userCredential.user);
-      handleSignUpSuccess(userCredential.user, values.name); // Pass name for localStorage
+      await handleSignUpSuccess(userCredential.user, { name: values.name });
     } catch (error: any) {
       handleAuthError(error, "Email/Password");
     } finally {
@@ -115,8 +142,7 @@ export function SignUpForm() {
     try {
       const result = await signInWithPopup(firebaseAuthInstance, provider);
       console.log("Google Sign Up/In Success:", result.user);
-      // For sign-up with Google, we also log them in and redirect
-      handleSignUpSuccess(result.user, result.user.displayName || result.user.email);
+      await handleSignUpSuccess(result.user);
     } catch (error: any) {
       handleAuthError(error, "Google");
     } finally {
@@ -124,20 +150,20 @@ export function SignUpForm() {
     }
   };
 
-  const handleAppleSignUp = async () => { // This remains a mock implementation
+  const handleAppleSignUp = async () => { 
     setIsSubmittingApple(true);
     console.log("Attempting Apple Sign Up (Mock)");
     toast({ title: "הרשמה עם אפל", description: "תהליך הרשמה עם אפל מופעל (דמה)..." });
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
     
-    // Mock user object for Apple sign-up
     const mockUser = { 
       uid: 'mock-apple-uid-' + Date.now(), 
       displayName: 'משתמש אפל', 
-      email: 'apple-user@example.com' 
-    } as User; // Cast to User type for consistency
+      email: 'apple-user@example.com',
+      photoURL: `https://placehold.co/150x150.png?text=A`,
+    } as User; 
 
-    handleSignUpSuccess(mockUser, 'משתמש אפל');
+    await handleSignUpSuccess(mockUser, { name: 'משתמש אפל' });
     setIsSubmittingApple(false);
   };
 

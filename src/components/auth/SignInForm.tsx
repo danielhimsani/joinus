@@ -6,7 +6,8 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, type User } from "firebase/auth"; // Firebase imports
+import { GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, type User } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore"; // Firestore imports
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Apple, Chrome, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { auth as firebaseAuthInstance } from "@/lib/firebase"; // Import your initialized auth instance
+import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; // Import your initialized auth and db instances
 import { useState } from "react";
 
 const formSchema = z.object({
@@ -45,16 +46,57 @@ export function SignInForm() {
     },
   });
 
-  const handleAuthSuccess = (user: User, userName?: string) => {
-    // Mock: Update local storage to simulate session for current app structure
+  const createUserOrUpdateDocument = async (user: User, name?: string) => {
+    const userDocRef = doc(db, "users", user.uid);
+    const userData = {
+      firebaseUid: user.uid,
+      name: name || user.displayName || "משתמש", // Use provided name, then auth display name, then default
+      email: user.email,
+      profileImageUrl: user.photoURL || `https://placehold.co/150x150.png?text=${(name || user.displayName || "U").charAt(0)}`,
+      updatedAt: serverTimestamp(),
+      // For creation, you might want a `createdAt` field conditionally.
+      // Using merge:true handles both create and update.
+      // If you want 'createdAt' only on actual creation:
+      // const docSnap = await getDoc(userDocRef);
+      // if (!docSnap.exists()) {
+      //   userData.createdAt = serverTimestamp();
+      // }
+    };
+    try {
+      // Using { merge: true } will create the document if it doesn't exist,
+      // or update it if it does, only changing the fields provided.
+      // If you want `createdAt` only on new docs, you need a getDoc check first.
+      // For simplicity, just setDoc with merge is often fine.
+      await setDoc(userDocRef, { ...userData, createdAt: serverTimestamp() }, { merge: true });
+      // If you want to be more specific about setting createdAt only on new docs:
+      // const docSnap = await getDoc(userDocRef);
+      // if (!docSnap.exists()) {
+      //   await setDoc(userDocRef, { ...userData, createdAt: serverTimestamp() });
+      // } else {
+      //   await setDoc(userDocRef, userData, { merge: true });
+      // }
+      console.log("User document created/updated in Firestore for UID:", user.uid);
+    } catch (error) {
+      console.error("Error creating/updating user document in Firestore:", error);
+      toast({
+        title: "שגיאת שמירת פרופיל",
+        description: "הייתה בעיה בשמירת פרטי הפרופיל שלך. ייתכן שתצטרך לעדכן אותם ידנית.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAuthSuccess = async (user: User, userNameFromForm?: string) => {
     localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userName', userName || user.displayName || user.email || 'משתמש מאומת');
+    localStorage.setItem('userName', userNameFromForm || user.displayName || user.email || 'משתמש מאומת');
+    
+    await createUserOrUpdateDocument(user, userNameFromForm);
     
     toast({
       title: HEBREW_TEXT.general.success,
       description: "התחברת בהצלחה!",
     });
-    router.push("/"); // Redirect to home page or dashboard
+    router.push("/"); 
   };
 
   const handleAuthError = (error: any, method: string) => {
@@ -94,7 +136,9 @@ export function SignInForm() {
     setIsSubmittingEmail(true);
     try {
       const userCredential = await signInWithEmailAndPassword(firebaseAuthInstance, values.email, values.password);
-      handleAuthSuccess(userCredential.user, values.email); // Pass email as potential username
+      // For email/password, displayName might not be set in Firebase Auth directly on sign-in
+      // We'll rely on the Firestore document to have the name, or use email if not.
+      await handleAuthSuccess(userCredential.user, userCredential.user.displayName || values.email); 
     } catch (error: any) {
       handleAuthError(error, "Email/Password");
     } finally {
@@ -105,10 +149,9 @@ export function SignInForm() {
   const handleGoogleSignIn = async () => {
     setIsSubmittingGoogle(true);
     const provider = new GoogleAuthProvider();
-    console.log("Attempting Google Sign-In with auth instance:", firebaseAuthInstance); // Debug log
     try {
       const result = await signInWithPopup(firebaseAuthInstance, provider);
-      handleAuthSuccess(result.user);
+      await handleAuthSuccess(result.user);
     } catch (error: any) {
       handleAuthError(error, "Google");
     } finally {
@@ -116,19 +159,20 @@ export function SignInForm() {
     }
   };
 
-  const handleAppleSignIn = async () => { // This remains a mock implementation
+  const handleAppleSignIn = async () => { 
     setIsSubmittingApple(true);
     console.log("Attempting Apple Sign In (Mock)");
     toast({ title: "התחברות עם אפל", description: "תהליך התחברות עם אפל מופעל (דמה)..." });
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-    // Mock success:
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userName', 'משתמש אפל');
-    toast({
-        title: HEBREW_TEXT.general.success,
-        description: "התחברת בהצלחה (דמה)!",
-      });
-    router.push("/");
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
+    
+    const mockUser = { 
+        uid: 'mock-apple-uid-' + Date.now(), 
+        displayName: 'משתמש אפל', 
+        email: 'apple-user@example.com',
+        photoURL: `https://placehold.co/150x150.png?text=A`,
+    } as User;
+
+    await handleAuthSuccess(mockUser, 'משתמש אפל');
     setIsSubmittingApple(false);
   };
 
