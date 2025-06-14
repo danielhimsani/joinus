@@ -72,7 +72,7 @@ const formSchema = z.object({
   ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([25, 55]),
   foodType: z.enum(["kosherMeat", "kosherDairy", "kosherParve", "notKosher"]),
   religionStyle: z.enum(["secular", "traditional", "religious", "mixed"]),
-  imageUrl: z.string().optional(), // Will be set by upload logic
+  imageUrl: z.string().optional(), 
 }).refine(data => {
     if (data.paymentOption === 'fixed') {
         return data.pricePerGuest !== undefined && data.pricePerGuest > 0;
@@ -114,9 +114,9 @@ export function EventForm() {
   const locationInputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
+    id: 'google-map-script', // Consistent ID
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries,
+    libraries, // Consistent libraries
     language: 'iw',
     region: 'IL',
   });
@@ -140,7 +140,7 @@ export function EventForm() {
       ageRange: [25, 55], 
       foodType: "kosherParve",
       religionStyle: "mixed",
-      imageUrl: "", // Default to empty, will be replaced by placeholder or upload
+      imageUrl: "", 
     },
   });
 
@@ -161,7 +161,7 @@ export function EventForm() {
       setImageFile(file);
       const previewUrl = URL.createObjectURL(file);
       setImagePreviewUrl(previewUrl);
-      form.setValue("imageUrl", previewUrl, {shouldDirty: true}); // For instant preview if needed by form directly
+      form.setValue("imageUrl", previewUrl, {shouldDirty: true}); 
     }
   };
 
@@ -221,7 +221,7 @@ export function EventForm() {
             },
             async () => {
               finalImageUrl = await getDownloadURL(uploadTask.snapshot.ref);
-              form.setValue("imageUrl", finalImageUrl); // Update form with final URL
+              form.setValue("imageUrl", finalImageUrl); 
               resolve();
             }
           );
@@ -230,17 +230,16 @@ export function EventForm() {
         setIsUploading(false);
         setIsSubmitting(false);
         setUploadProgress(null);
-        // Toast already shown in error handler of uploadTask
         return;
       }
       setIsUploading(false);
-      setUploadProgress(100); // Mark as complete
+      setUploadProgress(100); 
     }
     
     try {
       await firebaseUser.getIdToken(true); 
       const eventData = {
-        ...values, // Includes the potentially updated name from inline edit
+        ...values, 
         coupleId: firebaseUser.uid,
         pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
         location: values.location,
@@ -266,13 +265,11 @@ export function EventForm() {
     } finally {
       setIsSubmitting(false);
       setIsUploading(false);
-      // Keep uploadProgress at 100 or null after success/failure, don't reset to 0
     }
   };
   
   if (loadError) return <Card className="w-full max-w-3xl mx-auto p-6"><p className="text-destructive text-center">{HEBREW_TEXT.map.loadError}</p></Card>;
   if (!isLoaded && !process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
-    // If API key is missing, show a clear message instead of infinite loader
     return (
       <Card className="w-full max-w-3xl mx-auto p-6 text-center">
           <Info className="mx-auto h-8 w-8 text-destructive mb-2" />
@@ -291,7 +288,6 @@ export function EventForm() {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <Card className="w-full max-w-3xl mx-auto overflow-hidden">
-          {/* Interactive Image Header */}
           <div className="relative w-full h-64 md:h-80 bg-muted group">
             <Image
               src={displayImageUrl}
@@ -300,7 +296,7 @@ export function EventForm() {
               objectFit="cover"
               className="transition-opacity duration-300 ease-in-out"
               data-ai-hint="event cover"
-              key={displayImageUrl} // Force re-render on image change
+              key={displayImageUrl} 
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
             
@@ -333,7 +329,7 @@ export function EventForm() {
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      e.preventDefault(); // Prevent form submission
+                      e.preventDefault(); 
                       form.setValue("name", (e.target as HTMLInputElement).value, { shouldValidate: true });
                       setIsEditingName(false);
                     } else if (e.key === 'Escape') {
@@ -414,7 +410,6 @@ export function EventForm() {
               control={form.control}
               name="name"
               render={({ field }) => (
-                // This input is hidden but drives the form state. UI is handled above.
                 <FormItem className="hidden">
                   <FormLabel>{HEBREW_TEXT.event.eventName}</FormLabel>
                   <FormControl><Input {...field} /></FormControl>
@@ -426,7 +421,6 @@ export function EventForm() {
                 control={form.control}
                 name="dateTime"
                 render={({ field }) => (
-                // This input is hidden but drives the form state. UI is handled above.
                 <FormItem className="hidden">
                     <FormLabel>{HEBREW_TEXT.event.dateTime}</FormLabel>
                     <FormControl><Input type="text" value={field.value?.toString()}/></FormControl>
@@ -488,7 +482,23 @@ export function EventForm() {
                     <FormItem>
                         <FormLabel>{HEBREW_TEXT.event.pricePerGuest} (בש"ח)</FormLabel>
                         <FormControl>
-                        <Input type="number" placeholder="150" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
+                          <Input
+                            type="number"
+                            placeholder="150"
+                            value={field.value === undefined || field.value === null || isNaN(field.value as number) ? '' : String(field.value)}
+                            onChange={e => {
+                              const rawValue = e.target.value;
+                              if (rawValue === '') {
+                                field.onChange(undefined); 
+                              } else {
+                                const num = parseFloat(rawValue);
+                                field.onChange(isNaN(num) ? undefined : num); 
+                              }
+                            }}
+                            onBlur={field.onBlur}
+                            ref={field.ref}
+                            name={field.name}
+                          />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -589,3 +599,4 @@ export function EventForm() {
     </Form>
   );
 }
+
