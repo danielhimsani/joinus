@@ -51,7 +51,7 @@ export function GoogleMapComponent({
   const [infoWindowPosition, setInfoWindowPosition] = useState<{lat: number; lng: number} | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
+    id: 'google-map-script', // Keep ID consistent
     googleMapsApiKey: apiKey || "",
     libraries,
     language: 'iw', 
@@ -71,14 +71,6 @@ export function GoogleMapComponent({
     setInfoWindowPosition(null);
   };
   
-  const transparentPixelIcon = {
-    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="transparent" stroke="none"/></svg>'),
-    scaledSize: typeof window !== 'undefined' ? new window.google.maps.Size(1, 1) : undefined,
-    anchor: typeof window !== 'undefined' ? new window.google.maps.Point(0,0) : undefined,
-    labelOrigin: typeof window !== 'undefined' ? new window.google.maps.Point(0, -10) : undefined, // Adjust this to position label correctly
-  };
-
-
   if (loadError) {
     console.error("Google Maps API load error:", loadError);
     return (
@@ -104,6 +96,15 @@ export function GoogleMapComponent({
     return <Skeleton className="h-[400px] w-full rounded-lg" />;
   }
 
+  // Define transparentPixelIcon here, now that isLoaded is true
+  // and window.google.maps is guaranteed to be available.
+  const transparentPixelIcon = {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="transparent" stroke="none"/></svg>'),
+    scaledSize: new window.google.maps.Size(1, 1),
+    anchor: new window.google.maps.Point(0,0),
+    labelOrigin: new window.google.maps.Point(0, -10), // Adjust this to position label correctly
+  };
+
   return (
     <GoogleMap
       mapContainerStyle={mapContainerStyle}
@@ -118,14 +119,14 @@ export function GoogleMapComponent({
     >
       {eventLocations.map((loc) => (
         <MarkerF
-          key={loc.id + '-' + loc.lat + '-' + loc.lng} // Ensure unique key for multiple events at same spot that might share id if not careful
+          key={loc.id + '-' + loc.lat + '-' + loc.lng} 
           position={{ lat: loc.lat, lng: loc.lng }}
           onClick={() => handleMarkerClick(loc)}
           label={{
             text: "💍",
-            fontSize: "20px", // Adjust size as needed
-            color: "#000000", // Emoji color might not be strictly controllable this way
-            className: "map-marker-emoji-label" // For potential future global CSS styling if needed
+            fontSize: "20px", 
+            color: "#000000", 
+            className: "map-marker-emoji-label" 
           }}
           icon={transparentPixelIcon}
         />
@@ -134,9 +135,9 @@ export function GoogleMapComponent({
       {selectedEvents && infoWindowPosition && (
         <InfoWindowF
           position={infoWindowPosition}
-          onCloseClick={handleMapClick} // Use same handler to clear state
+          onCloseClick={handleMapClick} 
           options={{ 
-            pixelOffset: typeof window !== 'undefined' ? new window.google.maps.Size(0, -25) : undefined, // Adjust offset for emoji marker
+            pixelOffset: new window.google.maps.Size(0, -25), 
             disableAutoPan: true 
           }} 
         >
@@ -160,3 +161,4 @@ export function GoogleMapComponent({
     </GoogleMap>
   );
 }
+
