@@ -109,3 +109,14 @@
     direction: rtl;
   }
 }
+
+/* Custom scrollbar styles for mobile */
+@media (max-width: 767px) { /* Targets screens smaller than Tailwind's 'md' breakpoint (768px) */
+  body::-webkit-scrollbar {
+    display: none; /* For Webkit browsers (Chrome, Safari, newer Edge) */
+  }
+  body {
+    scrollbar-width: none;  /* For Firefox */
+    -ms-overflow-style: none;  /* For IE and Edge (older versions) */
+  }
+}
