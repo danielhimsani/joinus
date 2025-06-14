@@ -6,7 +6,7 @@ import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-m
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { MapPin } from 'lucide-react';
+import { MapPin, Users, CalendarDays } from 'lucide-react'; // Added icons
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -16,7 +16,8 @@ export interface MapLocation {
   id: string;
   lat: number;
   lng: number;
-  name?: string;
+  eventName: string; // Actual name of the event
+  locationDisplayName: string; // Display name of the location
   dateTime: Date;
   numberOfGuests: number;
 }
@@ -52,7 +53,7 @@ export function GoogleMapComponent({
   const [eventMarkerIcon, setEventMarkerIcon] = useState<google.maps.Icon | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script', 
+    id: 'google-map-script-unique-id', // Ensuring a unique ID
     googleMapsApiKey: apiKey || "",
     libraries,
     language: 'iw', 
@@ -134,24 +135,62 @@ export function GoogleMapComponent({
           position={infoWindowPosition}
           onCloseClick={handleMapClick} 
           options={{ 
-            pixelOffset: new window.google.maps.Size(0, -50), 
+            pixelOffset: new window.google.maps.Size(0, -50), // Adjust based on marker icon height
             disableAutoPan: true 
           }} 
         >
-          <div className="p-1 space-y-2 max-w-[280px] bg-background rounded-md shadow-lg">
-            {selectedEvents.map(event => (
-              <div key={event.id} className="border-b border-border last:border-b-0 pb-1.5 mb-1.5 last:pb-0 last:mb-0">
-                <Link href={`/events/${event.id}`} className="font-semibold text-primary hover:underline text-sm block break-words">
-                  {event.name}
-                </Link>
-                <p className="text-xs text-muted-foreground">
-                  {format(new Date(event.dateTime), 'dd.MM.yyyy', { locale: he })}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {HEBREW_TEXT.event.numberOfGuests}: {event.numberOfGuests}
-                </p>
-              </div>
-            ))}
+          <div className="p-2 space-y-2 max-w-[280px] bg-background rounded-md shadow-lg text-right">
+            {selectedEvents.length === 1 ? (
+              // Single event view
+              (() => {
+                const event = selectedEvents[0];
+                return (
+                  <div>
+                    <Link href={`/events/${event.id}`} className="font-headline text-primary hover:underline text-base block break-words mb-1">
+                      {event.eventName}
+                    </Link>
+                    <div className="space-y-1 text-sm">
+                        <p className="flex items-center text-muted-foreground">
+                            <MapPin className="ml-1.5 h-4 w-4 text-primary/80 flex-shrink-0" />
+                            {event.locationDisplayName}
+                        </p>
+                        <p className="flex items-center text-muted-foreground">
+                            <CalendarDays className="ml-1.5 h-4 w-4 text-primary/80 flex-shrink-0" />
+                            {format(new Date(event.dateTime), 'dd.MM.yyyy', { locale: he })}
+                        </p>
+                        <p className="flex items-center text-muted-foreground">
+                            <Users className="ml-1.5 h-4 w-4 text-primary/80 flex-shrink-0" />
+                            {HEBREW_TEXT.event.numberOfGuests}: {event.numberOfGuests}
+                        </p>
+                    </div>
+                  </div>
+                );
+              })()
+            ) : (
+              // Multiple events view
+              <>
+                <h3 className="font-headline text-md text-foreground mb-2 text-center border-b pb-1">
+                  {selectedEvents[0].locationDisplayName}
+                </h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {selectedEvents.map(event => (
+                    <div key={event.id} className="border-b border-border/50 last:border-b-0 pb-1.5 mb-1.5 last:pb-0 last:mb-0">
+                      <Link href={`/events/${event.id}`} className="font-semibold text-primary hover:underline text-sm block break-words">
+                        {event.eventName}
+                      </Link>
+                      <p className="text-xs text-muted-foreground flex items-center">
+                        <CalendarDays className="ml-1 h-3 w-3 text-primary/70 flex-shrink-0" />
+                        {format(new Date(event.dateTime), 'dd.MM.yyyy', { locale: he })}
+                      </p>
+                      <p className="text-xs text-muted-foreground flex items-center">
+                        <Users className="ml-1 h-3 w-3 text-primary/70 flex-shrink-0" />
+                        {HEBREW_TEXT.event.numberOfGuests}: {event.numberOfGuests}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </InfoWindowF>
       )}

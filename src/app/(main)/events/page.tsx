@@ -213,7 +213,8 @@ export default function EventsPage() {
       id: e.id,
       lat: e.latitude!,
       lng: e.longitude!,
-      name: e.locationDisplayName || e.name,
+      eventName: e.name,
+      locationDisplayName: e.locationDisplayName || e.location,
       dateTime: e.dateTime,
       numberOfGuests: e.numberOfGuests,
     }));
