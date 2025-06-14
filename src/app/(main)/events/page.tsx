@@ -46,7 +46,7 @@ export default function EventsPage() {
     if (timestampField instanceof Date) return timestampField;
     // Fallback for missing or invalid date fields, adjust as needed for your data integrity
     // console.warn("Invalid or missing timestamp encountered, using current date as fallback:", timestampField);
-    return new Date(); 
+    return new Date();
   };
 
   // Effect for fetching initial data from Firestore
@@ -114,7 +114,7 @@ export default function EventsPage() {
       );
     }
     if (advancedFilters.location && advancedFilters.location.trim()) {
-      eventsToFilter = eventsToFilter.filter(event => 
+      eventsToFilter = eventsToFilter.filter(event =>
           (event.location?.toLowerCase() || '').includes(advancedFilters.location!.toLowerCase().trim())
       );
     }
@@ -145,7 +145,7 @@ export default function EventsPage() {
      if (advancedFilters.foodType && advancedFilters.foodType !== "any") {
       eventsToFilter = eventsToFilter.filter(event => event.foodType === advancedFilters.foodType);
     }
-    
+
     setFilteredEvents(eventsToFilter);
 
   }, [allEvents, simpleSearchQuery, advancedFilters]);
@@ -228,15 +228,15 @@ export default function EventsPage() {
               <Input
                   type="search"
                   placeholder={HEBREW_TEXT.general.search}
-                  className="w-full pl-10 pr-3" 
+                  className="w-full pl-10 pr-3"
                   value={simpleSearchQuery}
                   onChange={handleSimpleSearchChange}
               />
           </div>
         </div>
 
-        {/* Logo */}
-        <div className="flex-shrink-0">
+        {/* Logo - Only shown on mobile (screens smaller than md) */}
+        <div className="flex-shrink-0 md:hidden">
           <Image src="/app_logo.png" alt="App Logo" width={150} height={45} data-ai-hint="app logo"/>
         </div>
       </div>
@@ -250,7 +250,7 @@ export default function EventsPage() {
                 {isMapSectionOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
             </Button>
         </div>
-        
+
         {isMapSectionOpen && (
             <div>
                 {isFetchingLocation && (
@@ -312,4 +312,3 @@ export default function EventsPage() {
     </div>
   );
 }
-

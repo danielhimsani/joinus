@@ -2,10 +2,11 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation'; // Added usePathname
+import Image from 'next/image'; // Added for PNG logo
+import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
-import { Home, CalendarPlus, UserCircle, LogIn, LogOut, Menu, PartyPopper, Search, PlusSquare, MessageSquare } from 'lucide-react'; // Added icons
+import { LogIn, LogOut, Menu, UserCircle, Search, PlusSquare, MessageSquare } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -17,96 +18,96 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useState, useEffect } from 'react';
-import { AppLogo } from '@/components/icons/AppLogo'; // Import AppLogo
 import { cn } from '@/lib/utils';
+import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth"; // Firebase Auth
+import { auth as firebaseAuthInstance } from "@/lib/firebase"; // Firebase Auth Instance
 
-// Mock authentication state
-const useAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userName, setUserName] = useState<string | null>(null);
-  const router = useRouter(); 
-
-  useEffect(() => {
-    const authStatus = localStorage.getItem('isAuthenticated') === 'true';
-    setIsAuthenticated(authStatus);
-    if (authStatus) {
-      setUserName(localStorage.getItem('userName') || "משתמש");
-    }
-  }, []);
-  
-  const signIn = () => {
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userName', 'דוד כהן');
-    setIsAuthenticated(true);
-    setUserName('דוד כהן');
-  };
-
-  const signOut = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userName');
-    setIsAuthenticated(false);
-    setUserName(null);
-    router.push('/'); 
-  };
-
-  return { isAuthenticated, userName, signIn, signOut };
-};
-
-// Navigation items for Desktop Top Bar (text only)
+// Navigation items for Desktop Top Bar (text only) - Profile link removed
 const desktopNavItems = [
   { href: '/events', label: HEBREW_TEXT.navigation.events },
   { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent },
   { href: '/messages', label: HEBREW_TEXT.navigation.messages },
-  { href: '/profile', label: HEBREW_TEXT.navigation.profile },
+  // { href: '/profile', label: HEBREW_TEXT.navigation.profile }, // Removed
 ];
 
-// Navigation items for Mobile Sheet Menu (with icons)
+// Navigation items for Mobile Sheet Menu (with icons) - Profile link removed
 const sheetNavItems = [
   { href: '/events', label: HEBREW_TEXT.navigation.events, icon: <Search className="ml-2 h-5 w-5" /> },
   { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: <PlusSquare className="ml-2 h-5 w-5" /> },
   { href: '/messages', label: HEBREW_TEXT.navigation.messages, icon: <MessageSquare className="ml-2 h-5 w-5" /> },
-  { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: <UserCircle className="ml-2 h-5 w-5" /> },
+  // { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: <UserCircle className="ml-2 h-5 w-5" /> }, // Removed
 ];
 
 
 export default function Header() {
-  const { isAuthenticated, userName, signIn, signOut } = useAuth();
-  const pathname = usePathname(); // For active link styling
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const UserNav = () => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src="https://placehold.co/100x100.png" alt={userName || "U"} data-ai-hint="user avatar" />
-            <AvatarFallback>{userName ? userName.charAt(0).toUpperCase() : "U"}</AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{userName}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {userName?.toLowerCase().replace(' ', '.')}@example.com
-            </p>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/profile" className="flex items-center w-full">
-            <UserCircle className="ml-2 h-4 w-4" />
-            {HEBREW_TEXT.navigation.profile}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={signOut} className="flex items-center w-full cursor-pointer">
-          <LogOut className="ml-2 h-4 w-4" />
-          {HEBREW_TEXT.auth.signOut}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
+      setFirebaseUser(user);
+      setIsLoadingAuth(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await firebaseAuthInstance.signOut();
+      router.push('/'); // Redirect to home page after sign out
+    } catch (error) {
+      console.error("Error signing out: ", error);
+      // Optionally, show a toast message for sign-out error
+    }
+  };
+
+  const UserNav = () => {
+    if (isLoadingAuth) {
+      return <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />; // Skeleton for avatar
+    }
+    if (!firebaseUser) return null; // Should not happen if isAuthenticated is true, but good check
+
+    const userInitial = firebaseUser.displayName ? firebaseUser.displayName.charAt(0).toUpperCase() : (firebaseUser.email ? firebaseUser.email.charAt(0).toUpperCase() : 'U');
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={firebaseUser.photoURL || undefined} alt={firebaseUser.displayName || "User"} data-ai-hint="profile picture" />
+              <AvatarFallback>{userInitial}</AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">{firebaseUser.displayName || "משתמש"}</p>
+              {firebaseUser.email && (
+                <p className="text-xs leading-none text-muted-foreground">
+                  {firebaseUser.email}
+                </p>
+              )}
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/profile" className="flex items-center w-full">
+              <UserCircle className="ml-2 h-4 w-4" />
+              {HEBREW_TEXT.navigation.profile}
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleSignOut} className="flex items-center w-full cursor-pointer">
+            <LogOut className="ml-2 h-4 w-4" />
+            {HEBREW_TEXT.auth.signOut}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -114,7 +115,8 @@ export default function Header() {
         {/* Left side: Logo, App Name, and Desktop Nav */}
         <div className="flex items-center">
           <Link href="/" className="flex items-center space-x-2 rtl:space-x-reverse">
-            <AppLogo width={83} height={30} />
+            {/* Replaced SVG AppLogo with PNG Image */}
+            <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={100} height={30} className="h-auto" data-ai-hint="app logo" />
             <span className="font-headline text-xl font-bold text-primary hidden sm:inline-block">{HEBREW_TEXT.appName}</span>
           </Link>
 
@@ -126,9 +128,8 @@ export default function Header() {
                 href={item.href}
                 className={cn(
                   "px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                  // Active link styling:
                   (pathname === item.href || (item.href === '/events' && pathname.startsWith('/events/') && pathname !== '/events/create'))
-                    ? "text-primary bg-primary/10" 
+                    ? "text-primary bg-primary/10"
                     : "text-foreground/70 hover:text-foreground hover:bg-muted/50",
                 )}
               >
@@ -140,7 +141,7 @@ export default function Header() {
 
         {/* Right side: Auth buttons / UserNav / Mobile Menu Trigger */}
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
-          {isAuthenticated ? (
+          {!isLoadingAuth && (firebaseUser ? (
             <UserNav />
           ) : (
             <>
@@ -151,8 +152,8 @@ export default function Header() {
                 <Link href="/signup">{HEBREW_TEXT.auth.signUp}</Link>
               </Button>
             </>
-          )}
-          <div className="md:hidden">
+          ))}
+          <div className="md:hidden"> {/* This ensures SheetTrigger is only for mobile */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon">
@@ -163,17 +164,18 @@ export default function Header() {
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                 <SheetHeader className="mb-4 border-b pb-4">
                    <Link href="/" className="flex items-center space-x-2 rtl:space-x-reverse justify-center mb-2">
-                        <AppLogo width={83} height={30} />
+                        {/* PNG Logo in Sheet Menu as well */}
+                        <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={83} height={24} className="h-auto" data-ai-hint="app logo" />
                         <span className="font-headline text-xl font-bold text-primary">{HEBREW_TEXT.appName}</span>
                     </Link>
                   <SheetTitle className="text-center text-lg font-normal text-muted-foreground">{HEBREW_TEXT.navigation.mobileMenuTitle}</SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col space-y-2 mt-4">
                   {sheetNavItems.map(link => (
-                    <Button 
-                        variant="ghost" 
-                        asChild 
-                        key={link.href} 
+                    <Button
+                        variant="ghost"
+                        asChild
+                        key={link.href}
                         className={cn(
                             "w-full justify-start p-3 text-base",
                             (pathname === link.href || (link.href === '/events' && pathname.startsWith('/events/') && pathname !== '/events/create'))
@@ -188,7 +190,8 @@ export default function Header() {
                     </Button>
                   ))}
                   <DropdownMenuSeparator className="my-2"/>
-                  {!isAuthenticated && (
+                  {/* Auth buttons inside sheet menu for mobile if not logged in */}
+                  {!isLoadingAuth && !firebaseUser && (
                     <>
                      <Button variant="ghost" asChild className="w-full justify-start p-3 text-base">
                         <Link href="/signin" className="flex items-center">
@@ -204,6 +207,7 @@ export default function Header() {
                       </Button>
                     </>
                   )}
+                  {/* If logged in on mobile, the UserNav is outside this list, handled by the main UserNav display */}
                 </nav>
               </SheetContent>
             </Sheet>
