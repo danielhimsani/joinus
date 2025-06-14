@@ -67,7 +67,8 @@ const formSchema = z.object({
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
   paymentOption: z.enum(["fixed", "payWhatYouWant", "free"]),
   pricePerGuest: z.coerce.number().optional(),
-  location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }),
+  location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }), // Will store formatted_address
+  locationDisplayName: z.string().optional(), // Will store place.name
   dateTime: z.date({ required_error: "תאריך ושעה נדרשים." }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
   ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([25, 55]),
@@ -99,13 +100,13 @@ export function EventForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [, setCurrentUser] = useState<FirebaseUser | null>(null); // currentUser state might not be strictly needed if using firebaseAuthInstance.currentUser directly
+  const [, setCurrentUser] = useState<FirebaseUser | null>(null); 
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false); // For image upload to storage specifically
+  const [isUploadingImage, setIsUploadingImage] = useState(false); 
   const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
@@ -115,9 +116,9 @@ export function EventForm() {
   const locationInputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
+    id: 'google-map-script', // Consistent ID
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries,
+    libraries, // Consistent libraries
     language: 'iw',
     region: 'IL',
   });
@@ -137,7 +138,7 @@ export function EventForm() {
       paymentOption: "fixed",
       pricePerGuest: 100,
       location: "",
-      // dateTime: undefined, // Let user pick
+      locationDisplayName: "",
       description: "",
       ageRange: [25, 55], 
       foodType: "kosherParve",
@@ -173,28 +174,41 @@ export function EventForm() {
         setImageFile(compressedFile);
         const previewUrl = URL.createObjectURL(compressedFile);
         setImagePreviewUrl(previewUrl);
-        // No need to form.setValue("imageUrl", previewUrl) as it's a local blob.
-        // The actual URL will be set after upload to Firebase Storage.
       } catch (error) {
         console.error("Error compressing image:", error);
         toast({ title: "שגיאה בדחיסת תמונה", description: (error instanceof Error) ? error.message : String(error), variant: "destructive" });
-        setImageFile(null); // Clear if compression fails
+        setImageFile(null); 
         setImagePreviewUrl(null);
       }
     }
   };
 
-
   const handlePlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
-      if (place && place.formatted_address && place.geometry?.location) {
-        form.setValue("location", place.formatted_address, { shouldValidate: true });
-        setLatitude(place.geometry.location.lat());
-        setLongitude(place.geometry.location.lng());
+      if (place) {
+        if (place.formatted_address) {
+          form.setValue("location", place.formatted_address, { shouldValidate: true });
+        }
+        if (place.name) {
+          form.setValue("locationDisplayName", place.name, { shouldValidate: false });
+        } else if (place.formatted_address) {
+          // Fallback for display name if place.name is not available
+          form.setValue("locationDisplayName", place.formatted_address.split(',')[0], { shouldValidate: false });
+        }
+
+        if (place.geometry?.location) {
+          setLatitude(place.geometry.location.lat());
+          setLongitude(place.geometry.location.lng());
+        } else {
+          setLatitude(null);
+          setLongitude(null);
+        }
       } else {
+        // Clear coordinates if no place is properly selected or if Autocomplete returns no place
         setLatitude(null);
         setLongitude(null);
+        form.setValue("locationDisplayName", "", { shouldValidate: false }); // Also clear display name
       }
     }
   };
@@ -205,7 +219,7 @@ export function EventForm() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
-    setIsUploadingImage(false); // Reset specific image upload state
+    setIsUploadingImage(false); 
     setImageUploadProgress(null);
 
     const firebaseUser = firebaseAuthInstance.currentUser;
@@ -216,7 +230,7 @@ export function EventForm() {
       return;
     }
 
-    let finalImageUrl = `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name)}`; // Default placeholder
+    let finalImageUrl = `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name)}`; 
 
     if (imageFile) {
       setIsUploadingImage(true);
@@ -239,17 +253,15 @@ export function EventForm() {
             },
             async () => {
               finalImageUrl = await getDownloadURL(uploadTask.snapshot.ref);
-              // No need to form.setValue("imageUrl", finalImageUrl); here, it will be in eventData
               resolve();
             }
           );
         });
       } catch (error) {
-        // Error already toasted by uploadTask's error handler
         setIsUploadingImage(false);
         setIsSubmitting(false);
         setImageUploadProgress(null);
-        return; // Stop submission if image upload fails
+        return; 
       }
       setIsUploadingImage(false);
       setImageUploadProgress(100); 
@@ -262,10 +274,11 @@ export function EventForm() {
         coupleId: firebaseUser.uid,
         pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
         location: values.location,
+        locationDisplayName: values.locationDisplayName || values.location.split(',')[0] || "מיקום לא ידוע", // Ensure fallback
         latitude: latitude,
         longitude: longitude,
         dateTime: Timestamp.fromDate(values.dateTime),
-        imageUrl: finalImageUrl, // Use the URL from storage or the placeholder
+        imageUrl: finalImageUrl, 
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -287,7 +300,7 @@ export function EventForm() {
       toast({ title: HEBREW_TEXT.general.error, description: errorMessage, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
-      setIsUploadingImage(false); // Ensure this is also reset
+      setIsUploadingImage(false); 
     }
   };
   
@@ -304,7 +317,6 @@ export function EventForm() {
   if (!isLoaded) return <Card className="w-full max-w-3xl mx-auto p-6 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary mb-2" /><p>{HEBREW_TEXT.general.loading} רכיב המיקום...</p></Card>;
 
   const displayImageUrl = imagePreviewUrl || "https://placehold.co/800x400.png?text=Event+Cover";
-
 
   return (
     <Form {...form}>
@@ -437,7 +449,6 @@ export function EventForm() {
           )}
 
           <CardContent className="pt-6 space-y-8">
-            {/* Hidden inputs for name and dateTime are no longer needed as they are controlled by the interactive header */}
             <div className="grid md:grid-cols-2 gap-8">
               <FormField
                 control={form.control}
@@ -525,7 +536,7 @@ export function EventForm() {
                       <Autocomplete
                         onLoad={onAutocompleteLoad}
                         onPlaceChanged={handlePlaceChanged}
-                        options={{ componentRestrictions: { country: "il" }, fields: ["formatted_address", "geometry.location"] }}
+                        options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location"] }}
                       >
                         <Input placeholder="התחל להקליד כתובת או שם מקום..." {...field} ref={locationInputRef} />
                       </Autocomplete>
@@ -597,8 +608,9 @@ export function EventForm() {
                     </FormItem>
                 )} />
             </div>
-            <Button type="submit" className="w-full font-body text-lg py-6" disabled={isSubmitting || isUploadingImage || !isLoaded}>
+            <Button type="submit" className="w-full font-body text-lg py-6" disabled={isSubmitting || isUploadingImage || (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) }>
               {(isSubmitting || isUploadingImage) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+              {(!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && !isSubmitting && !isUploadingImage) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
               {HEBREW_TEXT.event.createEventButton}
             </Button>
           </CardContent>

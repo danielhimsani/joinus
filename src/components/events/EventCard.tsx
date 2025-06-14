@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -51,7 +52,7 @@ export function EventCard({ event }: EventCardProps) {
         </CardDescription>
         <CardDescription className="flex items-center text-sm text-muted-foreground">
           <MapPin className="ml-1.5 h-4 w-4" />
-          {event.location}
+          {event.locationDisplayName || event.location}
         </CardDescription>
       </CardHeader>
       <CardContent className="text-sm space-y-2 flex-grow">

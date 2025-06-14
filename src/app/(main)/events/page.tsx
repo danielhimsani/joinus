@@ -44,10 +44,15 @@ export default function EventsPage() {
       return (timestampField as Timestamp).toDate();
     }
     if (timestampField instanceof Date) return timestampField;
-    return new Date(); 
+    // Attempt to parse if it's a string or number (milliseconds)
+    if (typeof timestampField === 'string' || typeof timestampField === 'number') {
+        const d = new Date(timestampField);
+        if (!isNaN(d.getTime())) return d;
+    }
+    console.warn("safeToDate received unhandled type or invalid date:", timestampField);
+    return new Date(); // Fallback to current date if conversion fails
   };
 
-  // Effect for fetching initial data from Firestore
   useEffect(() => {
     const fetchEventsFromFirestore = async () => {
       setIsLoadingEvents(true);
@@ -68,12 +73,14 @@ export default function EventsPage() {
             numberOfGuests: data.numberOfGuests || 0,
             paymentOption: data.paymentOption || "free",
             location: data.location || "No location specified",
+            locationDisplayName: data.locationDisplayName || "",
             latitude: data.latitude || null,
             longitude: data.longitude || null,
             description: data.description || "",
             ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
             foodType: data.foodType || "notKosher",
             religionStyle: data.religionStyle || "mixed",
+            imageUrl: data.imageUrl,
           } as Event;
         });
         setAllEvents(fetchedEvents);
@@ -89,7 +96,6 @@ export default function EventsPage() {
   }, []); 
 
 
-  // Effect for client-side filtering
   useEffect(() => {
     let eventsToFilter = [...allEvents];
 
@@ -98,6 +104,7 @@ export default function EventsPage() {
       eventsToFilter = eventsToFilter.filter(event =>
           (event.name?.toLowerCase() || '').includes(queryText) ||
           (event.description?.toLowerCase() || '').includes(queryText) ||
+          (event.locationDisplayName?.toLowerCase() || '').includes(queryText) ||
           (event.location?.toLowerCase() || '').includes(queryText)
       );
     }
@@ -110,8 +117,10 @@ export default function EventsPage() {
       );
     }
     if (advancedFilters.location && advancedFilters.location.trim()) {
+      const advancedLocationQuery = advancedFilters.location.toLowerCase().trim();
       eventsToFilter = eventsToFilter.filter(event =>
-          (event.location?.toLowerCase() || '').includes(advancedFilters.location!.toLowerCase().trim())
+          (event.locationDisplayName?.toLowerCase() || '').includes(advancedLocationQuery) ||
+          (event.location?.toLowerCase() || '').includes(advancedLocationQuery)
       );
     }
     if (advancedFilters.date) {
@@ -221,7 +230,7 @@ export default function EventsPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
               <Input
                   type="search"
-                  placeholder={HEBREW_TEXT.general.search}
+                  placeholder={HEBREW_TEXT.general.searchEventsSimplePlaceholder}
                   className="w-full pl-10 pr-3"
                   value={simpleSearchQuery}
                   onChange={handleSimpleSearchChange}
@@ -230,7 +239,7 @@ export default function EventsPage() {
         </div>
 
         <div className="flex-shrink-0 md:hidden">
-          <Image src="/app_logo.png" alt="App Logo" width={150} height={45} data-ai-hint="app logo"/>
+          <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={100} height={30} data-ai-hint="app logo"/>
         </div>
       </div>
 
@@ -263,7 +272,7 @@ export default function EventsPage() {
                   <div className="mt-2 rounded-lg overflow-hidden shadow-md">
                     <GoogleMapComponent 
                         center={currentLocation} 
-                        eventLocations={filteredEvents.filter(e => e.latitude && e.longitude).map(e => ({lat: e.latitude!, lng: e.longitude!, name: e.name}))}
+                        eventLocations={filteredEvents.filter(e => e.latitude && e.longitude).map(e => ({lat: e.latitude!, lng: e.longitude!, name: e.locationDisplayName || e.name}))}
                     />
                   </div>
                 )}

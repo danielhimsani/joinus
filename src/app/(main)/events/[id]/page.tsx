@@ -48,7 +48,13 @@ const safeToDate = (timestampField: any): Date => {
       return (timestampField as Timestamp).toDate();
     }
     if (timestampField instanceof Date) return timestampField;
-    return new Date(); 
+    // Attempt to parse if it's a string or number (milliseconds)
+    if (typeof timestampField === 'string' || typeof timestampField === 'number') {
+        const d = new Date(timestampField);
+        if (!isNaN(d.getTime())) return d;
+    }
+    console.warn("safeToDate received unhandled type or invalid date:", timestampField);
+    return new Date(); // Fallback to current date if conversion fails
 };
 
 
@@ -70,7 +76,6 @@ export default function EventDetailPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
       setCurrentUser(user);
-      // No need to refetch event here unless auth state directly influences event visibility
     });
     return () => unsubscribe();
   }, []);
@@ -101,18 +106,15 @@ export default function EventDetailPage() {
             numberOfGuests: data.numberOfGuests || 0,
             paymentOption: data.paymentOption || "free",
             location: data.location || "No location specified",
+            locationDisplayName: data.locationDisplayName || "",
+            latitude: data.latitude || null,
+            longitude: data.longitude || null,
             description: data.description || "",
             ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
             foodType: data.foodType || "notKosher",
             religionStyle: data.religionStyle || "mixed",
+            imageUrl: data.imageUrl,
           } as Event);
-          // Mock guest data if owner, can be replaced with real data fetching later
-          // For now, keep it simple:
-          // if (currentUser && data.coupleId === currentUser.uid) {
-          // setJoinRequests([]); // Placeholder
-          // setApprovedGuests([]); // Placeholder
-          // }
-
         } else {
           setFetchError(HEBREW_TEXT.event.noEventsFound);
           setEvent(null);
@@ -127,36 +129,28 @@ export default function EventDetailPage() {
     };
 
     fetchEventData();
-  }, [eventId, currentUser]); // Added currentUser to re-evaluate if needed for owner-specific mock data (though removed for now)
+  }, [eventId]);
 
   const isOwner = event && currentUser && event.coupleId === currentUser.uid;
 
   const handleRequestToJoin = () => {
-    // TODO: Implement actual request to join logic (e.g., write to Firestore)
     toast({ title: HEBREW_TEXT.general.success, description: "בקשתך להצטרף נשלחה (דמה)!" });
   };
 
   const handleApproveRequest = (guestId: string) => {
-    // TODO: Implement actual approval logic
     toast({ title: HEBREW_TEXT.general.success, description: `בקשת האורח אושרה (דמה).` });
-    // setApprovedGuests(prev => [...prev, joinRequests.find(g => g.id === guestId)!]);
-    // setJoinRequests(prev => prev.filter(g => g.id !== guestId));
   };
 
   const handleRejectRequest = (guestId: string) => {
-    // TODO: Implement actual rejection logic
     toast({ title: HEBREW_TEXT.general.success, description: `בקשת האורח נדחתה (דמה).` });
-    // setJoinRequests(prev => prev.filter(g => g.id !== guestId));
   };
 
   const handleRateGuest = (guestId: string, rating: 'positive' | 'negative') => {
-    // TODO: Implement actual rating logic
     toast({
       title: HEBREW_TEXT.general.success,
       description: `האורח דורג ${rating === 'positive' ? HEBREW_TEXT.emojis.thumbsUp : HEBREW_TEXT.emojis.thumbsDown} (דמה)`,
     });
   };
-
 
   if (isLoading) {
     return (
@@ -228,7 +222,7 @@ export default function EventDetailPage() {
           <CardTitle className="font-headline text-3xl md:text-4xl text-foreground">{event.name}</CardTitle>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-muted-foreground mt-2">
             <span className="flex items-center"><CalendarDays className="ml-1.5 h-5 w-5 text-primary" /> {format(new Date(event.dateTime), 'PPPPp', { locale: he })}</span>
-            <span className="flex items-center"><MapPin className="ml-1.5 h-5 w-5 text-primary" /> {event.location}</span>
+            <span className="flex items-center"><MapPin className="ml-1.5 h-5 w-5 text-primary" /> {event.locationDisplayName || event.location}</span>
           </div>
         </CardHeader>
         <CardContent className="p-6">
@@ -329,7 +323,7 @@ export default function EventDetailPage() {
                 ) : (
                   <p className="text-muted-foreground">{HEBREW_TEXT.event.noApprovedGuests} (תכונה זו תורחב בהמשך)</p>
                 )}
-                 <Button variant="outline" className="mt-4 w-full md:w-auto" disabled> {/* Disabled until implemented */}
+                 <Button variant="outline" className="mt-4 w-full md:w-auto" disabled> 
                     <MessageSquare className="ml-2 h-4 w-4" />
                     {HEBREW_TEXT.event.broadcastMessage} (בקרוב)
                  </Button>
@@ -341,5 +335,3 @@ export default function EventDetailPage() {
     </div>
   );
 }
-
-    

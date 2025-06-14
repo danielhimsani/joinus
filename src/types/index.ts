@@ -24,6 +24,7 @@ export interface Event {
   pricePerGuest?: number;
   paymentOption: PaymentOption;
   location: string; // Formatted address
+  locationDisplayName?: string; // User-friendly display name (e.g., business name)
   latitude?: number | null; // For map coordinates
   longitude?: number | null; // For map coordinates
   dateTime: Date;
@@ -71,3 +72,4 @@ export interface LeaderboardEntry {
   score: number; // e.g., number of events attended positively
   rank?: number;
 }
+
