@@ -5,12 +5,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, Loader2, ImagePlus, Info } from "lucide-react";
+import { CalendarIcon, Loader2, ImagePlus, Info, Edit2 } from "lucide-react"; // Added Edit2
 import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import React, { useState, useEffect, useRef } from "react";
 import type { User as FirebaseUser } from "firebase/auth";
-import { collection, addDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, Timestamp, doc, updateDoc } from "firebase/firestore";
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { db, auth as firebaseAuthInstance, storage } from "@/lib/firebase";
 import { Autocomplete, useJsApiLoader } from "@react-google-maps/api";
@@ -35,7 +35,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent } from "@/components/ui/card";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import type { PaymentOption, FoodType, ReligionStyle } from "@/types";
+import type { PaymentOption, FoodType, ReligionStyle, Event as EventType } from "@/types";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
@@ -61,7 +61,6 @@ const paymentOptions: { value: PaymentOption; label: string }[] = [
     { value: "free", label: HEBREW_TEXT.event.free },
 ];
 
-
 const formSchema = z.object({
   name: z.string().min(3, { message: "שם אירוע חייב להכיל לפחות 3 תווים." }),
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
@@ -74,14 +73,14 @@ const formSchema = z.object({
   ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([25, 55]),
   foodType: z.enum(["kosherMeat", "kosherDairy", "kosherParve", "notKosher"]),
   religionStyle: z.enum(["secular", "traditional", "religious", "mixed"]),
-  imageUrl: z.string().optional(),
+  imageUrl: z.string().optional(), // This will store the final URL or indicate a file is selected
 }).refine(data => {
     if (data.paymentOption === 'fixed') {
-        return data.pricePerGuest !== undefined && data.pricePerGuest > 0;
+        return data.pricePerGuest !== undefined && data.pricePerGuest >= 0; // Allow 0 for price
     }
     return true;
 }, {
-    message: "יש להזין מחיר לאורח כאשר אפשרות התשלום היא מחיר קבוע.",
+    message: "יש להזין מחיר לאורח (יכול להיות 0) כאשר אפשרות התשלום היא מחיר קבוע.",
     path: ["pricePerGuest"],
 });
 
@@ -96,11 +95,23 @@ function promiseWithTimeout<T>(promise: Promise<T>, ms: number, timeoutError = n
 
 const libraries: ("places" | "marker")[] = ['places', 'marker'];
 
-export function EventForm() {
+interface EventFormProps {
+    initialEventData?: EventType | null;
+    isEditMode?: boolean;
+    pageTitle?: string;
+    submitButtonText?: string;
+}
+
+export function EventForm({ 
+    initialEventData = null, 
+    isEditMode = false,
+    pageTitle: propPageTitle,
+    submitButtonText: propSubmitButtonText
+}: EventFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [, setCurrentUser] = useState<FirebaseUser | null>(null); 
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null); 
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [trueFormattedAddress, setTrueFormattedAddress] = useState<string | null>(null);
@@ -109,7 +120,7 @@ export function EventForm() {
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false); 
   const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
-  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(!isEditMode); // Start editing name if not in edit mode
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -117,7 +128,7 @@ export function EventForm() {
   const locationInputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script', // Consistent ID
+    id: 'google-map-script-event-form',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries, 
     language: 'iw',
@@ -134,23 +145,53 @@ export function EventForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "שם האירוע שלכם",
-      numberOfGuests: 10,
-      paymentOption: "fixed",
-      pricePerGuest: 100,
-      location: "",
-      locationDisplayName: "",
-      description: "",
-      ageRange: [25, 55], 
-      foodType: "kosherParve",
-      religionStyle: "mixed",
-      imageUrl: "", 
+      name: isEditMode && initialEventData ? initialEventData.name : "שם האירוע שלכם",
+      numberOfGuests: isEditMode && initialEventData ? initialEventData.numberOfGuests : 10,
+      paymentOption: isEditMode && initialEventData ? initialEventData.paymentOption : "fixed",
+      pricePerGuest: isEditMode && initialEventData ? initialEventData.pricePerGuest : 100,
+      location: isEditMode && initialEventData ? (initialEventData.locationDisplayName || initialEventData.location) : "",
+      locationDisplayName: isEditMode && initialEventData ? initialEventData.locationDisplayName : "",
+      description: isEditMode && initialEventData ? initialEventData.description : "",
+      ageRange: isEditMode && initialEventData ? initialEventData.ageRange : [25, 55], 
+      foodType: isEditMode && initialEventData ? initialEventData.foodType : "kosherParve",
+      religionStyle: isEditMode && initialEventData ? initialEventData.religionStyle : "mixed",
+      imageUrl: isEditMode && initialEventData ? initialEventData.imageUrl : "", 
+      dateTime: isEditMode && initialEventData ? new Date(initialEventData.dateTime) : undefined,
     },
   });
+  
+  useEffect(() => {
+    if (isEditMode && initialEventData) {
+      form.reset({
+        name: initialEventData.name,
+        numberOfGuests: initialEventData.numberOfGuests,
+        paymentOption: initialEventData.paymentOption,
+        pricePerGuest: initialEventData.pricePerGuest,
+        location: initialEventData.locationDisplayName || initialEventData.location,
+        locationDisplayName: initialEventData.locationDisplayName,
+        dateTime: new Date(initialEventData.dateTime),
+        description: initialEventData.description,
+        ageRange: initialEventData.ageRange,
+        foodType: initialEventData.foodType,
+        religionStyle: initialEventData.religionStyle,
+        imageUrl: initialEventData.imageUrl, // For validation, not for display directly
+      });
+      if (initialEventData.imageUrl && initialEventData.imageUrl !== "https://placehold.co/800x400.png?text=Event+Cover") {
+        setImagePreviewUrl(initialEventData.imageUrl);
+      }
+      setLatitude(initialEventData.latitude || null);
+      setLongitude(initialEventData.longitude || null);
+      setTrueFormattedAddress(initialEventData.location || null); // This is the full address
+      setIsEditingName(false); // Don't start editing name in edit mode by default
+    }
+  }, [isEditMode, initialEventData, form]);
+
 
   const paymentOptionValue = form.watch("paymentOption");
   const eventNameValue = form.watch("name");
   const eventDateTimeValue = form.watch("dateTime");
+  const pageTitle = propPageTitle || (isEditMode ? HEBREW_TEXT.event.editEvent : HEBREW_TEXT.event.createEventTitle);
+  const submitButtonText = propSubmitButtonText || (isEditMode ? "שמור שינויים" : HEBREW_TEXT.event.createEventButton);
 
   useEffect(() => {
     if (isEditingName && nameInputRef.current) {
@@ -175,13 +216,13 @@ export function EventForm() {
         setImageFile(compressedFile);
         const previewUrl = URL.createObjectURL(compressedFile);
         setImagePreviewUrl(previewUrl);
-        form.setValue("imageUrl", "file-selected"); // Indicate file is selected for validation if needed
+        form.setValue("imageUrl", "file-selected-for-upload"); // Indicate file is selected
       } catch (error) {
         console.error("Error compressing image:", error);
         toast({ title: "שגיאה בדחיסת תמונה", description: (error instanceof Error) ? error.message : String(error), variant: "destructive" });
         setImageFile(null); 
-        setImagePreviewUrl(null);
-        form.setValue("imageUrl", undefined);
+        setImagePreviewUrl(isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : null); // Revert to original if edit mode
+        form.setValue("imageUrl", isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : undefined);
       }
     }
   };
@@ -193,14 +234,15 @@ export function EventForm() {
         const displayName = place.name || place.formatted_address?.split(',')[0] || "מיקום לא ידוע";
         const formattedAddress = place.formatted_address || displayName;
 
-        form.setValue("location", displayName, { shouldValidate: true }); // Input shows display name
+        form.setValue("location", displayName, { shouldValidate: true }); 
         form.setValue("locationDisplayName", displayName, { shouldValidate: true });
-        setTrueFormattedAddress(formattedAddress); // Store full address separately
+        setTrueFormattedAddress(formattedAddress); 
         
         setLatitude(place.geometry.location.lat());
         setLongitude(place.geometry.location.lng());
       } else {
-        setTrueFormattedAddress(null);
+        // If place is not valid, clear specific location fields but keep user input
+        setTrueFormattedAddress(null); 
         const currentLocationValue = form.getValues("location"); 
         form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false });
         setLatitude(null);
@@ -218,19 +260,18 @@ export function EventForm() {
     setIsUploadingImage(false); 
     setImageUploadProgress(null);
 
-    const firebaseUser = firebaseAuthInstance.currentUser;
-    if (!firebaseUser?.uid) {
+    if (!currentUser?.uid) {
       toast({ title: HEBREW_TEXT.general.error, description: "עליך להיות מחובר. מועבר לדף ההתחברות...", variant: "destructive" });
       setIsSubmitting(false);
       router.push('/signin');
       return;
     }
 
-    let finalImageUrl = `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name)}`; 
+    let finalImageUrl = isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name)}`; 
 
     if (imageFile) {
       setIsUploadingImage(true);
-      const filePath = `event_images/${firebaseUser.uid}/${Date.now()}-${imageFile.name}`;
+      const filePath = `event_images/${currentUser.uid}/${Date.now()}-${imageFile.name}`;
       const imageStorageRef = storageRef(storage, filePath);
       const uploadTask = uploadBytesResumable(imageStorageRef, imageFile);
 
@@ -263,33 +304,40 @@ export function EventForm() {
       setImageUploadProgress(100); 
     }
     
-    try {
-      await firebaseUser.getIdToken(true); 
-      const eventData = {
+    const eventDataPayload = {
         ...values, 
-        ownerUids: [firebaseUser.uid], // Changed from coupleId to ownerUids
-        pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
+        ownerUids: isEditMode && initialEventData ? initialEventData.ownerUids : [currentUser.uid],
+        pricePerGuest: values.paymentOption === 'fixed' ? (values.pricePerGuest ?? 0) : null,
         location: trueFormattedAddress || values.location, 
         locationDisplayName: values.locationDisplayName || values.location.split(',')[0] || "מיקום לא ידוע",
         latitude: latitude,
         longitude: longitude,
         dateTime: Timestamp.fromDate(values.dateTime),
         imageUrl: finalImageUrl, 
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      };
+    };
 
-      const addOperation = addDoc(collection(db, "events"), eventData);
-      await promiseWithTimeout(addOperation, 15000); 
-      
-      toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" נוצר בהצלחה!` });
-      router.push("/events");
+    try {
+      await currentUser.getIdToken(true); 
 
+      if (isEditMode && initialEventData?.id) {
+        const eventDocRef = doc(db, "events", initialEventData.id);
+        // Remove createdAt if it exists in payload to prevent updating it
+        const { createdAt, ...updatePayload } = eventDataPayload; 
+        await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
+        toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" עודכן בהצלחה!` });
+        router.push(`/events/${initialEventData.id}`);
+      } else {
+        const payloadWithCreate = {...eventDataPayload, createdAt: serverTimestamp()};
+        const newEventDoc = await promiseWithTimeout(addDoc(collection(db, "events"), payloadWithCreate), 15000); 
+        toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" נוצר בהצלחה!` });
+        router.push(`/events/${newEventDoc.id}`);
+      }
     } catch (error) {
-      console.error("Error creating event:", error);
-      let errorMessage = "שגיאה ביצירת האירוע.";
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} event:`, error);
+      let errorMessage = `שגיאה ב${isEditMode ? 'עדכון' : 'יצירת'} האירוע.`;
        if (error instanceof Error && error.message.includes('Operation timed out')) {
-           errorMessage = "יצירת האירוע ארכה זמן רב מדי. אנא בדוק אם האירוע נוצר או נסה שוב.";
+           errorMessage = `${isEditMode ? 'עדכון' : 'יצירת'} האירוע ארכה זמן רב מדי. אנא בדוק אם האירוע ${isEditMode ? 'עודכן' : 'נוצר'} או נסה שוב.`;
        } else if (error instanceof Error) {
            errorMessage = `${errorMessage} ${error.message}`;
        }
@@ -310,9 +358,11 @@ export function EventForm() {
       </Card>
     );
   }
-  if (!isLoaded) return <Card className="w-full max-w-3xl mx-auto p-6 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary mb-2" /><p>{HEBREW_TEXT.general.loading} רכיב המיקום...</p></Card>;
+  if (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return <Card className="w-full max-w-3xl mx-auto p-6 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary mb-2" /><p>{HEBREW_TEXT.general.loading} רכיב המיקום...</p></Card>;
 
-  const displayImageUrl = imagePreviewUrl || "https://placehold.co/800x400.png?text=Event+Cover";
+  const currentImageToDisplay = imagePreviewUrl || (isEditMode && initialEventData?.imageUrl) || "https://placehold.co/800x400.png?text=Event+Cover";
+  const headerTitle = eventNameValue || (isEditMode && initialEventData?.name) || "שם האירוע שלכם";
+
 
   return (
     <Form {...form}>
@@ -320,14 +370,14 @@ export function EventForm() {
         <Card className="w-full max-w-3xl mx-auto overflow-hidden">
           <div className="relative w-full h-64 md:h-80 bg-muted group">
             <Image
-              src={displayImageUrl}
-              alt={eventNameValue || "Event cover image"}
+              src={currentImageToDisplay}
+              alt={headerTitle}
               layout="fill"
               objectFit="cover"
               className="transition-opacity duration-300 ease-in-out"
-              data-ai-hint="event cover"
-              key={displayImageUrl} 
-              priority
+              data-ai-hint="event cover wedding"
+              key={currentImageToDisplay} 
+              priority={!isEditMode} // Prioritize only for new events
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
             
@@ -351,41 +401,43 @@ export function EventForm() {
 
             <div className="absolute bottom-4 left-4 right-4 z-10 p-4 text-white">
               {isEditingName ? (
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <Input
-                      ref={(e) => {
-                        field.ref(e);
-                        nameInputRef.current = e;
-                      }}
-                      value={field.value}
-                      onChange={field.onChange}
-                      onBlur={(e) => {
-                        field.onBlur();
-                        setIsEditingName(false);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault(); 
-                          setIsEditingName(false);
-                        } else if (e.key === 'Escape') {
-                           setIsEditingName(false);
-                        }
-                      }}
-                      className="text-3xl md:text-4xl font-bold bg-transparent border-0 border-b-2 border-white/50 focus:border-white focus:ring-0 p-0 h-auto text-white placeholder-white/70"
-                    />
-                  )}
-                />
+                 <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <div className="flex items-center">
+                        <Input
+                          ref={(e) => { field.ref(e); nameInputRef.current = e; }}
+                          {...field}
+                          onBlur={(e) => { field.onBlur(); setIsEditingName(false); }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') { e.preventDefault(); setIsEditingName(false); } 
+                            else if (e.key === 'Escape') { setIsEditingName(false); }
+                          }}
+                          className="text-3xl md:text-4xl font-bold bg-transparent border-0 border-b-2 border-white/50 focus:border-white focus:ring-0 p-0 h-auto text-white placeholder-white/70 flex-grow"
+                        />
+                      </div>
+                    )}
+                  />
               ) : (
-                <h1 
-                    className="text-3xl md:text-4xl font-bold cursor-pointer hover:opacity-80 transition-opacity" 
-                    onClick={() => setIsEditingName(true)}
-                    title="לחץ לעריכת שם האירוע"
-                >
-                  {eventNameValue || "שם האירוע שלכם"}
-                </h1>
+                <div className="flex items-center group/titleedit">
+                    <h1 
+                        className="text-3xl md:text-4xl font-bold cursor-pointer hover:opacity-80 transition-opacity flex-grow" 
+                        onClick={() => setIsEditingName(true)}
+                        title="לחץ לעריכת שם האירוע"
+                    >
+                    {headerTitle}
+                    </h1>
+                    <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        className="ml-2 text-white opacity-0 group-hover/titleedit:opacity-100 focus:opacity-100 transition-opacity"
+                        onClick={() => setIsEditingName(true)}
+                    >
+                        <Edit2 className="h-5 w-5"/>
+                    </Button>
+                </div>
               )}
               <Popover>
                 <PopoverTrigger asChild>
@@ -446,6 +498,14 @@ export function EventForm() {
           )}
 
           <CardContent className="pt-6 space-y-8">
+             {/* Hidden field for imageUrl to satisfy schema if no image is explicitly uploaded/changed but one exists */}
+            {isEditMode && initialEventData?.imageUrl && !imageFile && (
+                <FormField
+                    control={form.control}
+                    name="imageUrl"
+                    render={({ field }) => <input type="hidden" {...field} value={initialEventData.imageUrl} />}
+                />
+            )}
             <div className="grid md:grid-cols-2 gap-8">
               <FormField
                 control={form.control}
@@ -545,10 +605,14 @@ export function EventForm() {
                             onChange={(e) => {
                                 field.onChange(e); 
                                 if (trueFormattedAddress || latitude || longitude) {
+                                    // If user types, clear previously selected autocomplete data
+                                    // This ensures that if they type and don't select from autocomplete,
+                                    // we don't use stale lat/lng.
                                     setTrueFormattedAddress(null);
                                     setLatitude(null);
                                     setLongitude(null);
                                 }
+                                // Keep locationDisplayName in sync with the input field for manual entries
                                 form.setValue("locationDisplayName", e.target.value, { shouldValidate: false });
                             }}
                         />
@@ -595,7 +659,7 @@ export function EventForm() {
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>{HEBREW_TEXT.event.foodType}</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="בחר סוג אוכל" /></SelectTrigger></FormControl>
                         <SelectContent>
                         {foodTypes.map(type => (<SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>))}
@@ -610,7 +674,7 @@ export function EventForm() {
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>{HEBREW_TEXT.event.religionStyle}</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="בחר סגנון" /></SelectTrigger></FormControl>
                         <SelectContent>
                         {religionStyles.map(style => (<SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>))}
@@ -623,7 +687,7 @@ export function EventForm() {
             <Button type="submit" className="w-full font-body text-lg py-6" disabled={isSubmitting || isUploadingImage || (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) }>
               {(isSubmitting || isUploadingImage) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
               {(!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && !isSubmitting && !isUploadingImage) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-              {HEBREW_TEXT.event.createEventButton}
+              {submitButtonText}
             </Button>
           </CardContent>
         </Card>
@@ -631,3 +695,4 @@ export function EventForm() {
     </Form>
   );
 }
+
