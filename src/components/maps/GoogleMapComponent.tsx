@@ -63,7 +63,7 @@ export function GoogleMapComponent({
     if (isLoaded && typeof window !== 'undefined' && window.google && window.google.maps) {
       setEventMarkerIcon({
         url: '/ring-marker.png', // Path to your PNG in the public folder
-        scaledSize: new window.google.maps.Size(36, 48), // Adjust as needed for your PNG (width, height)
+        scaledSize: new window.google.maps.Size(36, 48), // Adjust as needed (width, height)
         anchor: new window.google.maps.Point(18, 48),     // Adjust anchor (half of width, full height for bottom-center)
       });
     }
@@ -104,7 +104,7 @@ export function GoogleMapComponent({
     );
   }
 
-  if (!isLoaded || !eventMarkerIcon) {
+  if (!isLoaded || !eventMarkerIcon) { // Wait for custom icon to be ready too
     return <Skeleton className="h-[400px] w-full rounded-lg" />;
   }
 
@@ -125,7 +125,7 @@ export function GoogleMapComponent({
           key={loc.id + '-' + loc.lat + '-' + loc.lng} 
           position={{ lat: loc.lat, lng: loc.lng }}
           onClick={() => handleMarkerClick(loc)}
-          icon={eventMarkerIcon} // Use the PNG icon
+          icon={eventMarkerIcon} // Use the custom PNG icon
         />
       ))}
 
@@ -134,14 +134,14 @@ export function GoogleMapComponent({
           position={infoWindowPosition}
           onCloseClick={handleMapClick} 
           options={{ 
-            pixelOffset: new window.google.maps.Size(0, -50), // Adjusted offset for typical pin height
+            pixelOffset: new window.google.maps.Size(0, -50), // Adjusted for the custom icon height
             disableAutoPan: true 
           }} 
         >
           <div className="p-1 space-y-2 max-w-[280px] bg-background rounded-md shadow-lg">
             {selectedEvents.map(event => (
               <div key={event.id} className="border-b border-border last:border-b-0 pb-1.5 mb-1.5 last:pb-0 last:mb-0">
-                <Link href={`/events/${event.id}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline text-sm block break-words">
+                <Link href={`/events/${event.id}`} className="font-semibold text-primary hover:underline text-sm block break-words">
                   {event.name}
                 </Link>
                 <p className="text-xs text-muted-foreground">
