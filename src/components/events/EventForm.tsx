@@ -90,7 +90,7 @@ function promiseWithTimeout<T>(promise: Promise<T>, ms: number, timeoutError = n
   return Promise.race([promise, timeout]);
 }
 
-const libraries: ("places")[] = ['places'];
+const libraries: ("places" | "marker")[] = ['places', 'marker']; // Standardized libraries
 
 export function EventForm() {
   const router = useRouter();
@@ -104,6 +104,7 @@ export function EventForm() {
   const locationInputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script', // Standardized ID
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries,
     language: 'iw',
@@ -175,9 +176,23 @@ export function EventForm() {
       router.push('/signin');
       return;
     }
+    
+    console.log("Current user from firebaseAuthInstance.currentUser:", firebaseUser?.uid);
+    if (!firebaseUser?.uid) {
+       toast({
+        title: HEBREW_TEXT.general.error,
+        description: "UID של משתמש לא נמצא. נסה להתחבר מחדש.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
+      console.log("Forcing ID token refresh for user:", firebaseUser.uid);
       await firebaseUser.getIdToken(true); 
+      console.log("ID token refreshed successfully.");
+
 
       const eventData = {
         coupleId: firebaseUser.uid,
@@ -193,13 +208,15 @@ export function EventForm() {
         ageRange: values.ageRange,
         foodType: values.foodType,
         religionStyle: values.religionStyle,
-        imageUrl: values.imageUrl || "",
+        imageUrl: values.imageUrl || `https://placehold.co/600x400.png?text=${encodeURIComponent(values.name)}`,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
+      console.log("Attempting to add document to Firestore with data:", eventData);
       const addOperation = addDoc(collection(db, "events"), eventData);
       const docRef = await promiseWithTimeout(addOperation, 15000); 
+      console.log("Document written with ID: ", docRef.id);
       
       toast({
         title: HEBREW_TEXT.general.success,
@@ -400,9 +417,8 @@ export function EventForm() {
                       >
                         <Input
                           placeholder="התחל להקליד כתובת או שם מקום..."
-                          {...field} // Spread field props here for RHF to control the input
-                          ref={locationInputRef} // Use this if you need direct access to input DOM element
-                                                // but Autocomplete binds to the child Input directly
+                          {...field} 
+                          ref={locationInputRef} 
                         />
                       </Autocomplete>
                     </FormControl>
@@ -538,3 +554,5 @@ export function EventForm() {
     </Card>
   );
 }
+
+    
