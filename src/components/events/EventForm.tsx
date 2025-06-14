@@ -118,21 +118,21 @@ export function EventForm({
 }: EventFormProps) {
   const router = useRouter();
   const { toast } = useToast();
-
+  
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "שם האירוע שלכם",
       ownerUids: [], // Will be populated by useEffect or initialEventData
       numberOfGuests: 10,
-      paymentOption: "fixed",
+      paymentOption: "fixed" as PaymentOption,
       pricePerGuest: 100,
       location: "",
       locationDisplayName: "",
       description: "",
       ageRange: [25, 55],
-      foodType: "kosherParve",
-      religionStyle: "mixed",
+      foodType: "kosherParve" as FoodType,
+      religionStyle: "mixed" as ReligionStyle,
       imageUrl: "",
       dateTime: undefined,
     },
@@ -162,7 +162,7 @@ export function EventForm({
 
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script', // Standardized ID
+    id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries,
     language: 'iw',
@@ -204,7 +204,10 @@ export function EventForm({
       setTrueFormattedAddress(initialEventData.location || null);
       setIsEditingName(false);
     } else if (!isEditMode && currentUser) {
-        form.setValue("ownerUids", [currentUser.uid]);
+        // Ensure current user is added to ownerUids if form is not in edit mode and user is available
+        if (form.getValues("ownerUids").length === 0) {
+            form.setValue("ownerUids", [currentUser.uid]);
+        }
     }
   }, [isEditMode, initialEventData, form, currentUser]);
 
@@ -218,15 +221,7 @@ export function EventForm({
     setIsLoadingOwnerDetails(true);
     try {
       const fetchedProfiles: UserProfile[] = [];
-      // Create a new array for current iteration to avoid modifying ownerProfileDetails in dependency array directly
-      const currentProfilesSnapshot = [...ownerProfileDetails];
-
       for (const uid of uids) {
-        const existingProfile = currentProfilesSnapshot.find(p => p.firebaseUid === uid);
-        if (existingProfile) {
-            fetchedProfiles.push(existingProfile);
-            continue;
-        }
         if (currentUser && currentUser.uid === uid) {
             fetchedProfiles.push({
                 id: uid, firebaseUid: uid, name: currentUser.displayName || "משתמש נוכחי",
@@ -240,7 +235,7 @@ export function EventForm({
         if (userDocSnap.exists()) {
           fetchedProfiles.push({ id: userDocSnap.id, ...userDocSnap.data() } as UserProfile);
         } else {
-          fetchedProfiles.push({ id: uid, firebaseUid: uid, name: "בעלים לא ידוע", email: "", profileImageUrl: "" });
+          fetchedProfiles.push({ id: uid, firebaseUid: uid, name: `בעלים (UID: ${uid.substring(0,5)}...)`, email: "", profileImageUrl: "" });
         }
       }
       setOwnerProfileDetails(fetchedProfiles);
@@ -250,36 +245,39 @@ export function EventForm({
     } finally {
       setIsLoadingOwnerDetails(false);
     }
-  }, [currentUser, toast, ownerProfileDetails]);
+  }, [currentUser, toast]); // Removed ownerProfileDetails from dependencies
 
   useEffect(() => {
     if (watchedOwnerUids && watchedOwnerUids.length > 0) {
       fetchOwnerProfiles(watchedOwnerUids);
     } else if (currentUser && !isEditMode && (!watchedOwnerUids || watchedOwnerUids.length === 0)) {
+        // This case should ideally be handled by the initial defaultValues or the first useEffect
+        // If ownerUids is still empty here for a new form with a logged-in user, set it.
         form.setValue("ownerUids", [currentUser.uid]);
         // fetchOwnerProfiles will be called by the change in watchedOwnerUids
     } else {
-        setOwnerProfileDetails([]);
+        setOwnerProfileDetails([]); // Clear if no UIDs (e.g., after removing all)
     }
   }, [watchedOwnerUids, fetchOwnerProfiles, currentUser, isEditMode, form]);
 
   const handleAddOwnerToForm = (newOwner: UserProfile) => {
-    if (!watchedOwnerUids.includes(newOwner.firebaseUid)) {
-      form.setValue("ownerUids", [...watchedOwnerUids, newOwner.firebaseUid], { shouldValidate: true, shouldDirty: true });
-      if (!ownerProfileDetails.some(p => p.firebaseUid === newOwner.firebaseUid)) {
-          setOwnerProfileDetails(prev => [...prev, newOwner]);
-      }
+    const currentUids = form.getValues("ownerUids") || [];
+    if (!currentUids.includes(newOwner.firebaseUid)) {
+      form.setValue("ownerUids", [...currentUids, newOwner.firebaseUid], { shouldValidate: true, shouldDirty: true });
+      // ownerProfileDetails will be updated by the useEffect watching ownerUids
     }
     setShowAddOwnerModal(false);
   };
 
   const handleConfirmRemoveOwner = (uidToRemove: string) => {
-    if (watchedOwnerUids.length <= 1) {
+    const currentUids = form.getValues("ownerUids") || [];
+    if (currentUids.length <= 1) {
         toast({ title: HEBREW_TEXT.general.error, description: HEBREW_TEXT.event.cannotRemoveLastOwner, variant: "destructive" });
         setOwnerToRemove(null);
         return;
     }
-    form.setValue("ownerUids", watchedOwnerUids.filter(uid => uid !== uidToRemove), { shouldValidate: true, shouldDirty: true });
+    form.setValue("ownerUids", currentUids.filter(uid => uid !== uidToRemove), { shouldValidate: true, shouldDirty: true });
+    // ownerProfileDetails will be updated by the useEffect watching ownerUids
     setOwnerToRemove(null);
   };
 
@@ -313,13 +311,13 @@ export function EventForm({
         setImageFile(compressedFile);
         const previewUrl = URL.createObjectURL(compressedFile);
         setImagePreviewUrl(previewUrl);
-        form.setValue("imageUrl", "file-selected-for-upload");
+        form.setValue("imageUrl", "file-selected-for-upload", { shouldValidate: true });
       } catch (error) {
         console.error("Error compressing image:", error);
         toast({ title: "שגיאה בדחיסת תמונה", description: (error instanceof Error) ? error.message : String(error), variant: "destructive" });
         setImageFile(null);
         setImagePreviewUrl(isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : null);
-        form.setValue("imageUrl", isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : undefined);
+        form.setValue("imageUrl", isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : undefined, { shouldValidate: true });
       }
     }
   };
@@ -332,14 +330,14 @@ export function EventForm({
         const formattedAddress = place.formatted_address || displayName;
 
         form.setValue("location", displayName, { shouldValidate: true });
-        form.setValue("locationDisplayName", displayName, { shouldValidate: true });
+        form.setValue("locationDisplayName", displayName, { shouldValidate: false }); // No need to validate this specifically
         setTrueFormattedAddress(formattedAddress);
 
         setLatitude(place.geometry.location.lat());
         setLongitude(place.geometry.location.lng());
       } else {
-        setTrueFormattedAddress(null);
-        const currentLocationValue = form.getValues("location");
+        setTrueFormattedAddress(null); // Clear if place is invalid
+        const currentLocationValue = form.getValues("location"); // Keep the typed value
         form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false });
         setLatitude(null);
         setLongitude(null);
@@ -411,7 +409,7 @@ export function EventForm({
         ...values,
         ownerUids: values.ownerUids, 
         pricePerGuest: values.paymentOption === 'fixed' ? (values.pricePerGuest ?? 0) : null,
-        location: trueFormattedAddress || values.location,
+        location: trueFormattedAddress || values.location, // Use trueFormattedAddress if available
         locationDisplayName: values.locationDisplayName || values.location.split(',')[0] || "מיקום לא ידוע",
         latitude: latitude,
         longitude: longitude,
@@ -425,7 +423,7 @@ export function EventForm({
 
       if (isEditMode && initialEventData?.id) {
         const eventDocRef = doc(db, "events", initialEventData.id);
-        const { createdAt, ...updatePayload } = eventDataPayload;
+        const { createdAt, ...updatePayload } = eventDataPayload; // Exclude createdAt for updates
         await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
         toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" עודכן בהצלחה!` });
         router.push(`/events/${initialEventData.id}`);
@@ -458,17 +456,13 @@ export function EventForm({
       variant: "destructive",
     });
 
-    // Try to find the first element with an error
-    const firstErrorField = Object.keys(errors)[0];
+    const firstErrorField = Object.keys(errors)[0] as keyof FormSchemaType | undefined;
     if (firstErrorField) {
-        // Attempt to find the element by name or a related label
-        // This is a best-effort approach and might need adjustment based on your specific form structure
-        const fieldElement = document.querySelector(`[name="${firstErrorField}"], [for="${firstErrorField}"]`) as HTMLElement;
+        const fieldElement = document.querySelector(`[name="${firstErrorField}"], [id^="${firstErrorField}-"], [data-fieldname="${firstErrorField}"]`) as HTMLElement;
         
         if (fieldElement) {
             fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             try {
-                // Try focusing, but be mindful that not all elements are focusable or might be hidden
                 if (typeof fieldElement.focus === 'function') {
                     fieldElement.focus({ preventScroll: true });
                 }
@@ -508,8 +502,8 @@ export function EventForm({
               objectFit="cover"
               className="transition-opacity duration-300 ease-in-out"
               data-ai-hint="event cover wedding"
-              key={currentImageToDisplay}
-              priority={!isEditMode}
+              key={currentImageToDisplay} // Re-render if URL changes
+              priority={!isEditMode} // Prioritize image loading for new events
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
 
@@ -633,7 +627,7 @@ export function EventForm({
             <FormField
                 control={form.control}
                 name="ownerUids"
-                render={() => (
+                render={() => ( // field is not directly used for rendering list but needed for react-hook-form
                     <FormItem>
                         <div className="flex justify-between items-center mb-2">
                             <FormLabel className="text-lg font-semibold flex items-center">
@@ -665,7 +659,7 @@ export function EventForm({
                                         {owner.email && <p className="text-xs text-muted-foreground">{owner.email}</p>}
                                     </div>
                                 </div>
-                                {currentUser?.uid !== owner.firebaseUid && watchedOwnerUids.length > 1 && (
+                                {currentUser?.uid !== owner.firebaseUid && (form.getValues("ownerUids") || []).length > 1 && ( // Check form values for current UIDs
                                      <Button
                                         type="button"
                                         variant="ghost"
@@ -706,7 +700,7 @@ export function EventForm({
                   <FormItem>
                     <FormLabel>{HEBREW_TEXT.event.numberOfGuests}</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="50" {...field} />
+                      <Input type="number" placeholder="50" {...field} data-fieldname="numberOfGuests" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -716,7 +710,7 @@ export function EventForm({
                 control={form.control}
                 name="paymentOption"
                 render={({ field }) => (
-                    <FormItem className="space-y-3">
+                    <FormItem className="space-y-3" data-fieldname="paymentOption">
                     <FormLabel className="text-right">{HEBREW_TEXT.event.paymentOptions}</FormLabel>
                     <FormControl>
                         <RadioGroup
@@ -764,6 +758,7 @@ export function EventForm({
                             onBlur={field.onBlur}
                             ref={field.ref}
                             name={field.name}
+                            data-fieldname="pricePerGuest"
                           />
                         </FormControl>
                         <FormMessage />
@@ -794,13 +789,14 @@ export function EventForm({
                             }}
                             onChange={(e) => {
                                 field.onChange(e);
-                                if (trueFormattedAddress || latitude || longitude) {
+                                if (trueFormattedAddress || latitude || longitude) { // Clear geo data if user types manually
                                     setTrueFormattedAddress(null);
                                     setLatitude(null);
                                     setLongitude(null);
                                 }
                                 form.setValue("locationDisplayName", e.target.value, { shouldValidate: false });
                             }}
+                            data-fieldname="location"
                         />
                       </Autocomplete>
                     </FormControl>
@@ -817,7 +813,7 @@ export function EventForm({
                 <FormItem>
                   <FormLabel>{HEBREW_TEXT.event.description}</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="ספרו על האירוע, האווירה, מה מיוחד בו..." className="resize-none" rows={4} {...field} />
+                    <Textarea placeholder="ספרו על האירוע, האווירה, מה מיוחד בו..." className="resize-none" rows={4} {...field} data-fieldname="description"/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -829,7 +825,7 @@ export function EventForm({
                   control={form.control}
                   name="ageRange"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-fieldname="ageRange">
                       <FormLabel>{HEBREW_TEXT.event.ageRange}</FormLabel>
                       <FormControl>
                          <Slider value={field.value || [18, 80]} onValueChange={field.onChange} min={18} max={80} step={1} className={cn("py-3")} />
@@ -843,7 +839,7 @@ export function EventForm({
                 control={form.control}
                 name="foodType"
                 render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-fieldname="foodType">
                     <FormLabel>{HEBREW_TEXT.event.foodType}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="בחר סוג אוכל" /></SelectTrigger></FormControl>
@@ -858,7 +854,7 @@ export function EventForm({
                 control={form.control}
                 name="religionStyle"
                 render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-fieldname="religionStyle">
                     <FormLabel>{HEBREW_TEXT.event.religionStyle}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="בחר סגנון" /></SelectTrigger></FormControl>
@@ -884,7 +880,7 @@ export function EventForm({
             isOpen={showAddOwnerModal}
             onOpenChange={setShowAddOwnerModal}
             onOwnerAdded={handleAddOwnerToForm}
-            currentOwnerUids={currentUser ? [...watchedOwnerUids, currentUser.uid] : watchedOwnerUids} 
+            currentOwnerUids={currentUser ? [...(form.getValues("ownerUids") || []), currentUser.uid] : (form.getValues("ownerUids") || [])} 
         />
     )}
     {ownerToRemove && (
