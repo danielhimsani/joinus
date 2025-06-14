@@ -78,6 +78,7 @@ export const HEBREW_TEXT = {
     deleteConfirmationMessage: "האם אתה בטוח שברצונך למחוק אירוע זה? פעולה זו אינה ניתנת לשחזור.",
     eventDeletedSuccessfully: "האירוע נמחק בהצלחה.",
     errorDeletingEvent: "שגיאה במחיקת האירוע.",
+    errorDeletingImageFromStorage: "שגיאה במחיקת תמונת האירוע מהאחסון",
   },
   profile: {
     userProfile: "פרופיל משתמש",
@@ -164,3 +165,4 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
+

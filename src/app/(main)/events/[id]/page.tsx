@@ -166,8 +166,8 @@ export default function EventDetailPage() {
   };
 
   const handleDeleteEvent = async () => {
-    if (!event || !isOwner) {
-      toast({ title: HEBREW_TEXT.general.error, description: "אינך מורשה למחוק אירוע זה.", variant: "destructive"});
+    if (!event || !event.id || !isOwner) {
+      toast({ title: HEBREW_TEXT.general.error, description: "אינך מורשה למחוק אירוע זה או שפרטי האירוע חסרים.", variant: "destructive"});
       return;
     }
     setIsDeleting(true);
@@ -178,11 +178,19 @@ export default function EventDetailPage() {
           const imageStorageRef = storageRef(storage, event.imageUrl);
           await deleteObject(imageStorageRef);
         } catch (storageError: any) {
-          // Log storage error but continue with Firestore deletion if it's not critical (e.g., file not found)
-          if (storageError.code !== 'storage/object-not-found') {
-            console.warn("Error deleting image from storage, proceeding with Firestore deletion:", storageError);
-            // Optionally, inform the user that the image couldn't be deleted but the event data will be.
-            // toast({ title: "אזהרה", description: "שגיאה במחיקת תמונת האירוע מהאחסון, אך נתוני האירוע יימחקו.", variant: "default"});
+          if (storageError.code === 'storage/object-not-found') {
+            console.log("Image not found in storage (already deleted or never existed). This is okay.");
+          } else {
+            // More critical error, like permissions
+            console.error("Error deleting image from storage:", storageError);
+            toast({
+              title: HEBREW_TEXT.general.error,
+              description: HEBREW_TEXT.event.errorDeletingImageFromStorage + (storageError.message ? `: ${storageError.message}` : '. אנא בדוק הרשאות אחסון ב-Firebase.'),
+              variant: "destructive",
+              duration: 7000, // Longer duration for important errors
+            });
+            // Depending on policy, you might want to stop here or continue to delete Firestore doc.
+            // For now, we'll log and continue, but the user is notified.
           }
         }
       }
@@ -193,8 +201,9 @@ export default function EventDetailPage() {
 
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.event.eventDeletedSuccessfully });
       router.push('/profile'); 
-    } catch (error) {
-      console.error("Error deleting event:", error);
+    } catch (error)
+    {
+      console.error("Error deleting event (Firestore or other):", error);
       toast({ title: HEBREW_TEXT.general.error, description: HEBREW_TEXT.event.errorDeletingEvent + (error instanceof Error ? `: ${error.message}` : ''), variant: "destructive"});
     } finally {
       setIsDeleting(false);
@@ -424,3 +433,4 @@ export default function EventDetailPage() {
     </div>
   );
 }
+
