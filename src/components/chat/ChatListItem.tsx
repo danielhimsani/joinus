@@ -47,7 +47,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               </AvatarFallback>
             )}
           </Avatar>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex flex-col gap-1">
             <div className="flex justify-between items-start">
               <p className="text-md font-semibold truncate text-foreground">{displayName}</p>
               {unreadMessages > 0 && (
@@ -56,11 +56,11 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground truncate mt-0.5">
+            <p className="text-sm text-muted-foreground truncate">
               {chat.lastMessageSenderId === currentUserId ? `${HEBREW_TEXT.chat.you}: ` : ''}
               {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
             </p>
-            <p className="text-xs text-muted-foreground/80 mt-1 text-left">
+            <p className="text-xs text-muted-foreground/80 text-left">
               {lastMessageTimestamp}
             </p>
           </div>
