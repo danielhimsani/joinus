@@ -22,20 +22,20 @@ import { cn } from '@/lib/utils';
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth"; // Firebase Auth
 import { auth as firebaseAuthInstance } from "@/lib/firebase"; // Firebase Auth Instance
 
-// Navigation items for Desktop Top Bar (text only) - Profile link removed
+// Navigation items for Desktop Top Bar
 const desktopNavItems = [
   { href: '/events', label: HEBREW_TEXT.navigation.events },
   { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent },
   { href: '/messages', label: HEBREW_TEXT.navigation.messages },
-  // { href: '/profile', label: HEBREW_TEXT.navigation.profile }, // Removed
+  // Profile link is accessed via avatar dropdown
 ];
 
-// Navigation items for Mobile Sheet Menu (with icons) - Profile link removed
+// Navigation items for Mobile Sheet Menu
 const sheetNavItems = [
   { href: '/events', label: HEBREW_TEXT.navigation.events, icon: <Search className="ml-2 h-5 w-5" /> },
   { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: <PlusSquare className="ml-2 h-5 w-5" /> },
   { href: '/messages', label: HEBREW_TEXT.navigation.messages, icon: <MessageSquare className="ml-2 h-5 w-5" /> },
-  { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: <UserCircle className="ml-2 h-5 w-5" /> },
+  { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: <UserCircle className="ml-2 h-5 w-5" /> }, // Profile link remains in sheet for direct access
 ];
 
 
@@ -56,6 +56,9 @@ export default function Header() {
   const handleSignOut = async () => {
     try {
       await firebaseAuthInstance.signOut();
+      // Clear any local mock auth state if it was used before full Firebase integration
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userName');
       router.push('/'); // Redirect to home page after sign out
     } catch (error) {
       console.error("Error signing out: ", error);
@@ -67,7 +70,7 @@ export default function Header() {
     if (isLoadingAuth) {
       return <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />; // Skeleton for avatar
     }
-    if (!firebaseUser) return null; // Should not happen if isAuthenticated is true, but good check
+    if (!firebaseUser) return null;
 
     const userInitial = firebaseUser.displayName ? firebaseUser.displayName.charAt(0).toUpperCase() : (firebaseUser.email ? firebaseUser.email.charAt(0).toUpperCase() : 'U');
 
@@ -112,16 +115,14 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
-        {/* Left side: Logo, App Name, and Desktop Nav */}
-        <div className="flex items-center">
-          <Link href="/" className="flex items-center space-x-2 rtl:space-x-reverse">
-            {/* Replaced SVG AppLogo with PNG Image and removed text span */}
+        {/* Left side: Logo and Desktop Nav */}
+        <div className="flex items-center space-x-4 rtl:space-x-reverse"> {/* Added space-x-4 for padding */}
+          <Link href="/" className="flex items-center"> {/* Removed internal space-x from Link */}
             <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={100} height={30} className="h-auto" data-ai-hint="app logo" />
-            {/* The text "Join us" (HEBREW_TEXT.appName) was here and has been removed */}
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center space-x-1 rtl:space-x-reverse ml-6">
+          <nav className="hidden md:flex items-center space-x-1 rtl:space-x-reverse"> {/* Removed ml-6 */}
             {desktopNavItems.map((item) => (
               <Link
                 key={item.href}
@@ -164,9 +165,7 @@ export default function Header() {
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                 <SheetHeader className="mb-4 border-b pb-4">
                    <Link href="/" className="flex items-center space-x-2 rtl:space-x-reverse justify-center mb-2">
-                        {/* PNG Logo in Sheet Menu as well and removed text span */}
                         <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={83} height={24} className="h-auto" data-ai-hint="app logo" />
-                        {/* The text "Join us" (HEBREW_TEXT.appName) was here and has been removed */}
                     </Link>
                   <SheetTitle className="text-center text-lg font-normal text-muted-foreground">{HEBREW_TEXT.navigation.mobileMenuTitle}</SheetTitle>
                 </SheetHeader>
@@ -190,7 +189,6 @@ export default function Header() {
                     </Button>
                   ))}
                   <DropdownMenuSeparator className="my-2"/>
-                  {/* Auth buttons inside sheet menu for mobile if not logged in */}
                   {!isLoadingAuth && !firebaseUser && (
                     <>
                      <Button variant="ghost" asChild className="w-full justify-start p-3 text-base">
@@ -207,7 +205,6 @@ export default function Header() {
                       </Button>
                     </>
                   )}
-                  {/* If logged in on mobile, the UserNav is outside this list, handled by the main UserNav display */}
                 </nav>
               </SheetContent>
             </Sheet>
