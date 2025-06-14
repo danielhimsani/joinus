@@ -25,7 +25,8 @@ service cloud.firestore {
         return request.auth.uid in resource.data.participants;
       }
       function isOwner() {
-        return request.auth.uid in resource.data.ownerUids;
+        // Ensure ownerUids exists on the resource data before checking
+        return resource.data.ownerUids != null && request.auth.uid in resource.data.ownerUids;
       }
       function isGuest() {
         return request.auth.uid == resource.data.guestUid;
@@ -40,7 +41,7 @@ service cloud.firestore {
                        request.resource.data.ownerUids.size() > 0 && // Must have owners
                        request.resource.data.participants.size() == request.resource.data.ownerUids.size() + 1 && // participants = guest + owners
                        request.resource.data.status == 'pending_request' && // Initial status
-                       // Required fields check
+                       // Required fields check for chat creation
                        request.resource.data.keys().hasAll([
                          'eventId', 'guestUid', 'ownerUids', 'participants', 'status',
                          'createdAt', 'updatedAt', 'eventInfo', 'guestInfo',
@@ -48,7 +49,8 @@ service cloud.firestore {
                        ]) &&
                        // Ensure timestamps are server timestamps if possible, or valid on create
                        request.resource.data.createdAt == request.time &&
-                       request.resource.data.updatedAt == request.time;
+                       request.resource.data.updatedAt == request.time &&
+                       request.resource.data.lastMessageTimestamp == request.time;
 
 
       // Who can update a chat document?
@@ -56,7 +58,7 @@ service cloud.firestore {
                        // Check for immutable fields that should not change after creation
                        request.resource.data.eventId == resource.data.eventId &&
                        request.resource.data.guestUid == resource.data.guestUid &&
-                       request.resource.data.ownerUids == resource.data.ownerUids && // ownerUids list itself is immutable post-creation for this model
+                       request.resource.data.ownerUids == resource.data.ownerUids && 
                        request.resource.data.participants == resource.data.participants &&
                        request.resource.data.createdAt == resource.data.createdAt &&
                        (
@@ -67,11 +69,9 @@ service cloud.firestore {
                              request.resource.data.status == 'request_approved' ||
                              request.resource.data.status == 'active'
                            ) &&
-                           isOwner() &&
+                           isOwner() && // Only owner can make these status changes
                            // When owners perform these status changes, they primarily update status, updatedAt, and unreadCount.
-                           // lastMessage details are typically updated by new messages, not by these status actions.
-                           request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'updatedAt', 'unreadCount']) &&
-                           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastMessageText', 'lastMessageTimestamp', 'lastMessageSenderId']) // Ensure these are not changed by owner status update
+                           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'unreadCount'])
                          ) ||
                          // Scenario 2: General updates (like last message details, unread counts) by any participant.
                          // Status must NOT be changing to an owner-controlled state by a non-owner.
@@ -87,7 +87,10 @@ service cloud.firestore {
                            // Common updatable fields for message sending or read status
                            request.resource.data.diff(resource.data).affectedKeys().hasAny(
                              ['lastMessageText', 'lastMessageTimestamp', 'lastMessageSenderId', 'updatedAt', 'unreadCount', 'status']
-                           )
+                           ) &&
+                           // Ensure non-owners are not changing fields they shouldn't
+                           (!isGuest() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['eventInfo'])) &&
+                           (!isOwner() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['guestInfo']))
                          )
                        ) &&
                        request.resource.data.updatedAt == request.time; // Ensure updatedAt is always updated to server time
@@ -98,10 +101,11 @@ service cloud.firestore {
         allow read: if request.auth.uid in get(/databases/$(database)/documents/eventChats/$(chatId)).data.participants;
 
         // Allow participants to create messages if senderId matches their UID
+        // This rule also implies that the parent chat document must exist.
         allow create: if request.auth.uid in get(/databases/$(database)/documents/eventChats/$(chatId)).data.participants &&
                          request.resource.data.senderId == request.auth.uid &&
                          request.resource.data.timestamp == request.time && // Message timestamp must be server time
-                         request.resource.data.keys().hasAll(['senderId', 'text', 'timestamp', 'senderInfo']); // Required fields
+                         request.resource.data.keys().hasAll(['chatId', 'senderId', 'text', 'timestamp', 'senderInfo']); // Required fields
 
         // Generally, messages are immutable. Disallow updates/deletes for simplicity.
         allow update, delete: if false;
@@ -109,3 +113,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

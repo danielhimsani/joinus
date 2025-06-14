@@ -4,13 +4,13 @@
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import type { Event, UserProfile as GuestProfile } from '@/types';
+import type { Event, UserProfile as GuestProfile } from '@/types'; // GuestProfile might be removed if not used elsewhere
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, ThumbsUp, ThumbsDown, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2 } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2, MessageCircleMore } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +28,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+import { RequestToJoinModal } from '@/components/events/RequestToJoinModal'; // Import the new modal
 
 import { db, auth as firebaseAuthInstance, storage } from "@/lib/firebase";
 import { doc, getDoc, Timestamp, deleteDoc } from "firebase/firestore";
@@ -81,9 +83,7 @@ export default function EventDetailPage() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
-  const [joinRequests, setJoinRequests] = useState<GuestProfile[]>([]); 
-  const [approvedGuests, setApprovedGuests] = useState<GuestProfile[]>([]);
+  const [showRequestToJoinModal, setShowRequestToJoinModal] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
@@ -108,10 +108,26 @@ export default function EventDetailPage() {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
+          const ownerData: Event['owners'] = data.ownerUids 
+            ? await Promise.all(data.ownerUids.map(async (uid: string) => {
+                const userDoc = await getDoc(doc(db, "users", uid));
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    return {
+                        uid: uid,
+                        name: userData.name || "Unknown Owner",
+                        profileImageUrl: userData.profileImageUrl || ""
+                    };
+                }
+                return { uid: uid, name: "Unknown Owner", profileImageUrl: "" };
+            }))
+            : [];
+
           setEvent({
             id: docSnap.id,
             ...data,
             ownerUids: data.ownerUids || [],
+            owners: ownerData,
             dateTime: safeToDate(data.dateTime),
             createdAt: safeToDate(data.createdAt),
             updatedAt: safeToDate(data.updatedAt),
@@ -146,24 +162,17 @@ export default function EventDetailPage() {
 
   const isOwner = event && currentUser && event.ownerUids.includes(currentUser.uid);
 
-  const handleRequestToJoin = () => {
-    toast({ title: HEBREW_TEXT.general.success, description: "בקשתך להצטרף נשלחה (דמה)!" });
+  const handleOpenRequestToJoinModal = () => {
+    if (!currentUser) {
+        toast({ title: HEBREW_TEXT.general.error, description: "עליך להתחבר כדי לבקש להצטרף.", variant: "destructive" });
+        router.push('/signin');
+        return;
+    }
+    if (event && currentUser) { // Ensure event and currentUser are loaded
+        setShowRequestToJoinModal(true);
+    }
   };
 
-  const handleApproveRequest = (guestId: string) => {
-    toast({ title: HEBREW_TEXT.general.success, description: `בקשת האורח אושרה (דמה).` });
-  };
-
-  const handleRejectRequest = (guestId: string) => {
-    toast({ title: HEBREW_TEXT.general.success, description: `בקשת האורח נדחתה (דמה).` });
-  };
-
-  const handleRateGuest = (guestId: string, rating: 'positive' | 'negative') => {
-    toast({
-      title: HEBREW_TEXT.general.success,
-      description: `האורח דורג ${rating === 'positive' ? HEBREW_TEXT.emojis.thumbsUp : HEBREW_TEXT.emojis.thumbsDown} (דמה)`,
-    });
-  };
 
   const handleDeleteEvent = async () => {
     if (!event || !event.id || !isOwner) {
@@ -172,7 +181,6 @@ export default function EventDetailPage() {
     }
     setIsDeleting(true);
     try {
-      // Delete image from Firebase Storage if it exists and is not a placeholder
       if (event.imageUrl && event.imageUrl.includes("firebasestorage.googleapis.com")) {
         try {
           const imageStorageRef = storageRef(storage, event.imageUrl);
@@ -181,21 +189,17 @@ export default function EventDetailPage() {
           if (storageError.code === 'storage/object-not-found') {
             console.log("Image not found in storage (already deleted or never existed). This is okay.");
           } else {
-            // More critical error, like permissions
             console.error("Error deleting image from storage:", storageError);
             toast({
               title: HEBREW_TEXT.general.error,
               description: HEBREW_TEXT.event.errorDeletingImageFromStorage + (storageError.message ? `: ${storageError.message}` : '. אנא בדוק הרשאות אחסון ב-Firebase.'),
               variant: "destructive",
-              duration: 7000, // Longer duration for important errors
+              duration: 7000,
             });
-            // Depending on policy, you might want to stop here or continue to delete Firestore doc.
-            // For now, we'll log and continue, but the user is notified.
           }
         }
       }
 
-      // Delete event document from Firestore
       const eventDocRef = doc(db, "events", event.id);
       await deleteDoc(eventDocRef);
 
@@ -239,7 +243,6 @@ export default function EventDetailPage() {
                     </div>
                 </div>
                 <div className="md:col-span-1 space-y-4">
-                    {/* Skeleton for buttons that were previously here */}
                 </div>
             </div>
             </CardContent>
@@ -303,9 +306,16 @@ export default function EventDetailPage() {
             </div>
 
             <div className="md:col-span-1 space-y-4">
-              {!isOwner && (
-                <Button className="w-full font-body text-lg py-3" onClick={handleRequestToJoin}>
+              {!isOwner && currentUser && (
+                <Button className="w-full font-body text-lg py-3" onClick={handleOpenRequestToJoinModal}>
+                  <MessageCircleMore className="ml-2 h-5 w-5" />
                   {HEBREW_TEXT.event.requestToJoin}
+                </Button>
+              )}
+               {!currentUser && ( // Show a disabled or sign-in prompt button if user is not logged in
+                <Button className="w-full font-body text-lg py-3" onClick={() => router.push('/signin')}>
+                    <MessageCircleMore className="ml-2 h-5 w-5" />
+                    התחבר כדי לבקש להצטרף
                 </Button>
               )}
               <Button variant="outline" className="w-full font-body">
@@ -315,75 +325,9 @@ export default function EventDetailPage() {
             </div>
           </div>
 
-          {isOwner && (
-            <>
-              <Separator className="my-8" />
-              <section>
-                <h3 className="font-headline text-2xl font-semibold mb-4">{HEBREW_TEXT.event.guestRequests}</h3>
-                {joinRequests.length > 0 ? (
-                  <div className="space-y-4">
-                    {joinRequests.map(guest => (
-                      <Card key={guest.id} className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center">
-                          <Avatar className="ml-3 h-10 w-10">
-                            <AvatarImage src={guest.profileImageUrl} alt={guest.name} data-ai-hint="guest avatar" />
-                            <AvatarFallback>{guest.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{guest.name} {guest.isVerified && <Badge variant="default" className="mr-1 bg-green-500 hover:bg-green-600">מאומת</Badge>}</p>
-                            <p className="text-xs text-muted-foreground">{guest.bio || "אין ביו זמין"}</p>
-                          </div>
-                        </div>
-                        <div className="flex space-x-2 rtl:space-x-reverse self-end sm:self-center">
-                          <Button size="sm" variant="default" onClick={() => handleApproveRequest(guest.id)}><CheckCircle className="ml-1 h-4 w-4"/> {HEBREW_TEXT.event.approve}</Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleRejectRequest(guest.id)}><XCircle className="ml-1 h-4 w-4"/> {HEBREW_TEXT.event.reject}</Button>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">{HEBREW_TEXT.event.noPendingRequests} (תכונה זו תורחב בהמשך)</p>
-                )}
-              </section>
+          {/* Removed guest request and approved guest sections as per chat integration plan */}
+          {/* These will be handled via the chat system */}
 
-              <Separator className="my-8" />
-              <section>
-                <h3 className="font-headline text-2xl font-semibold mb-4">{HEBREW_TEXT.event.approvedGuests}</h3>
-                 {approvedGuests.length > 0 ? (
-                  <div className="space-y-4">
-                    {approvedGuests.map(guest => (
-                      <Card key={guest.id} className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center">
-                          <Avatar className="ml-3 h-10 w-10">
-                            <AvatarImage src={guest.profileImageUrl} alt={guest.name} data-ai-hint="guest avatar"/>
-                            <AvatarFallback>{guest.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                             <p className="font-medium">{guest.name} {guest.isVerified && <Badge variant="default" className="mr-1 bg-green-500 hover:bg-green-600">מאומת</Badge>}</p>
-                            <p className="text-xs text-muted-foreground">{guest.bio || "אין ביו זמין"}</p>
-                          </div>
-                        </div>
-                        <div className="flex space-x-2 rtl:space-x-reverse self-end sm:self-center">
-                          <Button size="icon" variant="ghost" onClick={() => handleRateGuest(guest.id, 'positive')} title="דרג חיובי">
-                            <ThumbsUp className="h-5 w-5 text-green-500"/>
-                          </Button>
-                           <Button size="icon" variant="ghost" onClick={() => handleRateGuest(guest.id, 'negative')} title="דרג שלילי">
-                            <ThumbsDown className="h-5 w-5 text-red-500"/>
-                          </Button>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">{HEBREW_TEXT.event.noApprovedGuests} (תכונה זו תורחב בהמשך)</p>
-                )}
-                 <Button variant="outline" className="mt-4 w-full md:w-auto" disabled> 
-                    <MessageSquare className="ml-2 h-4 w-4" />
-                    {HEBREW_TEXT.event.broadcastMessage} (בקרוב)
-                 </Button>
-              </section>
-            </>
-          )}
         </CardContent>
         {isOwner && (
             <CardFooter className="border-t px-6 py-4 flex flex-col sm:flex-row sm:justify-end gap-3">
@@ -430,7 +374,17 @@ export default function EventDetailPage() {
             </CardFooter>
         )}
       </Card>
+
+      {event && currentUser && (
+        <RequestToJoinModal
+          isOpen={showRequestToJoinModal}
+          onOpenChange={setShowRequestToJoinModal}
+          event={event}
+          currentUser={currentUser}
+        />
+      )}
     </div>
   );
 }
 
+    

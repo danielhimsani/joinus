@@ -16,9 +16,16 @@ export type PaymentOption = 'fixed' | 'payWhatYouWant' | 'free';
 export type FoodType = 'kosherMeat' | 'kosherDairy' | 'kosherParve' | 'notKosher';
 export type ReligionStyle = 'secular' | 'traditional' | 'religious' | 'mixed'; // Example styles
 
+export interface EventOwnerInfo {
+  uid: string;
+  name: string;
+  profileImageUrl?: string;
+}
+
 export interface Event {
   id: string;
   ownerUids: string[];
+  owners?: EventOwnerInfo[]; // Denormalized owner info for quick display if needed
   name: string;
   numberOfGuests: number;
   pricePerGuest?: number;
@@ -116,3 +123,5 @@ export interface LeaderboardEntry {
   score: number; // e.g., number of events attended positively
   rank?: number;
 }
+
+    
