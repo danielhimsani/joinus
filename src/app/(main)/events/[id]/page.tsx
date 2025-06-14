@@ -99,6 +99,7 @@ export default function EventDetailPage() {
           setEvent({
             id: docSnap.id,
             ...data,
+            ownerUids: data.ownerUids || [], // Use ownerUids
             dateTime: safeToDate(data.dateTime),
             createdAt: safeToDate(data.createdAt),
             updatedAt: safeToDate(data.updatedAt),
@@ -131,7 +132,7 @@ export default function EventDetailPage() {
     fetchEventData();
   }, [eventId]);
 
-  const isOwner = event && currentUser && event.coupleId === currentUser.uid;
+  const isOwner = event && currentUser && event.ownerUids.includes(currentUser.uid);
 
   const handleRequestToJoin = () => {
     toast({ title: HEBREW_TEXT.general.success, description: "בקשתך להצטרף נשלחה (דמה)!" });

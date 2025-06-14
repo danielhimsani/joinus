@@ -66,7 +66,7 @@ export const HEBREW_TEXT = {
     rateGuest: "דרג אורח",
     broadcastMessage: "שלח הודעה לכל האורחים",
     eventDetails: "פרטי אירוע",
-    myEvents: "האירועים שלי",
+    myEvents: "האירועים בבעלותי", // Changed for Profile Page
     upcomingEvents: "אירועים קרובים",
     pastEvents: "אירועים קודמים",
     noEventsFound: "לא נמצאו אירועים התואמים את החיפוש.",

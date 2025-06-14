@@ -267,7 +267,7 @@ export function EventForm() {
       await firebaseUser.getIdToken(true); 
       const eventData = {
         ...values, 
-        coupleId: firebaseUser.uid,
+        ownerUids: [firebaseUser.uid], // Changed from coupleId to ownerUids
         pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
         location: trueFormattedAddress || values.location, 
         locationDisplayName: values.locationDisplayName || values.location.split(',')[0] || "מיקום לא ידוע",

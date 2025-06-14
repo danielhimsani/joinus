@@ -18,7 +18,7 @@ export type ReligionStyle = 'secular' | 'traditional' | 'religious' | 'mixed'; /
 
 export interface Event {
   id: string;
-  coupleId: string; // Firebase UID of the couple
+  ownerUids: string[]; // Changed from coupleId to ownerUids
   name: string;
   numberOfGuests: number;
   pricePerGuest?: number;
@@ -72,4 +72,3 @@ export interface LeaderboardEntry {
   score: number; // e.g., number of events attended positively
   rank?: number;
 }
-

@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,8 +23,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import type { UserProfile } from "@/types";
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun } from "lucide-react";
+import type { UserProfile, Event as EventType } from "@/types"; // Added EventType
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin } from "lucide-react"; // Added CalendarDays, MapPin
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -36,7 +37,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { onAuthStateChanged, type User as FirebaseUser, updateProfile } from "firebase/auth";
-import { auth as firebaseAuthInstance } from "@/lib/firebase";
+import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; // Added db
+import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"; // Firebase imports
+import { format } from 'date-fns';
+import { he } from 'date-fns/locale';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "שם חייב להכיל לפחות 2 תווים." }),
@@ -45,6 +49,19 @@ const profileFormSchema = z.object({
   bio: z.string().max(300, { message: "ביו יכול להכיל עד 300 תווים."}).optional(),
   phone: z.string().regex(/^0\d([\d]{0,1})([-]{0,1})\d{7}$/, { message: "מספר טלפון לא תקין."}).optional(),
 });
+
+const safeToDate = (timestampField: any): Date => {
+    if (timestampField && typeof timestampField.toDate === 'function') {
+      return (timestampField as Timestamp).toDate();
+    }
+    if (timestampField instanceof Date) return timestampField;
+    if (typeof timestampField === 'string' || typeof timestampField === 'number') {
+        const d = new Date(timestampField);
+        if (!isNaN(d.getTime())) return d;
+    }
+    return new Date(); 
+};
+
 
 export default function ProfilePage() {
   const { toast } = useToast();
@@ -55,6 +72,8 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [ownedEvents, setOwnedEvents] = useState<EventType[]>([]);
+  const [isLoadingOwnedEvents, setIsLoadingOwnedEvents] = useState(false);
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -62,7 +81,7 @@ export default function ProfilePage() {
   });
   
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (fbUser) => {
+    const unsubscribe = onAuthStateChanged(firebaseAuthInstance, async (fbUser) => {
       setIsLoading(true); 
       if (fbUser) {
         setFirebaseUser(fbUser);
@@ -85,16 +104,42 @@ export default function ProfilePage() {
           bio: profileData.bio || "",
           phone: profileData.phone || "",
         });
+
+        // Fetch owned events
+        setIsLoadingOwnedEvents(true);
+        try {
+          const eventsRef = collection(db, "events");
+          const q = query(eventsRef, where("ownerUids", "array-contains", fbUser.uid), where("dateTime", ">=", Timestamp.now()));
+          const querySnapshot = await getDocs(q);
+          const fetchedEvents = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                dateTime: safeToDate(data.dateTime),
+                createdAt: safeToDate(data.createdAt),
+                updatedAt: safeToDate(data.updatedAt),
+            } as EventType;
+          });
+          setOwnedEvents(fetchedEvents);
+        } catch (error) {
+            console.error("Error fetching owned events:", error);
+            toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בטעינת האירועים שבבעלותך.", variant: "destructive" });
+        } finally {
+            setIsLoadingOwnedEvents(false);
+        }
+
       } else {
         setUser(null);
         setFirebaseUser(null);
+        setOwnedEvents([]);
         router.push('/signin'); 
       }
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [form, router, user?.bio, user?.phone, user?.birthday]);
+  }, [form, router, user?.bio, user?.phone, user?.birthday, toast]);
 
   useEffect(() => {
     const currentTheme = localStorage.getItem("theme");
@@ -128,6 +173,8 @@ export default function ProfilePage() {
       if (values.name !== firebaseUser.displayName) {
         await updateProfile(firebaseUser, { displayName: values.name });
       }
+      // Note: Firestore update for bio, phone, birthday would go here if these fields are stored in Firestore
+      // For now, they are just in the local `user` state.
       await new Promise(resolve => setTimeout(resolve, 1000)); 
       
       setUser(prevUser => prevUser ? { 
@@ -358,6 +405,35 @@ export default function ProfilePage() {
                 )}
 
                 <div className="mt-6">
+                    <h3 className="font-headline text-xl font-semibold mb-2">{HEBREW_TEXT.event.myEvents}</h3>
+                    {isLoadingOwnedEvents ? (
+                        <div className="space-y-3">
+                            <Skeleton className="h-20 w-full rounded-lg" />
+                            <Skeleton className="h-20 w-full rounded-lg" />
+                        </div>
+                    ) : ownedEvents.length > 0 ? (
+                        <div className="space-y-3">
+                        {ownedEvents.map(event => (
+                            <Link href={`/events/${event.id}`} key={event.id} className="block">
+                                <Card className="hover:shadow-md transition-shadow p-4">
+                                    <CardTitle className="text-lg font-body mb-1">{event.name}</CardTitle>
+                                    <div className="text-sm text-muted-foreground flex items-center mb-0.5">
+                                        <CalendarDays className="ml-1.5 h-4 w-4" /> {format(event.dateTime, 'dd/MM/yy, HH:mm', { locale: he })}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground flex items-center">
+                                        <MapPin className="ml-1.5 h-4 w-4" /> {event.locationDisplayName || event.location}
+                                    </div>
+                                </Card>
+                            </Link>
+                        ))}
+                        </div>
+                    ) : (
+                        <p className="text-muted-foreground">אין לך אירועים בבעלותך כרגע.</p>
+                    )}
+                </div>
+
+
+                <div className="mt-6">
                   <h3 className="font-headline text-xl font-semibold mb-2">{HEBREW_TEXT.profile.pastEventsAttended}</h3>
                   <p className="text-muted-foreground">רשימת אירועים תופיע כאן.</p>
                 </div>
@@ -404,4 +480,3 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
-
