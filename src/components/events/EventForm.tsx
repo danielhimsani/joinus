@@ -140,24 +140,6 @@ export function EventForm({
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const locationInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script', // Standardized ID
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries,
-    language: 'iw',
-    region: 'IL',
-  });
-
-  useEffect(() => {
-    const unsubscribe = firebaseAuthInstance.onAuthStateChanged((user) => {
-      setCurrentUser(user);
-      if (user && !isEditMode && form.getValues("ownerUids").length === 0) {
-        form.setValue("ownerUids", [user.uid]);
-      }
-    });
-    return () => unsubscribe();
-  }, [isEditMode, form]);
-
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -176,6 +158,24 @@ export function EventForm({
       dateTime: undefined,
     },
   });
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script', // Standardized ID
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries,
+    language: 'iw',
+    region: 'IL',
+  });
+
+  useEffect(() => {
+    const unsubscribe = firebaseAuthInstance.onAuthStateChanged((user) => {
+      setCurrentUser(user);
+      if (user && !isEditMode && form.getValues("ownerUids").length === 0) {
+        form.setValue("ownerUids", [user.uid]);
+      }
+    });
+    return () => unsubscribe();
+  }, [isEditMode, form]);
 
   useEffect(() => {
     if (isEditMode && initialEventData) {
@@ -880,7 +880,7 @@ export function EventForm({
             isOpen={showAddOwnerModal}
             onOpenChange={setShowAddOwnerModal}
             onOwnerAdded={handleAddOwnerToForm}
-            currentOwnerUids={[...watchedOwnerUids, currentUser.uid]} // Pass current form UIDs + self to prevent adding self or duplicates
+            currentOwnerUids={currentUser ? [...watchedOwnerUids, currentUser.uid] : watchedOwnerUids} 
         />
     )}
     {ownerToRemove && (
@@ -907,3 +907,4 @@ export function EventForm({
     </>
   );
 }
+
