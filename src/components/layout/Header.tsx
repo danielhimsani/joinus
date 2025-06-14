@@ -2,10 +2,10 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Added for redirection
+import { useRouter, usePathname } from 'next/navigation'; // Added usePathname
 import { Button } from '@/components/ui/button';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
-import { Home, CalendarPlus, UserCircle, LogIn, LogOut, Menu, PartyPopper } from 'lucide-react';
+import { Home, CalendarPlus, UserCircle, LogIn, LogOut, Menu, PartyPopper, Search, PlusSquare, MessageSquare } from 'lucide-react'; // Added icons
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -17,15 +17,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useState, useEffect } from 'react';
+import { AppLogo } from '@/components/icons/AppLogo'; // Import AppLogo
+import { cn } from '@/lib/utils';
 
 // Mock authentication state
 const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
-  const router = useRouter(); // Initialize router
+  const router = useRouter(); 
 
   useEffect(() => {
-    // Simulate checking auth status
     const authStatus = localStorage.getItem('isAuthenticated') === 'true';
     setIsAuthenticated(authStatus);
     if (authStatus) {
@@ -45,21 +46,32 @@ const useAuth = () => {
     localStorage.removeItem('userName');
     setIsAuthenticated(false);
     setUserName(null);
-    router.push('/'); // Redirect to homepage after sign out
+    router.push('/'); 
   };
 
   return { isAuthenticated, userName, signIn, signOut };
 };
 
-
-const navLinks = [
-  { href: '/', label: HEBREW_TEXT.navigation.home, icon: <Home className="ml-2 h-5 w-5" /> },
-  { href: '/events', label: HEBREW_TEXT.navigation.events, icon: <PartyPopper className="ml-2 h-5 w-5" /> },
-  { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: <CalendarPlus className="ml-2 h-5 w-5" /> },
+// Navigation items for Desktop Top Bar (text only)
+const desktopNavItems = [
+  { href: '/events', label: HEBREW_TEXT.navigation.events },
+  { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent },
+  { href: '/messages', label: HEBREW_TEXT.navigation.messages },
+  { href: '/profile', label: HEBREW_TEXT.navigation.profile },
 ];
+
+// Navigation items for Mobile Sheet Menu (with icons)
+const sheetNavItems = [
+  { href: '/events', label: HEBREW_TEXT.navigation.events, icon: <Search className="ml-2 h-5 w-5" /> },
+  { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: <PlusSquare className="ml-2 h-5 w-5" /> },
+  { href: '/messages', label: HEBREW_TEXT.navigation.messages, icon: <MessageSquare className="ml-2 h-5 w-5" /> },
+  { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: <UserCircle className="ml-2 h-5 w-5" /> },
+];
+
 
 export default function Header() {
   const { isAuthenticated, userName, signIn, signOut } = useAuth();
+  const pathname = usePathname(); // For active link styling
 
   const UserNav = () => (
     <DropdownMenu>
@@ -76,7 +88,6 @@ export default function Header() {
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{userName}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              {/* Mock email */}
               {userName?.toLowerCase().replace(' ', '.')}@example.com
             </p>
           </div>
@@ -100,34 +111,44 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2 rtl:space-x-reverse">
-          <span className="text-2xl" role="img" aria-label="Ring icon">💍</span>
-          <span className="font-headline text-2xl font-bold text-primary">{HEBREW_TEXT.appName}</span>
-        </Link>
+        {/* Left side: Logo, App Name, and Desktop Nav */}
+        <div className="flex items-center">
+          <Link href="/" className="flex items-center space-x-2 rtl:space-x-reverse">
+            <AppLogo width={83} height={30} />
+            <span className="font-headline text-xl font-bold text-primary hidden sm:inline-block">{HEBREW_TEXT.appName}</span>
+          </Link>
 
-        <nav className="hidden items-center space-x-6 rtl:space-x-reverse md:flex">
-          {navLinks.map(link => (
-            <Link key={link.href} href={link.href} className="flex items-center text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
-              {link.icon}
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center space-x-1 rtl:space-x-reverse ml-6">
+            {desktopNavItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  // Active link styling:
+                  (pathname === item.href || (item.href === '/events' && pathname.startsWith('/events/') && pathname !== '/events/create'))
+                    ? "text-primary bg-primary/10" 
+                    : "text-foreground/70 hover:text-foreground hover:bg-muted/50",
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
 
+        {/* Right side: Auth buttons / UserNav / Mobile Menu Trigger */}
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
           {isAuthenticated ? (
             <UserNav />
           ) : (
             <>
               <Button variant="ghost" asChild className="hidden md:inline-flex">
-                <Link href="/auth/signin">{HEBREW_TEXT.auth.signIn}</Link>
+                <Link href="/signin">{HEBREW_TEXT.auth.signIn}</Link>
               </Button>
               <Button asChild className="hidden md:inline-flex">
-                <Link href="/auth/signup">{HEBREW_TEXT.auth.signUp}</Link>
-              </Button>
-              {/* Mock sign-in for development */}
-              <Button onClick={signIn} variant="outline" size="sm" className="md:hidden">
-                <LogIn className="h-4 w-4" />
+                <Link href="/signup">{HEBREW_TEXT.auth.signUp}</Link>
               </Button>
             </>
           )}
@@ -141,26 +162,42 @@ export default function Header() {
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                 <SheetHeader className="mb-4 border-b pb-4">
-                  <SheetTitle className="text-center text-xl font-headline">{HEBREW_TEXT.navigation.mobileMenuTitle}</SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col space-y-4 mt-4">
-                  {navLinks.map(link => (
-                    <Link key={link.href} href={link.href} className="flex items-center p-2 rounded-md hover:bg-accent">
-                       {link.icon}
-                      {link.label}
+                   <Link href="/" className="flex items-center space-x-2 rtl:space-x-reverse justify-center mb-2">
+                        <AppLogo width={83} height={30} />
+                        <span className="font-headline text-xl font-bold text-primary">{HEBREW_TEXT.appName}</span>
                     </Link>
+                  <SheetTitle className="text-center text-lg font-normal text-muted-foreground">{HEBREW_TEXT.navigation.mobileMenuTitle}</SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col space-y-2 mt-4">
+                  {sheetNavItems.map(link => (
+                    <Button 
+                        variant="ghost" 
+                        asChild 
+                        key={link.href} 
+                        className={cn(
+                            "w-full justify-start p-3 text-base",
+                            (pathname === link.href || (link.href === '/events' && pathname.startsWith('/events/') && pathname !== '/events/create'))
+                            ? "text-primary bg-primary/10"
+                            : "text-foreground/80 hover:text-foreground"
+                        )}
+                    >
+                        <Link href={link.href} className="flex items-center">
+                        {link.icon}
+                        {link.label}
+                        </Link>
+                    </Button>
                   ))}
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator className="my-2"/>
                   {!isAuthenticated && (
                     <>
-                     <Button variant="ghost" asChild className="w-full justify-start p-2">
-                        <Link href="/auth/signin" className="flex items-center">
+                     <Button variant="ghost" asChild className="w-full justify-start p-3 text-base">
+                        <Link href="/signin" className="flex items-center">
                           <LogIn className="ml-2 h-5 w-5" />
                           {HEBREW_TEXT.auth.signIn}
                         </Link>
                       </Button>
-                      <Button asChild className="w-full justify-start p-2">
-                        <Link href="/auth/signup" className="flex items-center">
+                      <Button variant="default" asChild className="w-full justify-start p-3 text-base">
+                        <Link href="/signup" className="flex items-center">
                           <UserCircle className="ml-2 h-5 w-5" />
                           {HEBREW_TEXT.auth.signUp}
                         </Link>
