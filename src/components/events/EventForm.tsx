@@ -5,12 +5,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller, type FieldErrors } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, Loader2, ImagePlus, Info, Edit2 } from "lucide-react";
+import { CalendarIcon, Loader2, ImagePlus, Info, Edit2, PlusCircle, UserX, Users } from "lucide-react";
 import { format } from "date-fns";
 import { he } from 'date-fns/locale';
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { User as FirebaseUser } from "firebase/auth";
-import { collection, addDoc, serverTimestamp, Timestamp, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, Timestamp, doc, updateDoc, getDoc } from "firebase/firestore";
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { db, auth as firebaseAuthInstance, storage } from "@/lib/firebase";
 import { Autocomplete, useJsApiLoader } from "@react-google-maps/api";
@@ -33,13 +33,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle as ShadCardTitle } from "@/components/ui/card"; // Renamed to avoid conflict
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import type { PaymentOption, FoodType, ReligionStyle, Event as EventType } from "@/types";
+import type { PaymentOption, FoodType, ReligionStyle, Event as EventType, UserProfile } from "@/types";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AddOwnerModal } from "./AddOwnerModal";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+
 
 const foodTypes: { value: FoodType; label: string }[] = [
   { value: "kosherMeat", label: HEBREW_TEXT.event.kosherMeat },
@@ -63,6 +67,7 @@ const paymentOptions: { value: PaymentOption; label: string }[] = [
 
 const formSchema = z.object({
   name: z.string().min(3, { message: "שם אירוע חייב להכיל לפחות 3 תווים." }),
+  ownerUids: z.array(z.string()).min(1, { message: "חייב להיות לפחות בעלים אחד לאירוע." }),
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
   paymentOption: z.enum(["fixed", "payWhatYouWant", "free"], { errorMap: () => ({ message: "יש לבחור אפשרות תשלום."}) }),
   pricePerGuest: z.coerce.number().optional(),
@@ -105,8 +110,8 @@ interface EventFormProps {
     submitButtonText?: string;
 }
 
-export function EventForm({ 
-    initialEventData = null, 
+export function EventForm({
+    initialEventData = null,
     isEditMode = false,
     pageTitle: propPageTitle,
     submitButtonText: propSubmitButtonText
@@ -114,18 +119,23 @@ export function EventForm({
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null); 
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [trueFormattedAddress, setTrueFormattedAddress] = useState<string | null>(null);
-  
+
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false); 
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
   const [isEditingName, setIsEditingName] = useState(!isEditMode);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [ownerProfileDetails, setOwnerProfileDetails] = useState<UserProfile[]>([]);
+  const [isLoadingOwnerDetails, setIsLoadingOwnerDetails] = useState(false);
+  const [showAddOwnerModal, setShowAddOwnerModal] = useState(false);
+  const [ownerToRemove, setOwnerToRemove] = useState<UserProfile | null>(null);
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const locationInputRef = useRef<HTMLInputElement | null>(null);
@@ -133,7 +143,7 @@ export function EventForm({
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script', // Standardized ID
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries, 
+    libraries,
     language: 'iw',
     region: 'IL',
   });
@@ -141,32 +151,37 @@ export function EventForm({
   useEffect(() => {
     const unsubscribe = firebaseAuthInstance.onAuthStateChanged((user) => {
       setCurrentUser(user);
+      if (user && !isEditMode && form.getValues("ownerUids").length === 0) {
+        form.setValue("ownerUids", [user.uid]);
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [isEditMode, form]);
 
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: isEditMode && initialEventData ? initialEventData.name : "שם האירוע שלכם",
-      numberOfGuests: isEditMode && initialEventData ? initialEventData.numberOfGuests : 10,
-      paymentOption: isEditMode && initialEventData ? initialEventData.paymentOption : "fixed",
-      pricePerGuest: isEditMode && initialEventData ? initialEventData.pricePerGuest : 100,
-      location: isEditMode && initialEventData ? (initialEventData.locationDisplayName || initialEventData.location) : "",
-      locationDisplayName: isEditMode && initialEventData ? initialEventData.locationDisplayName : "",
-      description: isEditMode && initialEventData ? initialEventData.description : "",
-      ageRange: isEditMode && initialEventData ? initialEventData.ageRange : [25, 55], 
-      foodType: isEditMode && initialEventData ? initialEventData.foodType : "kosherParve",
-      religionStyle: isEditMode && initialEventData ? initialEventData.religionStyle : "mixed",
-      imageUrl: isEditMode && initialEventData ? initialEventData.imageUrl : "", 
-      dateTime: isEditMode && initialEventData ? new Date(initialEventData.dateTime) : undefined,
+      name: "שם האירוע שלכם",
+      ownerUids: [], // Will be populated by useEffect or initialEventData
+      numberOfGuests: 10,
+      paymentOption: "fixed",
+      pricePerGuest: 100,
+      location: "",
+      locationDisplayName: "",
+      description: "",
+      ageRange: [25, 55],
+      foodType: "kosherParve",
+      religionStyle: "mixed",
+      imageUrl: "",
+      dateTime: undefined,
     },
   });
-  
+
   useEffect(() => {
     if (isEditMode && initialEventData) {
       form.reset({
         name: initialEventData.name,
+        ownerUids: initialEventData.ownerUids || (currentUser ? [currentUser.uid] : []),
         numberOfGuests: initialEventData.numberOfGuests,
         paymentOption: initialEventData.paymentOption,
         pricePerGuest: initialEventData.pricePerGuest,
@@ -186,8 +201,90 @@ export function EventForm({
       setLongitude(initialEventData.longitude || null);
       setTrueFormattedAddress(initialEventData.location || null);
       setIsEditingName(false);
+    } else if (!isEditMode && currentUser) {
+        form.setValue("ownerUids", [currentUser.uid]);
     }
-  }, [isEditMode, initialEventData, form]);
+  }, [isEditMode, initialEventData, form, currentUser]);
+
+  const watchedOwnerUids = form.watch("ownerUids");
+
+  const fetchOwnerProfiles = useCallback(async (uids: string[]) => {
+    if (uids.length === 0) {
+      setOwnerProfileDetails([]);
+      return;
+    }
+    setIsLoadingOwnerDetails(true);
+    try {
+      const fetchedProfiles: UserProfile[] = [];
+      for (const uid of uids) {
+        // Check if profile already exists to avoid re-fetching
+        const existingProfile = ownerProfileDetails.find(p => p.firebaseUid === uid);
+        if (existingProfile) {
+            fetchedProfiles.push(existingProfile);
+            continue;
+        }
+        // Check if user has self in current user state (for initial create)
+        if (currentUser && currentUser.uid === uid) {
+            fetchedProfiles.push({
+                id: uid, firebaseUid: uid, name: currentUser.displayName || "משתמש נוכחי",
+                email: currentUser.email || "", profileImageUrl: currentUser.photoURL || ""
+            });
+            continue;
+        }
+
+        const userDocRef = doc(db, "users", uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          fetchedProfiles.push({ id: userDocSnap.id, ...userDocSnap.data() } as UserProfile);
+        } else {
+          // Fallback if user document doesn't exist (should ideally not happen for owners)
+          fetchedProfiles.push({ id: uid, firebaseUid: uid, name: "בעלים לא ידוע", email: "", profileImageUrl: "" });
+        }
+      }
+      setOwnerProfileDetails(fetchedProfiles);
+    } catch (error) {
+      console.error("Error fetching owner profiles:", error);
+      toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בטעינת פרטי בעלי האירוע.", variant: "destructive" });
+    } finally {
+      setIsLoadingOwnerDetails(false);
+    }
+  }, [currentUser, toast, ownerProfileDetails]); // ownerProfileDetails in dep array to help with existing profiles check
+
+  useEffect(() => {
+    if (watchedOwnerUids && watchedOwnerUids.length > 0) {
+      fetchOwnerProfiles(watchedOwnerUids);
+    } else if (currentUser && !isEditMode && (!watchedOwnerUids || watchedOwnerUids.length === 0)) {
+        // Ensure current user is set as owner on initial load for create mode
+        form.setValue("ownerUids", [currentUser.uid]);
+        fetchOwnerProfiles([currentUser.uid]);
+    } else {
+        setOwnerProfileDetails([]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedOwnerUids, fetchOwnerProfiles, currentUser, isEditMode]); // Removed form from deps, managed through watchedOwnerUids
+
+  const handleAddOwnerToForm = (newOwner: UserProfile) => {
+    if (!watchedOwnerUids.includes(newOwner.firebaseUid)) {
+      form.setValue("ownerUids", [...watchedOwnerUids, newOwner.firebaseUid], { shouldValidate: true, shouldDirty: true });
+      // The useEffect watching ownerUids will handle fetching the profile if not already present
+      // For immediate UI update, we can add it to ownerProfileDetails if not already there by UID
+      if (!ownerProfileDetails.some(p => p.firebaseUid === newOwner.firebaseUid)) {
+          setOwnerProfileDetails(prev => [...prev, newOwner]);
+      }
+    }
+    setShowAddOwnerModal(false);
+  };
+
+  const handleConfirmRemoveOwner = (uidToRemove: string) => {
+    if (watchedOwnerUids.length <= 1) {
+        toast({ title: HEBREW_TEXT.general.error, description: HEBREW_TEXT.event.cannotRemoveLastOwner, variant: "destructive" });
+        setOwnerToRemove(null);
+        return;
+    }
+    form.setValue("ownerUids", watchedOwnerUids.filter(uid => uid !== uidToRemove), { shouldValidate: true, shouldDirty: true });
+    // Let useEffect handle ownerProfileDetails update
+    setOwnerToRemove(null);
+  };
 
 
   const paymentOptionValue = form.watch("paymentOption");
@@ -215,15 +312,15 @@ export function EventForm({
         };
         const compressedFile = await imageCompression(file, options);
         toast({ title: "הדחיסה הושלמה", description: "התמונה מוכנה להעלאה." });
-        
+
         setImageFile(compressedFile);
         const previewUrl = URL.createObjectURL(compressedFile);
         setImagePreviewUrl(previewUrl);
-        form.setValue("imageUrl", "file-selected-for-upload"); 
+        form.setValue("imageUrl", "file-selected-for-upload");
       } catch (error) {
         console.error("Error compressing image:", error);
         toast({ title: "שגיאה בדחיסת תמונה", description: (error instanceof Error) ? error.message : String(error), variant: "destructive" });
-        setImageFile(null); 
+        setImageFile(null);
         setImagePreviewUrl(isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : null);
         form.setValue("imageUrl", isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : undefined);
       }
@@ -237,29 +334,29 @@ export function EventForm({
         const displayName = place.name || place.formatted_address?.split(',')[0] || "מיקום לא ידוע";
         const formattedAddress = place.formatted_address || displayName;
 
-        form.setValue("location", displayName, { shouldValidate: true }); 
+        form.setValue("location", displayName, { shouldValidate: true });
         form.setValue("locationDisplayName", displayName, { shouldValidate: true });
-        setTrueFormattedAddress(formattedAddress); 
-        
+        setTrueFormattedAddress(formattedAddress);
+
         setLatitude(place.geometry.location.lat());
         setLongitude(place.geometry.location.lng());
       } else {
-        setTrueFormattedAddress(null); 
-        const currentLocationValue = form.getValues("location"); 
+        setTrueFormattedAddress(null);
+        const currentLocationValue = form.getValues("location");
         form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false });
         setLatitude(null);
         setLongitude(null);
       }
     }
   };
-  
+
   const onAutocompleteLoad = (autocompleteInstance: google.maps.places.Autocomplete) => {
     autocompleteRef.current = autocompleteInstance;
   };
 
   const onSubmit = async (values: FormSchemaType) => {
     setIsSubmitting(true);
-    setIsUploadingImage(false); 
+    setIsUploadingImage(false);
     setImageUploadProgress(null);
 
     if (!currentUser?.uid) {
@@ -268,8 +365,15 @@ export function EventForm({
       router.push('/signin');
       return;
     }
+    
+    if (!values.ownerUids || values.ownerUids.length === 0) {
+        toast({ title: HEBREW_TEXT.general.error, description: "חייב להיות לפחות בעלים אחד לאירוע.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+    }
 
-    let finalImageUrl = isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name)}`; 
+
+    let finalImageUrl = isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name)}`;
 
     if (imageFile) {
       setIsUploadingImage(true);
@@ -300,37 +404,37 @@ export function EventForm({
         setIsUploadingImage(false);
         setIsSubmitting(false);
         setImageUploadProgress(null);
-        return; 
+        return;
       }
       setIsUploadingImage(false);
-      setImageUploadProgress(100); 
+      setImageUploadProgress(100);
     }
-    
+
     const eventDataPayload = {
-        ...values, 
-        ownerUids: isEditMode && initialEventData ? initialEventData.ownerUids : [currentUser.uid],
+        ...values,
+        ownerUids: values.ownerUids, // Ensure this is from the form values
         pricePerGuest: values.paymentOption === 'fixed' ? (values.pricePerGuest ?? 0) : null,
-        location: trueFormattedAddress || values.location, 
+        location: trueFormattedAddress || values.location,
         locationDisplayName: values.locationDisplayName || values.location.split(',')[0] || "מיקום לא ידוע",
         latitude: latitude,
         longitude: longitude,
         dateTime: Timestamp.fromDate(values.dateTime),
-        imageUrl: finalImageUrl, 
+        imageUrl: finalImageUrl,
         updatedAt: serverTimestamp(),
     };
 
     try {
-      await currentUser.getIdToken(true); 
+      await currentUser.getIdToken(true);
 
       if (isEditMode && initialEventData?.id) {
         const eventDocRef = doc(db, "events", initialEventData.id);
-        const { createdAt, ...updatePayload } = eventDataPayload; 
+        const { createdAt, ...updatePayload } = eventDataPayload;
         await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
         toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" עודכן בהצלחה!` });
         router.push(`/events/${initialEventData.id}`);
       } else {
         const payloadWithCreate = {...eventDataPayload, createdAt: serverTimestamp()};
-        const newEventDoc = await promiseWithTimeout(addDoc(collection(db, "events"), payloadWithCreate), 15000); 
+        const newEventDoc = await promiseWithTimeout(addDoc(collection(db, "events"), payloadWithCreate), 15000);
         toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" נוצר בהצלחה!` });
         router.push(`/events/${newEventDoc.id}`);
       }
@@ -345,7 +449,7 @@ export function EventForm({
       toast({ title: HEBREW_TEXT.general.error, description: errorMessage, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
-      setIsUploadingImage(false); 
+      setIsUploadingImage(false);
     }
   };
 
@@ -356,7 +460,7 @@ export function EventForm({
       description: HEBREW_TEXT.general.formValidationFailed,
       variant: "destructive",
     });
-    
+
     const firstInvalidElement = document.querySelector('[aria-invalid="true"]') as HTMLElement;
     if (firstInvalidElement) {
       firstInvalidElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -367,7 +471,7 @@ export function EventForm({
       }
     }
   };
-  
+
   if (loadError) return <Card className="w-full max-w-3xl mx-auto p-6"><p className="text-destructive text-center">{HEBREW_TEXT.map.loadError}</p></Card>;
   if (!isLoaded && !process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
     return (
@@ -385,6 +489,7 @@ export function EventForm({
 
 
   return (
+    <>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)} className="space-y-8">
         <Card className="w-full max-w-3xl mx-auto overflow-hidden">
@@ -396,15 +501,15 @@ export function EventForm({
               objectFit="cover"
               className="transition-opacity duration-300 ease-in-out"
               data-ai-hint="event cover wedding"
-              key={currentImageToDisplay} 
+              key={currentImageToDisplay}
               priority={!isEditMode}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
-            
-            <Button 
-                type="button" 
-                variant="outline" 
-                size="icon" 
+
+            <Button
+                type="button"
+                variant="outline"
+                size="icon"
                 className="absolute top-4 right-4 z-10 bg-background/80 hover:bg-background text-foreground"
                 onClick={() => imageInputRef.current?.click()}
                 title="העלה תמונת נושא"
@@ -431,7 +536,7 @@ export function EventForm({
                           {...field}
                           onBlur={(e) => { field.onBlur(); setIsEditingName(false); }}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') { e.preventDefault(); setIsEditingName(false); } 
+                            if (e.key === 'Enter') { e.preventDefault(); setIsEditingName(false); }
                             else if (e.key === 'Escape') { setIsEditingName(false); }
                           }}
                           className="text-3xl md:text-4xl font-bold bg-transparent border-0 border-b-2 border-white/50 focus:border-white focus:ring-0 p-0 h-auto text-white placeholder-white/70 flex-grow"
@@ -441,17 +546,17 @@ export function EventForm({
                   />
               ) : (
                 <div className="flex items-center group/titleedit">
-                    <h1 
-                        className="text-3xl md:text-4xl font-bold cursor-pointer hover:opacity-80 transition-opacity flex-grow" 
+                    <h1
+                        className="text-3xl md:text-4xl font-bold cursor-pointer hover:opacity-80 transition-opacity flex-grow"
                         onClick={() => setIsEditingName(true)}
                         title="לחץ לעריכת שם האירוע"
                     >
                     {headerTitle}
                     </h1>
-                    <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
                         className="ml-2 text-white opacity-0 group-hover/titleedit:opacity-100 focus:opacity-100 transition-opacity"
                         onClick={() => setIsEditingName(true)}
                     >
@@ -461,11 +566,11 @@ export function EventForm({
               )}
               <Popover>
                 <PopoverTrigger asChild>
-                    <p 
+                    <p
                         className="mt-2 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center"
                         title="לחץ לעריכת תאריך ושעה"
                     >
-                        <CalendarIcon className="ml-1.5 h-4 w-4" /> 
+                        <CalendarIcon className="ml-1.5 h-4 w-4" />
                         {eventDateTimeValue ? format(eventDateTimeValue, "EEEE, d MMMM yyyy, HH:mm", { locale: he }) : "בחר תאריך ושעה"}
                     </p>
                 </PopoverTrigger>
@@ -484,9 +589,9 @@ export function EventForm({
                                     locale={he}
                                 />
                                 <div className="p-2 border-t">
-                                <Input 
-                                    type="time" 
-                                    defaultValue={field.value ? format(field.value, 'HH:mm') : "19:00"} 
+                                <Input
+                                    type="time"
+                                    defaultValue={field.value ? format(field.value, 'HH:mm') : "19:00"}
                                     onChange={(e) => {
                                         const [hours, minutes] = e.target.value.split(':').map(Number);
                                         const newDate = field.value ? new Date(field.value) : new Date();
@@ -495,7 +600,7 @@ export function EventForm({
                                         newDate.setSeconds(0);
                                         newDate.setMilliseconds(0);
                                         field.onChange(newDate);
-                                    }} 
+                                    }}
                                     className="w-full"
                                 />
                                 </div>
@@ -507,7 +612,7 @@ export function EventForm({
               </Popover>
             </div>
           </div>
-          
+
           {isUploadingImage && imageUploadProgress !== null && (
             <div className="p-4">
               <Progress value={imageUploadProgress} className="w-full h-2" />
@@ -518,6 +623,68 @@ export function EventForm({
           )}
 
           <CardContent className="pt-6 space-y-8">
+             {/* Owners Section */}
+            <FormField
+                control={form.control}
+                name="ownerUids"
+                render={() => ( // field prop not directly used for display here, but needed for react-hook-form
+                    <FormItem>
+                        <div className="flex justify-between items-center mb-2">
+                            <FormLabel className="text-lg font-semibold flex items-center">
+                                <Users className="ml-2 h-5 w-5 text-primary" />
+                                {HEBREW_TEXT.event.owners}
+                            </FormLabel>
+                            <Button type="button" variant="outline" size="icon" onClick={() => setShowAddOwnerModal(true)} title={HEBREW_TEXT.event.addOwner}>
+                                <PlusCircle className="h-5 w-5" />
+                            </Button>
+                        </div>
+                        {isLoadingOwnerDetails && ownerProfileDetails.length === 0 ? (
+                            <div className="space-y-2">
+                                <div className="flex items-center space-x-3 rtl:space-x-reverse p-2 border rounded-md">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                    <span className="text-muted-foreground">{HEBREW_TEXT.general.loading}...</span>
+                                </div>
+                            </div>
+                        ) : ownerProfileDetails.length > 0 ? (
+                            <div className="space-y-2">
+                            {ownerProfileDetails.map((owner) => (
+                                <div key={owner.firebaseUid} className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/30">
+                                <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                                    <Avatar className="h-10 w-10">
+                                    <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="owner avatar" />
+                                    <AvatarFallback>{owner.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-medium">{owner.name}</p>
+                                        {owner.email && <p className="text-xs text-muted-foreground">{owner.email}</p>}
+                                    </div>
+                                </div>
+                                {currentUser?.uid !== owner.firebaseUid && watchedOwnerUids.length > 1 && (
+                                     <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={() => setOwnerToRemove(owner)}
+                                        title={`${HEBREW_TEXT.event.removeOwner} ${owner.name}`}
+                                    >
+                                        <UserX className="h-4 w-4" />
+                                    </Button>
+                                )}
+                                </div>
+                            ))}
+                            </div>
+                        ) : (
+                            <p className="text-muted-foreground text-sm">
+                                {isEditMode ? "לא נמצאו בעלי אירוע. (יש להוסיף לפחות אחד)" : "אתה תהיה הבעלים הראשון של האירוע."}
+                            </p>
+                        )}
+                        <FormMessage /> {/* For ownerUids validation errors */}
+                    </FormItem>
+                )}
+            />
+
+
             {isEditMode && initialEventData?.imageUrl && !imageFile && (
                 <FormField
                     control={form.control}
@@ -584,10 +751,10 @@ export function EventForm({
                             onChange={e => {
                               const rawValue = e.target.value;
                               if (rawValue === '') {
-                                field.onChange(undefined); 
+                                field.onChange(undefined);
                               } else {
                                 const num = parseFloat(rawValue);
-                                field.onChange(isNaN(num) ? undefined : num); 
+                                field.onChange(isNaN(num) ? undefined : num);
                               }
                             }}
                             onBlur={field.onBlur}
@@ -600,7 +767,7 @@ export function EventForm({
                     )}
                 />
             )}
-            
+
             {isLoaded && (
               <FormField
                 control={form.control}
@@ -614,15 +781,15 @@ export function EventForm({
                         onPlaceChanged={handlePlaceChanged}
                         options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location"] }}
                       >
-                        <Input 
-                            placeholder="התחל להקליד כתובת או שם מקום..." 
-                            {...field} 
+                        <Input
+                            placeholder="התחל להקליד כתובת או שם מקום..."
+                            {...field}
                             ref={(e) => {
                                 field.ref(e);
                                 locationInputRef.current = e;
                             }}
                             onChange={(e) => {
-                                field.onChange(e); 
+                                field.onChange(e);
                                 if (trueFormattedAddress || latitude || longitude) {
                                     setTrueFormattedAddress(null);
                                     setLatitude(null);
@@ -708,5 +875,35 @@ export function EventForm({
         </Card>
       </form>
     </Form>
+    {showAddOwnerModal && currentUser && (
+        <AddOwnerModal
+            isOpen={showAddOwnerModal}
+            onOpenChange={setShowAddOwnerModal}
+            onOwnerAdded={handleAddOwnerToForm}
+            currentOwnerUids={[...watchedOwnerUids, currentUser.uid]} // Pass current form UIDs + self to prevent adding self or duplicates
+        />
+    )}
+    {ownerToRemove && (
+        <AlertDialog open={!!ownerToRemove} onOpenChange={() => setOwnerToRemove(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{HEBREW_TEXT.event.confirmRemoveOwnerTitle}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {HEBREW_TEXT.event.confirmRemoveOwnerMessage.replace('{userName}', ownerToRemove.name)}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-row-reverse sm:flex-row-reverse">
+                     <AlertDialogCancel onClick={() => setOwnerToRemove(null)}>{HEBREW_TEXT.general.cancel}</AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={() => handleConfirmRemoveOwner(ownerToRemove.firebaseUid)}
+                        className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                    >
+                        {HEBREW_TEXT.event.removeOwner}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )}
+    </>
   );
 }

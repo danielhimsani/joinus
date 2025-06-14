@@ -18,11 +18,11 @@ export const HEBREW_TEXT = {
   navigation: {
     home: "דף הבית",
     events: "אירועים",
-    createEvent: "פרסום", 
+    createEvent: "פרסום",
     profile: "פרופיל",
     leaderboard: "טבלת מובילים",
     mobileMenuTitle: "תפריט",
-    messages: "הודעות", 
+    messages: "הודעות",
   },
   event: {
     createEventTitle: "יצירת אירוע חדש",
@@ -66,7 +66,7 @@ export const HEBREW_TEXT = {
     rateGuest: "דרג אורח",
     broadcastMessage: "שלח הודעה לכל האורחים",
     eventDetails: "פרטי אירוע",
-    myEvents: "האירועים בבעלותי", 
+    myEvents: "האירועים בבעלותי",
     upcomingEvents: "אירועים קרובים",
     pastEvents: "אירועים קודמים",
     noEventsFound: "לא נמצאו אירועים התואמים את החיפוש.",
@@ -78,7 +78,18 @@ export const HEBREW_TEXT = {
     deleteConfirmationMessage: "האם אתה בטוח שברצונך למחוק אירוע זה? פעולה זו אינה ניתנת לשחזור.",
     eventDeletedSuccessfully: "האירוע נמחק בהצלחה.",
     errorDeletingEvent: "שגיאה במחיקת האירוע.",
-    errorDeletingImageFromStorage: "שגיאה במחיקת תמונת האירוע מהאחסון. התמונה עשויה עדיין להתקיים בשרת.",
+    errorDeletingImageFromStorage: "שגיאה במחיקת תמונת האירוע מהאחסון. התמונה עשויה עדיין להתקיים בשרת. בדוק הרשאות אחסון.",
+    owners: "בעלי האירוע",
+    addOwner: "הוסף בעלים",
+    searchUsersPlaceholder: "חפש משתמשים לפי שם או אימייל...",
+    noUsersFound: "לא נמצאו משתמשים.",
+    userAlreadyOwner: "משתמש זה כבר מוגדר כבעלים.",
+    add: "הוסף",
+    removeOwner: "הסר בעלות",
+    confirmRemoveOwnerTitle: "אישור הסרת בעלות",
+    confirmRemoveOwnerMessage: "האם אתה בטוח שברצונך להסיר את {userName} מבעלי האירוע?",
+    cannotRemoveSelf: "אינך יכול להסיר את עצמך אם אתה הבעלים היחיד.",
+    cannotRemoveLastOwner: "לא ניתן להסיר את הבעלים האחרון של האירוע.",
   },
   profile: {
     userProfile: "פרופיל משתמש",
@@ -148,8 +159,8 @@ export const HEBREW_TEXT = {
     thumbsDown: "👎",
   },
   map: {
-    title: "מפת אירועים", 
-    searchOnMapTitle: "חיפוש במפה", 
+    title: "מפת אירועים",
+    searchOnMapTitle: "חיפוש במפה",
     eventsOnMap: "אירועים על המפה",
     fetchingLocation: "מאחזר מיקום נוכחי...",
     locationError: "שגיאה באחזור המיקום. אנא ודא שהרשאות המיקום מאופשרות בדפדפן.",
@@ -166,4 +177,3 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
-
