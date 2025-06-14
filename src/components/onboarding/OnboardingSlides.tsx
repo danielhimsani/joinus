@@ -15,15 +15,17 @@ interface SlideContent {
   imageUrl: string;
   imageHint: string;
   Icon?: React.ElementType;
+  isLogo?: boolean; // Flag to indicate if this slide uses the logo
 }
 
 const slides: SlideContent[] = [
   {
     title: `${HEBREW_TEXT.general.welcome} ${HEBREW_TEXT.appName}!`,
     description: HEBREW_TEXT.general.appDescription,
-    imageUrl: "https://placehold.co/600x400.png",
-    imageHint: "welcome party",
+    imageUrl: "/app_logo.png", // Changed to app logo
+    imageHint: "app logo",
     Icon: PartyPopper,
+    isLogo: true, // Mark this slide as using the logo
   },
   {
     title: HEBREW_TEXT.general.forCouples,
@@ -90,12 +92,15 @@ export function OnboardingSlides() {
         {slide.Icon && <slide.Icon className="mx-auto h-10 w-10 md:h-12 md:w-12 text-primary mb-4" />}
         <h1 className="font-headline text-2xl md:text-4xl font-bold mb-3">{slide.title}</h1>
         
-        <div className="relative w-full h-40 md:h-64 my-4 md:my-6 rounded-lg overflow-hidden">
+        <div className={cn(
+            "relative w-full my-4 md:my-6 rounded-lg overflow-hidden",
+            slide.isLogo ? "h-32 md:h-40" : "h-40 md:h-64" // Adjusted height for logo
+        )}>
           <Image
             src={slide.imageUrl}
             alt={slide.title}
             layout="fill"
-            objectFit="cover"
+            objectFit={slide.isLogo ? "contain" : "cover"} // Use "contain" for logo
             data-ai-hint={slide.imageHint}
             priority={currentSlide === 0} // Prioritize first image
           />
