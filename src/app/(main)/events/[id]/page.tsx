@@ -200,7 +200,7 @@ export default function EventDetailPage() {
       await deleteDoc(eventDocRef);
 
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.event.eventDeletedSuccessfully });
-      router.push('/profile'); 
+      router.push('/events'); 
     } catch (error)
     {
       console.error("Error deleting event (Firestore or other):", error);
