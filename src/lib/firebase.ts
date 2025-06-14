@@ -10,7 +10,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyAwpzWSRcpFbjazKym8MfpbCPyKavFrnpQ",
   authDomain: "join-us-p1u7f.firebaseapp.com",
   projectId: "join-us-p1u7f",
-  storageBucket: "join-us-p1u7f.firebasestorage.app",
+  storageBucket: "join-us-p1u7f.appspot.com", // Corrected default format
   messagingSenderId: "901177101115",
   appId: "1:901177101115:web:199032597540089b1fc51e"
 };
@@ -26,3 +26,4 @@ const storage: FirebaseStorage = getStorage(app); // Initialize Firebase Storage
 // const functions: Functions = getFunctions(app); // You can initialize this when you're ready to use Cloud Functions from client
 
 export { app, auth, db, storage /*, functions */ };
+
