@@ -33,7 +33,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Send, UserX, CheckCircle, XCircle, Info, ShieldAlert, MessageSquareDashed, ChevronLeft, Ban, UserCircle as UserPlaceholderIcon } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Loader2, Send, UserX, CheckCircle, XCircle, Info, ShieldAlert, MessageSquareDashed, ChevronLeft, Ban, UserCircle as UserPlaceholderIcon, MoreVertical } from 'lucide-react';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import Link from 'next/link';
 
@@ -136,8 +142,6 @@ export default function ChatPage() {
         } as EventChatMessage);
       });
       setMessages(fetchedMessages);
-       // Scroll to bottom if the user is already near the bottom or if it's their own new message
-      // For now, only explicit scroll on send
     }, (err) => {
       console.error("Error fetching messages:", err);
       setError(HEBREW_TEXT.chat.errorFetchingMessages);
@@ -149,8 +153,6 @@ export default function ChatPage() {
     };
   }, [chatId, currentUser, updateUnreadCount]);
 
-  // Removed the useEffect that scrolled on every [messages] change to prevent aggressive auto-scrolling.
-  // Scrolling to bottom is now primarily handled after sending a message.
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !chatDetails || !currentUser) return;
@@ -333,42 +335,51 @@ export default function ChatPage() {
               </div>
             </div>
             {isCurrentUserOwner && chatDetails.status !== 'closed' && chatDetails.status !== 'request_rejected' && (
-                 <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
-                            <Ban className="h-4 w-4"/>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-5 w-5 text-muted-foreground" />
                         </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>{HEBREW_TEXT.chat.confirmAction}</AlertDialogTitle>
-                        <AlertDialogDescription>{HEBREW_TEXT.chat.confirmCloseChatMessage}</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter className="flex-row-reverse">
-                            <AlertDialogCancel disabled={isUpdatingStatus}>{HEBREW_TEXT.general.cancel}</AlertDialogCancel>
-                            <AlertDialogAction 
-                                onClick={() => handleUpdateStatus('closed', HEBREW_TEXT.chat.chatClosedMessage)}
-                                disabled={isUpdatingStatus}
-                                className="bg-destructive hover:bg-destructive/90"
-                            >
-                                {isUpdatingStatus && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-                                {HEBREW_TEXT.chat.closeChat}
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => setShowCloseDialog(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                            <Ban className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                            {HEBREW_TEXT.chat.closeChat}
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             )}
           </div>
         </CardHeader>
+        
+        {/* AlertDialog for Close Chat confirmation - can remain outside dropdown for state management */}
+        <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>{HEBREW_TEXT.chat.confirmAction}</AlertDialogTitle>
+                <AlertDialogDescription>{HEBREW_TEXT.chat.confirmCloseChatMessage}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-row-reverse">
+                    <AlertDialogCancel disabled={isUpdatingStatus}>{HEBREW_TEXT.general.cancel}</AlertDialogCancel>
+                    <AlertDialogAction 
+                        onClick={() => handleUpdateStatus('closed', HEBREW_TEXT.chat.chatClosedMessage)}
+                        disabled={isUpdatingStatus}
+                        className="bg-destructive hover:bg-destructive/90"
+                    >
+                        {isUpdatingStatus && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                        {HEBREW_TEXT.chat.closeChat}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
 
         {/* Messages Area */}
         <ScrollArea ref={scrollAreaRef} className="flex-1 p-3 md:p-4 bg-background/70">
           <div className="flex flex-col space-y-1">
             {showOwnerActionBlock && (
                 <div className="my-3 p-3 bg-muted/60 dark:bg-muted/40 rounded-lg shadow-sm w-full self-center max-w-md mx-auto">
-                  <p className="text-sm text-foreground mb-3 text-center font-medium">
-                    {HEBREW_TEXT.chat.requestManagement}
-                  </p>
+                  {/* Removed <p>{HEBREW_TEXT.chat.requestManagement}</p> */}
                   <div className="flex gap-3 justify-center">
                     <Button 
                       size="sm" 
@@ -437,7 +448,7 @@ export default function ChatPage() {
                     }
                 }}
                 rows={1}
-                className="min-h-[40px] max-h-[100px] w-full resize-none"
+                className="min-h-[40px] max-h-[100px] w-full resize-none" 
                 disabled={isSendingMessage}
                 />
                 <Button type="button" size="icon" onClick={handleSendMessage} disabled={isSendingMessage || !newMessage.trim()}>
