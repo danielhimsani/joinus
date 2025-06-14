@@ -4,64 +4,25 @@
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import type { Event, UserProfile as GuestProfile } from '@/types'; // Assuming UserProfile can be used for guests
+import type { Event, UserProfile as GuestProfile } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, ThumbsUp, ThumbsDown, CheckCircle, XCircle, Clock, Info } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, ThumbsUp, ThumbsDown, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
+import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
+import { doc, getDoc, Timestamp } from "firebase/firestore";
+import type { User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 
-// Mock data - reuse from events page for consistency
-const mockEvents: Event[] = [
-  {
-    id: "1",
-    coupleId: "couple1", // Assume current user is 'user1' for testing owner view
-    name: "החתונה של רותם ואוריה",
-    numberOfGuests: 20,
-    paymentOption: "fixed",
-    pricePerGuest: 180,
-    location: "אולמי 'קסם', ירושלים",
-    dateTime: new Date(new Date().setDate(new Date().getDate() + 7)),
-    description: "הצטרפו אלינו לחגיגה של אהבה באווירה קסומה ומרגשת. מוזיקה טובה, אוכל משובח והמון שמחה! האירוע יכלול הופעה חיה של אמן אורח, בר קוקטיילים עשיר ופינות ישיבה מפנקות. מצפים לראותכם!",
-    ageRange: [25, 55],
-    foodType: "kosherMeat",
-    religionStyle: "traditional",
-    imageUrl: "https://placehold.co/800x400.png?text=Event1+Large",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-   {
-    id: "2",
-    coupleId: "user1",
-    name: "מסיבת האירוסין של נועה ואיתי",
-    numberOfGuests: 15,
-    paymentOption: "payWhatYouWant",
-    location: "לופט 'אורבן', תל אביב",
-    dateTime: new Date(new Date().setDate(new Date().getDate() + 14)), // In two weeks
-    description: "מסיבת אירוסין צעירה ותוססת עם DJ, קוקטיילים ואווירה מחשמלת. בואו לחגוג איתנו!",
-    ageRange: [20, 35],
-    foodType: "kosherParve",
-    religionStyle: "secular",
-    imageUrl: "https://placehold.co/800x400.png?text=Event2+Large",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
-
-const mockGuests: GuestProfile[] = [
-    { id: "guest1", firebaseUid: "guest1", name: "ישראל ישראלי", email: "israel@example.com", profileImageUrl: "https://placehold.co/100x100.png?text=II", isVerified: true },
-    { id: "guest2", firebaseUid: "guest2", name: "שרה שרוני", email: "sarah@example.com", profileImageUrl: "https://placehold.co/100x100.png?text=SS", bio: "אוהבת לרקוד!" },
-];
-
-// Mock current user
-const currentUserId = "user1"; // Change to 'couple1' to test owner view for event 1
 
 const getFoodTypeLabel = (foodType: Event['foodType']) => {
     switch (foodType) {
@@ -82,6 +43,15 @@ const getPriceDisplay = (event: Event) => {
     }
 }
 
+const safeToDate = (timestampField: any): Date => {
+    if (timestampField && typeof timestampField.toDate === 'function') {
+      return (timestampField as Timestamp).toDate();
+    }
+    if (timestampField instanceof Date) return timestampField;
+    return new Date(); 
+};
+
+
 export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -90,45 +60,100 @@ export default function EventDetailPage() {
 
   const [event, setEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [joinRequests, setJoinRequests] = useState<GuestProfile[]>([]); // Simplified: stores profiles of requesters
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+
+  // For now, guest lists are simplified
+  const [joinRequests, setJoinRequests] = useState<GuestProfile[]>([]); 
   const [approvedGuests, setApprovedGuests] = useState<GuestProfile[]>([]);
 
-  const isOwner = event?.coupleId === currentUserId;
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
+      setCurrentUser(user);
+      // No need to refetch event here unless auth state directly influences event visibility
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
-    setIsLoading(true);
-    // Simulate fetching event data
-    setTimeout(() => {
-      const foundEvent = mockEvents.find(e => e.id === eventId);
-      setEvent(foundEvent || null);
-      if (foundEvent && foundEvent.coupleId === currentUserId) { // If owner, populate some mock requests
-          setJoinRequests(mockGuests.slice(0,1)); // One pending
-          setApprovedGuests(mockGuests.slice(1,2)); // One approved
+    if (!eventId) {
+        setIsLoading(false);
+        setFetchError("Event ID is missing.");
+        return;
+    }
+
+    const fetchEventData = async () => {
+      setIsLoading(true);
+      setFetchError(null);
+      try {
+        const eventDocRef = doc(db, "events", eventId);
+        const docSnap = await getDoc(eventDocRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setEvent({
+            id: docSnap.id,
+            ...data,
+            dateTime: safeToDate(data.dateTime),
+            createdAt: safeToDate(data.createdAt),
+            updatedAt: safeToDate(data.updatedAt),
+            name: data.name || "Unnamed Event",
+            numberOfGuests: data.numberOfGuests || 0,
+            paymentOption: data.paymentOption || "free",
+            location: data.location || "No location specified",
+            description: data.description || "",
+            ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
+            foodType: data.foodType || "notKosher",
+            religionStyle: data.religionStyle || "mixed",
+          } as Event);
+          // Mock guest data if owner, can be replaced with real data fetching later
+          // For now, keep it simple:
+          // if (currentUser && data.coupleId === currentUser.uid) {
+          // setJoinRequests([]); // Placeholder
+          // setApprovedGuests([]); // Placeholder
+          // }
+
+        } else {
+          setFetchError(HEBREW_TEXT.event.noEventsFound);
+          setEvent(null);
+        }
+      } catch (error) {
+        console.error("Error fetching event:", error);
+        setFetchError(HEBREW_TEXT.general.error + " " + (error instanceof Error ? error.message : String(error)));
+        setEvent(null);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    }, 1000);
-  }, [eventId]);
+    };
+
+    fetchEventData();
+  }, [eventId, currentUser]); // Added currentUser to re-evaluate if needed for owner-specific mock data (though removed for now)
+
+  const isOwner = event && currentUser && event.coupleId === currentUser.uid;
 
   const handleRequestToJoin = () => {
-    toast({ title: HEBREW_TEXT.general.success, description: "בקשתך להצטרף נשלחה!" });
-    // Mock: Add current user to requests or update status
+    // TODO: Implement actual request to join logic (e.g., write to Firestore)
+    toast({ title: HEBREW_TEXT.general.success, description: "בקשתך להצטרף נשלחה (דמה)!" });
   };
 
   const handleApproveRequest = (guestId: string) => {
-    toast({ title: HEBREW_TEXT.general.success, description: `בקשת האורח אושרה.` });
-    setApprovedGuests(prev => [...prev, joinRequests.find(g => g.id === guestId)!]);
-    setJoinRequests(prev => prev.filter(g => g.id !== guestId));
+    // TODO: Implement actual approval logic
+    toast({ title: HEBREW_TEXT.general.success, description: `בקשת האורח אושרה (דמה).` });
+    // setApprovedGuests(prev => [...prev, joinRequests.find(g => g.id === guestId)!]);
+    // setJoinRequests(prev => prev.filter(g => g.id !== guestId));
   };
 
   const handleRejectRequest = (guestId: string) => {
-    toast({ title: HEBREW_TEXT.general.success, description: `בקשת האורח נדחתה.` });
-    setJoinRequests(prev => prev.filter(g => g.id !== guestId));
+    // TODO: Implement actual rejection logic
+    toast({ title: HEBREW_TEXT.general.success, description: `בקשת האורח נדחתה (דמה).` });
+    // setJoinRequests(prev => prev.filter(g => g.id !== guestId));
   };
 
   const handleRateGuest = (guestId: string, rating: 'positive' | 'negative') => {
+    // TODO: Implement actual rating logic
     toast({
       title: HEBREW_TEXT.general.success,
-      description: `האורח דורג ${rating === 'positive' ? HEBREW_TEXT.emojis.thumbsUp : HEBREW_TEXT.emojis.thumbsDown}`,
+      description: `האורח דורג ${rating === 'positive' ? HEBREW_TEXT.emojis.thumbsUp : HEBREW_TEXT.emojis.thumbsDown} (דמה)`,
     });
   };
 
@@ -136,26 +161,50 @@ export default function EventDetailPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-12">
-        <Skeleton className="h-96 w-full rounded-lg mb-8" />
-        <div className="grid md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-4">
-                <Skeleton className="h-8 w-3/4" />
-                <Skeleton className="h-6 w-1/2" />
-                <Skeleton className="h-20 w-full" />
+        <Card className="overflow-hidden">
+            <Skeleton className="h-64 md:h-96 w-full rounded-t-lg" />
+            <CardHeader>
+                <Skeleton className="h-8 w-3/4 mb-2" />
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    <Skeleton className="h-5 w-48" />
+                    <Skeleton className="h-5 w-40" />
+                </div>
+            </CardHeader>
+            <CardContent>
+            <div className="grid md:grid-cols-3 gap-8">
+                <div className="md:col-span-2 space-y-6">
+                    <div>
+                        <Skeleton className="h-6 w-1/4 mb-2" />
+                        <Skeleton className="h-20 w-full" />
+                    </div>
+                    <div>
+                        <Skeleton className="h-6 w-1/3 mb-3" />
+                        <div className="grid sm:grid-cols-2 gap-4">
+                            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}
+                        </div>
+                    </div>
+                </div>
+                <div className="md:col-span-1 space-y-4">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
             </div>
-            <div className="space-y-4">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-12 w-full" />
-            </div>
-        </div>
+            </CardContent>
+        </Card>
       </div>
     );
   }
 
-  if (!event) {
+  if (fetchError || !event) {
     return (
       <div className="container mx-auto px-4 py-12 text-center">
-        <h1 className="text-2xl font-bold">{HEBREW_TEXT.event.noEventsFound}</h1>
+        <Alert variant="destructive" className="max-w-lg mx-auto mb-6">
+            <AlertCircle className="h-5 w-5" />
+            <AlertTitle className="font-headline">{fetchError ? HEBREW_TEXT.general.error : HEBREW_TEXT.event.noEventsFound}</AlertTitle>
+            <AlertDescription>
+                {fetchError || HEBREW_TEXT.event.noEventsFound}
+            </AlertDescription>
+        </Alert>
         <Button onClick={() => router.push('/events')} className="mt-4">{HEBREW_TEXT.general.back} {HEBREW_TEXT.navigation.events}</Button>
       </div>
     );
@@ -163,33 +212,35 @@ export default function EventDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <Card>
-        <div className="relative w-full h-64 md:h-96 rounded-t-lg overflow-hidden">
+      <Card className="overflow-hidden shadow-lg">
+        <div className="relative w-full h-64 md:h-96">
           <Image
             src={event.imageUrl || "https://placehold.co/800x400.png"}
             alt={event.name}
             layout="fill"
             objectFit="cover"
             data-ai-hint="wedding detail"
+            priority
           />
+           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
         </div>
-        <CardHeader>
-          <CardTitle className="font-headline text-3xl md:text-4xl">{event.name}</CardTitle>
+        <CardHeader className="relative z-10 -mt-16 md:-mt-20 p-6 bg-background/80 backdrop-blur-sm rounded-t-lg md:mx-4">
+          <CardTitle className="font-headline text-3xl md:text-4xl text-foreground">{event.name}</CardTitle>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-muted-foreground mt-2">
             <span className="flex items-center"><CalendarDays className="ml-1.5 h-5 w-5 text-primary" /> {format(new Date(event.dateTime), 'PPPPp', { locale: he })}</span>
             <span className="flex items-center"><MapPin className="ml-1.5 h-5 w-5 text-primary" /> {event.location}</span>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="grid md:grid-cols-3 gap-8">
             <div className="md:col-span-2">
               <h3 className="font-headline text-xl font-semibold mb-3">{HEBREW_TEXT.event.description}</h3>
-              <p className="text-foreground/80 leading-relaxed whitespace-pre-line">{event.description}</p>
+              <p className="text-foreground/80 leading-relaxed whitespace-pre-line">{event.description || "לא סופק תיאור."}</p>
 
               <Separator className="my-6" />
 
               <h3 className="font-headline text-xl font-semibold mb-4">פרטים נוספים</h3>
-              <div className="grid sm:grid-cols-2 gap-4 text-sm">
+              <div className="grid sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <div className="flex items-start"><Users className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.numberOfGuests}:</strong> {event.numberOfGuests}</span></div>
                 <div className="flex items-start"><Tag className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.paymentOptions}:</strong> {getPriceDisplay(event)}</span></div>
                 <div className="flex items-start"><Utensils className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.foodType}:</strong> {getFoodTypeLabel(event.foodType)}</span></div>
@@ -200,7 +251,7 @@ export default function EventDetailPage() {
 
             <div className="md:col-span-1 space-y-4">
               {isOwner ? (
-                <Button className="w-full font-body" variant="outline" onClick={() => router.push(`/events/edit/${event.id}`)}>
+                <Button className="w-full font-body text-base py-3" variant="outline" onClick={() => router.push(`/events/edit/${event.id}`)}>
                   <Edit3 className="ml-2 h-4 w-4" />
                   {HEBREW_TEXT.event.editEvent}
                 </Button>
@@ -211,7 +262,7 @@ export default function EventDetailPage() {
               )}
               <Button variant="outline" className="w-full font-body">
                 <MessageSquare className="ml-2 h-4 w-4" />
-                {HEBREW_TEXT.general.actions} נוספות (שתף, הוסף ליומן וכו')
+                שתף אירוע
               </Button>
             </div>
           </div>
@@ -243,7 +294,7 @@ export default function EventDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground">{HEBREW_TEXT.event.noPendingRequests}</p>
+                  <p className="text-muted-foreground">{HEBREW_TEXT.event.noPendingRequests} (תכונה זו תורחב בהמשך)</p>
                 )}
               </section>
 
@@ -276,11 +327,11 @@ export default function EventDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground">{HEBREW_TEXT.event.noApprovedGuests}</p>
+                  <p className="text-muted-foreground">{HEBREW_TEXT.event.noApprovedGuests} (תכונה זו תורחב בהמשך)</p>
                 )}
-                 <Button variant="outline" className="mt-4 w-full md:w-auto">
+                 <Button variant="outline" className="mt-4 w-full md:w-auto" disabled> {/* Disabled until implemented */}
                     <MessageSquare className="ml-2 h-4 w-4" />
-                    {HEBREW_TEXT.event.broadcastMessage}
+                    {HEBREW_TEXT.event.broadcastMessage} (בקרוב)
                  </Button>
               </section>
             </>
@@ -290,3 +341,5 @@ export default function EventDetailPage() {
     </div>
   );
 }
+
+    
