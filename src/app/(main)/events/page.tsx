@@ -2,14 +2,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from 'next/image'; // Added for PNG logo
+import Image from 'next/image';
 import { EventCard } from "@/components/events/EventCard";
 import { EventFilters, type Filters } from "@/components/events/EventFilters";
 import type { Event } from "@/types";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { MapPin, SearchX, Loader2, Search, Filter as FilterIcon, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin, SearchX, Loader2, Search, Filter as FilterIcon, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
 import { GoogleMapComponent } from "@/components/maps/GoogleMapComponent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,81 +21,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-// AppLogo import removed
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query, orderBy, Timestamp } from "firebase/firestore";
 
-// Mock data
-const mockEvents: Event[] = [
-  {
-    id: "1",
-    coupleId: "couple1",
-    name: "החתונה של רותם ואוריה",
-    numberOfGuests: 20,
-    paymentOption: "fixed",
-    pricePerGuest: 180,
-    location: "אולמי 'קסם', ירושלים",
-    dateTime: new Date(new Date().setDate(new Date().getDate() + 7)), // Next week
-    description: "הצטרפו אלינו לחגיגה של אהבה באווירה קסומה ומרגשת. מוזיקה טובה, אוכל משובח והמון שמחה!",
-    ageRange: [25, 55],
-    foodType: "kosherMeat",
-    religionStyle: "traditional",
-    imageUrl: "https://placehold.co/600x400.png?text=Event1",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "2",
-    coupleId: "couple2",
-    name: "מסיבת האירוסין של נועה ואיתי",
-    numberOfGuests: 15,
-    paymentOption: "payWhatYouWant",
-    location: "לופט 'אורבן', תל אביב",
-    dateTime: new Date(new Date().setDate(new Date().getDate() + 14)), // In two weeks
-    description: "מסיבת אירוסין צעירה ותוססת עם DJ, קוקטיילים ואווירה מחשמלת. בואו לחגוג איתנו!",
-    ageRange: [20, 35],
-    foodType: "kosherParve",
-    religionStyle: "secular",
-    imageUrl: "https://placehold.co/600x400.png?text=Event2",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "3",
-    coupleId: "couple3",
-    name: "חידוש נדרים: משפחת לוי",
-    numberOfGuests: 30,
-    paymentOption: "free",
-    location: "בית כנסת 'אוהל מועד', חיפה",
-    dateTime: new Date(new Date().setDate(new Date().getDate() + 30)), // In a month
-    description: "אירוע מרגש לחידוש נדרים לאחר 20 שנות נישואין. כיבוד קל ואווירה משפחתית.",
-    ageRange: [30, 60],
-    foodType: "kosherDairy",
-    religionStyle: "religious",
-    imageUrl: "https://placehold.co/600x400.png?text=Event3",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-   {
-    id: "4",
-    coupleId: "couple4",
-    name: "חתונה בטבע: יעל ורון",
-    numberOfGuests: 10,
-    paymentOption: "fixed",
-    pricePerGuest: 250,
-    location: "יער בן שמן",
-    dateTime: new Date(new Date().setDate(new Date().getDate() + 21)),
-    description: "חתונה אינטימית ורומנטית בלב הטבע. אווירה פסטורלית ואוכל גורמה צמחוני.",
-    ageRange: [20, 40],
-    foodType: "kosherParve",
-    religionStyle: "mixed",
-    imageUrl: "https://placehold.co/600x400.png?text=Event4",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
 
 export default function EventsPage() {
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [advancedFilters, setAdvancedFilters] = useState<Filters>({});
   const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
   const [showFiltersModal, setShowFiltersModal] = useState(false);
@@ -104,6 +38,117 @@ export default function EventsPage() {
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+
+  const safeToDate = (timestampField: any): Date => {
+    if (timestampField && typeof timestampField.toDate === 'function') {
+      return (timestampField as Timestamp).toDate();
+    }
+    if (timestampField instanceof Date) return timestampField;
+    // Fallback for missing or invalid date fields, adjust as needed for your data integrity
+    // console.warn("Invalid or missing timestamp encountered, using current date as fallback:", timestampField);
+    return new Date(); 
+  };
+
+  // Effect for fetching initial data from Firestore
+  useEffect(() => {
+    const fetchEventsFromFirestore = async () => {
+      setIsLoadingEvents(true);
+      setFetchError(null);
+      try {
+        const eventsCollectionRef = collection(db, "events");
+        const q = query(eventsCollectionRef, orderBy("dateTime", "asc")); // Upcoming events first
+        const querySnapshot = await getDocs(q);
+        const fetchedEvents = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            dateTime: safeToDate(data.dateTime),
+            createdAt: safeToDate(data.createdAt),
+            updatedAt: safeToDate(data.updatedAt),
+            // Ensure all other fields conform to the Event type, add defaults if necessary
+            name: data.name || "Unnamed Event",
+            numberOfGuests: data.numberOfGuests || 0,
+            paymentOption: data.paymentOption || "free",
+            location: data.location || "No location specified",
+            description: data.description || "",
+            ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
+            foodType: data.foodType || "notKosher",
+            religionStyle: data.religionStyle || "mixed",
+
+          } as Event;
+        });
+        setAllEvents(fetchedEvents);
+      } catch (error) {
+        console.error("Error fetching events from Firestore:", error);
+        setFetchError(HEBREW_TEXT.general.error + " " + HEBREW_TEXT.general.tryAgainLater);
+      } finally {
+        setIsLoadingEvents(false);
+      }
+    };
+
+    fetchEventsFromFirestore();
+  }, []); // Empty dependency array: fetch only once on mount
+
+
+  // Effect for client-side filtering
+  useEffect(() => {
+    let eventsToFilter = [...allEvents];
+
+    // 1. Apply simple search query
+    if (simpleSearchQuery.trim()) {
+      const queryText = simpleSearchQuery.toLowerCase().trim();
+      eventsToFilter = eventsToFilter.filter(event =>
+          (event.name?.toLowerCase() || '').includes(queryText) ||
+          (event.description?.toLowerCase() || '').includes(queryText) ||
+          (event.location?.toLowerCase() || '').includes(queryText)
+      );
+    }
+
+    // 2. Apply advanced filters from modal
+    if (advancedFilters.searchTerm && advancedFilters.searchTerm.trim()) {
+      const advancedQueryText = advancedFilters.searchTerm.toLowerCase().trim();
+       eventsToFilter = eventsToFilter.filter(event =>
+          (event.name?.toLowerCase() || '').includes(advancedQueryText) ||
+          (event.description?.toLowerCase() || '').includes(advancedQueryText)
+      );
+    }
+    if (advancedFilters.location && advancedFilters.location.trim()) {
+      eventsToFilter = eventsToFilter.filter(event => 
+          (event.location?.toLowerCase() || '').includes(advancedFilters.location!.toLowerCase().trim())
+      );
+    }
+    if (advancedFilters.date) {
+      const filterDateString = advancedFilters.date.toDateString();
+      eventsToFilter = eventsToFilter.filter(event => {
+          return new Date(event.dateTime).toDateString() === filterDateString;
+      });
+    }
+    if (advancedFilters.priceRange && advancedFilters.priceRange !== "any") {
+        if (advancedFilters.priceRange === "free") {
+            eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "free");
+        } else {
+            eventsToFilter = eventsToFilter.filter(e => {
+                if (e.paymentOption === "fixed" && e.pricePerGuest != null) {
+                    if (advancedFilters.priceRange === "0-100") {
+                        return e.pricePerGuest >= 0 && e.pricePerGuest <= 100;
+                    } else if (advancedFilters.priceRange === "100-200") {
+                        return e.pricePerGuest >= 100 && e.pricePerGuest <= 200;
+                    } else if (advancedFilters.priceRange === "200+") {
+                        return e.pricePerGuest >= 200;
+                    }
+                }
+                return false;
+            });
+        }
+    }
+     if (advancedFilters.foodType && advancedFilters.foodType !== "any") {
+      eventsToFilter = eventsToFilter.filter(event => event.foodType === advancedFilters.foodType);
+    }
+    
+    setFilteredEvents(eventsToFilter);
+
+  }, [allEvents, simpleSearchQuery, advancedFilters]);
 
 
   useEffect(() => {
@@ -133,57 +178,6 @@ export default function EventsPage() {
     }
   }, [isMapSectionOpen, currentLocation, locationError, isFetchingLocation]);
 
-  useEffect(() => {
-    setIsLoadingEvents(true);
-    // Simulate API fetch
-    setTimeout(() => {
-      let eventsToFilter = mockEvents;
-
-      // 1. Apply simple search query
-      if (simpleSearchQuery.trim()) {
-        const query = simpleSearchQuery.toLowerCase().trim();
-        eventsToFilter = eventsToFilter.filter(event =>
-            event.name.toLowerCase().includes(query) ||
-            event.description.toLowerCase().includes(query) ||
-            event.location.toLowerCase().includes(query)
-        );
-      }
-
-      // 2. Apply advanced filters from modal
-      if (advancedFilters.searchTerm && advancedFilters.searchTerm.trim()) {
-        const advancedQuery = advancedFilters.searchTerm.toLowerCase().trim();
-         eventsToFilter = eventsToFilter.filter(event =>
-            event.name.toLowerCase().includes(advancedQuery) ||
-            event.description.toLowerCase().includes(advancedQuery)
-        );
-      }
-      if (advancedFilters.location && advancedFilters.location.trim()) {
-        eventsToFilter = eventsToFilter.filter(event => event.location.toLowerCase().includes(advancedFilters.location!.toLowerCase().trim()));
-      }
-      if (advancedFilters.date) {
-        eventsToFilter = eventsToFilter.filter(event => new Date(event.dateTime).toDateString() === advancedFilters.date!.toDateString());
-      }
-      if (advancedFilters.priceRange) {
-          if (advancedFilters.priceRange === "free") {
-              eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "free");
-          } else if (advancedFilters.priceRange !== "any") {
-              const [min, max] = advancedFilters.priceRange.split('-').map(p => p === 'any' || p.includes('+') ? p : Number(p));
-              eventsToFilter = eventsToFilter.filter(e => {
-                  if (e.paymentOption === "fixed" && e.pricePerGuest) {
-                      if (typeof max === 'string' && max.includes('+')) return e.pricePerGuest >= (min as number);
-                      return e.pricePerGuest >= (min as number) && e.pricePerGuest <= (max as number);
-                  }
-                  return false;
-              });
-          }
-      }
-       if (advancedFilters.foodType && advancedFilters.foodType !== "any") {
-        eventsToFilter = eventsToFilter.filter(event => event.foodType === advancedFilters.foodType);
-      }
-      setFilteredEvents(eventsToFilter);
-      setIsLoadingEvents(false);
-    }, 700);
-  }, [simpleSearchQuery, advancedFilters]);
 
   const handleAdvancedFilterChange = (newFilters: Filters) => {
     setAdvancedFilters(newFilters);
@@ -243,7 +237,7 @@ export default function EventsPage() {
 
         {/* Logo */}
         <div className="flex-shrink-0">
-          <Image src="/app_logo.png" alt="App Logo" width={150} height={45} data-ai-hint="app logo" />
+          <Image src="/app_logo.png" alt="App Logo" width={150} height={45} data-ai-hint="app logo"/>
         </div>
       </div>
 
@@ -288,17 +282,25 @@ export default function EventsPage() {
 
       <Separator className="my-8"/>
 
+      {fetchError && (
+        <Alert variant="destructive" className="my-8">
+          <AlertCircle className="h-5 w-5" />
+          <AlertTitle className="font-headline">{HEBREW_TEXT.general.error}</AlertTitle>
+          <AlertDescription>{fetchError}</AlertDescription>
+        </Alert>
+      )}
+
       {isLoadingEvents ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {renderSkeletons()}
         </div>
-      ) : filteredEvents.length > 0 ? (
+      ) : !fetchError && filteredEvents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredEvents.map(event => (
             <EventCard key={event.id} event={event} />
           ))}
         </div>
-      ) : (
+      ) : !fetchError && filteredEvents.length === 0 ? (
         <Alert variant="default" className="mt-8">
             <SearchX className="h-5 w-5" />
           <AlertTitle className="font-headline">{HEBREW_TEXT.event.noEventsFound}</AlertTitle>
@@ -306,7 +308,8 @@ export default function EventsPage() {
             {HEBREW_TEXT.general.tryAgainLater}
           </AlertDescription>
         </Alert>
-      )}
+      ) : null}
     </div>
   );
 }
+
