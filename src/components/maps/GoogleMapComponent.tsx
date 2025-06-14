@@ -16,8 +16,8 @@ export interface MapLocation {
   id: string;
   lat: number;
   lng: number;
-  eventName: string; // Actual name of the event
-  locationDisplayName: string; // Display name of the location
+  eventName: string;
+  locationDisplayName: string;
   dateTime: Date;
   numberOfGuests: number;
 }
@@ -53,7 +53,7 @@ export function GoogleMapComponent({
   const [eventMarkerIcon, setEventMarkerIcon] = useState<google.maps.Icon | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script-unique-id', // Ensuring a unique ID
+    id: 'google-map-script', // Consistent ID with EventForm
     googleMapsApiKey: apiKey || "",
     libraries,
     language: 'iw', 
@@ -65,7 +65,7 @@ export function GoogleMapComponent({
       setEventMarkerIcon({
         url: '/ring-marker.png', 
         scaledSize: new window.google.maps.Size(36, 48), 
-        anchor: new window.google.maps.Point(18, 48),     
+        anchor: new window.google.maps.Point(18, 48), // Anchor to bottom-center of a typical pin
       });
     }
   }, [isLoaded]);
@@ -126,7 +126,7 @@ export function GoogleMapComponent({
           key={loc.id + '-' + loc.lat + '-' + loc.lng} 
           position={{ lat: loc.lat, lng: loc.lng }}
           onClick={() => handleMarkerClick(loc)}
-          icon={eventMarkerIcon} 
+          icon={eventMarkerIcon}
         />
       ))}
 
@@ -135,13 +135,12 @@ export function GoogleMapComponent({
           position={infoWindowPosition}
           onCloseClick={handleMapClick} 
           options={{ 
-            pixelOffset: new window.google.maps.Size(0, -50), // Adjust based on marker icon height
+            pixelOffset: new window.google.maps.Size(0, -50), 
             disableAutoPan: true 
           }} 
         >
           <div className="p-2 space-y-2 max-w-[280px] bg-background rounded-md shadow-lg text-right">
             {selectedEvents.length === 1 ? (
-              // Single event view
               (() => {
                 const event = selectedEvents[0];
                 return (
@@ -167,7 +166,6 @@ export function GoogleMapComponent({
                 );
               })()
             ) : (
-              // Multiple events view
               <>
                 <h3 className="font-headline text-md text-foreground mb-2 text-center border-b pb-1">
                   {selectedEvents[0].locationDisplayName}
