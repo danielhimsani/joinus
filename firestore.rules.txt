@@ -1,0 +1,31 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Rules for the 'events' collection
+    match /events/{eventId} {
+      // Allow anyone to read events if they are authenticated
+      allow read: if request.auth != null;
+
+      // Allow authenticated users to create new events
+      // The client code ensures ownerUids is set with the creator's UID.
+      allow create: if request.auth != null && request.resource.data.ownerUids[0] == request.auth.uid;
+
+      // Allow a user to update an event if their UID is in the event's ownerUids array
+      // 'resource.data' refers to the document *as it exists in the database BEFORE the update*
+      // 'request.resource.data' refers to the document *as it would be AFTER the update*
+      allow update: if request.auth != null && request.auth.uid in resource.data.ownerUids;
+
+      // Allow a user to delete an event if their UID is in the event's ownerUids array
+      allow delete: if request.auth != null && request.auth.uid in resource.data.ownerUids;
+    }
+
+    // Example for a 'users' collection (adjust as needed):
+    // match /users/{userId} {
+    //   allow read: if request.auth != null;
+    //   allow write: if request.auth != null && request.auth.uid == userId;
+    // }
+  }
+}
