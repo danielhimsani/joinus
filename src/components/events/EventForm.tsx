@@ -131,7 +131,7 @@ export function EventForm({
   const locationInputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script-event-form',
+    id: 'google-map-script', // Standardized ID
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries, 
     language: 'iw',
@@ -357,15 +357,12 @@ export function EventForm({
       variant: "destructive",
     });
     
-    // Attempt to scroll to the first field with an error
     const firstInvalidElement = document.querySelector('[aria-invalid="true"]') as HTMLElement;
     if (firstInvalidElement) {
       firstInvalidElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Attempt to focus, but be mindful this might not always work with custom/complex inputs
       try {
         firstInvalidElement.focus({ preventScroll: true });
       } catch (e) {
-        // Some elements might not be focusable or might throw an error.
         console.warn("Could not focus on invalid element:", firstInvalidElement, e);
       }
     }
@@ -713,4 +710,3 @@ export function EventForm({
     </Form>
   );
 }
-
