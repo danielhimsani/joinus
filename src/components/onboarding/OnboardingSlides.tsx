@@ -22,39 +22,39 @@ const slides: SlideContent[] = [
   {
     title: `${HEBREW_TEXT.general.welcome} ${HEBREW_TEXT.appName}!`,
     description: HEBREW_TEXT.general.appDescription,
-    imageUrl: "/app_logo.png", // Changed to app logo
+    imageUrl: "/app_logo.png", // Remains as app logo
     imageHint: "app logo",
     Icon: PartyPopper,
-    isLogo: true, // Mark this slide as using the logo
+    isLogo: true, 
   },
   {
     title: HEBREW_TEXT.general.forCouples,
     description: "יש לכם מקומות פנויים בחתונה? אל תתנו להם להתבזבז! פרסמו את האירוע שלכם במחוברים ומצאו אורחים שישמחו להצטרף ולכסות את העלויות.",
-    imageUrl: "/onboarding-couples.png", // Updated image path
+    imageUrl: "/onboarding/slide-2.png", 
     imageHint: "wedding couple",
   },
   {
     title: HEBREW_TEXT.general.forGuests,
     description: "מחפשים אירוע להצטרף אליו ברגע האחרון? גלו חתונות עם מקומות פנויים, הצטרפו לחגיגה ותהנו מערב בלתי נשכח במחיר משתלם.",
-    imageUrl: "https://placehold.co/600x400.png",
+    imageUrl: "/onboarding/slide-3.png",
     imageHint: "wedding guests",
   },
   {
     title: `${HEBREW_TEXT.general.howItWorks} (1/3)`,
     description: "זוגות מפרסמים: זוגות עם מקומות פנויים יוצרים אירוע בפלטפורמה, מציינים פרטים ומחיר.",
-    imageUrl: "https://placehold.co/600x300.png",
+    imageUrl: "/onboarding/slide-4.png",
     imageHint: "event creation",
   },
   {
     title: `${HEBREW_TEXT.general.howItWorks} (2/3)`,
     description: "אורחים מגלים: אורחים פוטנציאליים מחפשים ומסננים אירועים לפי העדפותיהם.",
-    imageUrl: "https://placehold.co/600x300.png",
+    imageUrl: "/onboarding/slide-5.png",
     imageHint: "event discovery",
   },
   {
     title: `${HEBREW_TEXT.general.howItWorks} (3/3)`,
     description: "מתחברים וחוגגים! בקשות מאושרות, אורחים מצטרפים, והחגיגה מתחילה. כולם מרוויחים!",
-    imageUrl: "https://placehold.co/600x300.png",
+    imageUrl: "/onboarding/slide-6.png",
     imageHint: "celebration connection",
   },
 ];
