@@ -36,6 +36,7 @@ import { doc, getDoc, Timestamp, deleteDoc } from "firebase/firestore";
 import { ref as storageRef, deleteObject } from "firebase/storage";
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
+import { safeToDate } from '@/lib/dateUtils';
 
 
 const getFoodTypeLabel = (foodType: Event['foodType']) => {
@@ -56,19 +57,6 @@ const getPriceDisplay = (event: Event) => {
         default: return '';
     }
 }
-
-const safeToDate = (timestampField: any): Date => {
-    if (timestampField && typeof timestampField.toDate === 'function') {
-      return (timestampField as Timestamp).toDate();
-    }
-    if (timestampField instanceof Date) return timestampField;
-    if (typeof timestampField === 'string' || typeof timestampField === 'number') {
-        const d = new Date(timestampField);
-        if (!isNaN(d.getTime())) return d;
-    }
-    console.warn("safeToDate received unhandled type or invalid date:", timestampField);
-    return new Date(); 
-};
 
 
 export default function EventDetailPage() {
@@ -312,7 +300,7 @@ export default function EventDetailPage() {
                   {HEBREW_TEXT.event.requestToJoin}
                 </Button>
               )}
-               {!currentUser && ( // Show a disabled or sign-in prompt button if user is not logged in
+               {!currentUser && ( 
                 <Button className="w-full font-body text-lg py-3" onClick={() => router.push('/signin')}>
                     <MessageCircleMore className="ml-2 h-5 w-5" />
                     התחבר כדי לבקש להצטרף
@@ -324,10 +312,6 @@ export default function EventDetailPage() {
               </Button>
             </div>
           </div>
-
-          {/* Removed guest request and approved guest sections as per chat integration plan */}
-          {/* These will be handled via the chat system */}
-
         </CardContent>
         {isOwner && (
             <CardFooter className="border-t px-6 py-4 flex flex-col sm:flex-row sm:justify-end gap-3">
@@ -386,5 +370,3 @@ export default function EventDetailPage() {
     </div>
   );
 }
-
-    

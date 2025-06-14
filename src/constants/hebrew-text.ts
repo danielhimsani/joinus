@@ -150,6 +150,8 @@ export const HEBREW_TEXT = {
     startChatPrompt: "נראה שעדיין לא התחלת צ'אט עבור אירוע זה. כתוב הודעת פתיחה לבעלי האירוע:",
     messageRequired: "הודעה נדרשת.",
     noChatsFound: "לא נמצאו צ'אטים.",
+    noChatsFoundOwner: "אין בקשות הצטרפות לאירועים שבבעלותך כרגע.",
+    noChatsFoundGuest: "לא ביקשת להצטרף לאירועים עדיין.",
     loadingChats: "טוען צ'אטים...",
     confirmDeclineRequestTitle: "אישור דחיית בקשה",
     confirmDeclineRequestMessage: "האם אתה בטוח שברצונך לדחות את בקשת ההצטרפות של {guestName}?",
@@ -158,6 +160,11 @@ export const HEBREW_TEXT = {
     chatClosed: "צ'אט זה נסגר.",
     chatClosedByOwner: "צ'אט זה נסגר על ידי בעל האירוע.",
     viewChat: "צפה בצ'אט",
+    lastMessage: "הודעה אחרונה",
+    unread: "לא נקראו",
+    errorFetchingChats: "שגיאה בטעינת הצ'אטים. נסה שוב מאוחר יותר.",
+    errorFetchingFutureEvents: "שגיאה בטעינת אירועים עתידיים שבבעלותך.",
+    messagesPageTitle: "ההודעות שלי",
   },
   general: {
     loading: "טוען...",
@@ -217,5 +224,3 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
-
-    

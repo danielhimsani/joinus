@@ -23,6 +23,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, Timestamp } from "firebase/firestore";
+import { safeToDate } from '@/lib/dateUtils';
 
 
 const PULL_TO_REFRESH_THRESHOLD = 70; // Pixels to pull to trigger refresh
@@ -51,18 +52,6 @@ export default function EventsPage() {
   const bodyRef = useRef<HTMLDivElement>(null);
 
 
-  const safeToDate = (timestampField: any): Date => {
-    if (timestampField && typeof timestampField.toDate === 'function') {
-      return (timestampField as Timestamp).toDate();
-    }
-    if (timestampField instanceof Date) return timestampField;
-    if (typeof timestampField === 'string' || typeof timestampField === 'number') {
-        const d = new Date(timestampField);
-        if (!isNaN(d.getTime())) return d;
-    }
-    console.warn("safeToDate received unhandled type or invalid date:", timestampField);
-    return new Date();
-  };
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 767px)"); // Tailwind 'md' breakpoint is 768px

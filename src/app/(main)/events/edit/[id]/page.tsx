@@ -12,19 +12,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
+import { safeToDate } from '@/lib/dateUtils';
 
-const safeToDate = (timestampField: any): Date => {
-    if (timestampField && typeof timestampField.toDate === 'function') {
-      return (timestampField as Timestamp).toDate();
-    }
-    if (timestampField instanceof Date) return timestampField;
-    if (typeof timestampField === 'string' || typeof timestampField === 'number') {
-        const d = new Date(timestampField);
-        if (!isNaN(d.getTime())) return d;
-    }
-    console.warn("safeToDate received unhandled type or invalid date:", timestampField);
-    return new Date();
-};
 
 export default function EditEventPage() {
   const params = useParams();
@@ -182,4 +171,3 @@ export default function EditEventPage() {
     </div>
   );
 }
-

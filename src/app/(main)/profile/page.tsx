@@ -41,6 +41,7 @@ import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; // Added db
 import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"; // Firebase imports
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
+import { safeToDate } from '@/lib/dateUtils';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "שם חייב להכיל לפחות 2 תווים." }),
@@ -49,18 +50,6 @@ const profileFormSchema = z.object({
   bio: z.string().max(300, { message: "ביו יכול להכיל עד 300 תווים."}).optional(),
   phone: z.string().regex(/^0\d([\d]{0,1})([-]{0,1})\d{7}$/, { message: "מספר טלפון לא תקין."}).optional(),
 });
-
-const safeToDate = (timestampField: any): Date => {
-    if (timestampField && typeof timestampField.toDate === 'function') {
-      return (timestampField as Timestamp).toDate();
-    }
-    if (timestampField instanceof Date) return timestampField;
-    if (typeof timestampField === 'string' || typeof timestampField === 'number') {
-        const d = new Date(timestampField);
-        if (!isNaN(d.getTime())) return d;
-    }
-    return new Date(); 
-};
 
 
 export default function ProfilePage() {
