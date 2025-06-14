@@ -7,7 +7,7 @@ import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { MapPin } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -49,6 +49,7 @@ export function GoogleMapComponent({
   
   const [selectedEvents, setSelectedEvents] = useState<MapLocation[] | null>(null);
   const [infoWindowPosition, setInfoWindowPosition] = useState<{lat: number; lng: number} | null>(null);
+  const [eventMarkerIcon, setEventMarkerIcon] = useState<google.maps.Icon | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script', 
@@ -57,6 +58,17 @@ export function GoogleMapComponent({
     language: 'iw', 
     region: 'IL', 
   });
+
+  useEffect(() => {
+    if (isLoaded && typeof window !== 'undefined' && window.google && window.google.maps) {
+      setEventMarkerIcon({
+        url: '/ring-marker.png', // Path to your PNG in the public folder
+        scaledSize: new window.google.maps.Size(36, 48), // Adjust as needed for your PNG (width, height)
+        anchor: new window.google.maps.Point(18, 48),     // Adjust anchor (half of width, full height for bottom-center)
+      });
+    }
+  }, [isLoaded]);
+
 
   const handleMarkerClick = (clickedLocation: MapLocation) => {
     const eventsAtSameSpot = eventLocations.filter(
@@ -92,18 +104,9 @@ export function GoogleMapComponent({
     );
   }
 
-  if (!isLoaded) {
+  if (!isLoaded || !eventMarkerIcon) {
     return <Skeleton className="h-[400px] w-full rounded-lg" />;
   }
-
-  const ringSvgString = `<svg width="40" height="40" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="18" fill="#9370DB" stroke="#6A5ACD" stroke-width="1"/><path d="M24 30c-5.52 0-10-4.48-10-10s4.48-10 10-10 10 4.48 10 10-4.48 10-10 10zm0-16c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z" fill="#ffffff"/><polygon points="24,8 20,14 28,14" fill="#B0E0E6"/><polygon points="20,14 24,20 28,14" fill="#B0E0E6"/><polygon points="24,8 22,14 24,20 26,14" fill="#87CEEB" opacity="0.6"/></svg>`;
-
-  const eventMarkerIcon = {
-    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(ringSvgString),
-    scaledSize: new window.google.maps.Size(36, 36), 
-    anchor: new window.google.maps.Point(18, 36),    
-  };
-
 
   return (
     <GoogleMap
@@ -122,7 +125,7 @@ export function GoogleMapComponent({
           key={loc.id + '-' + loc.lat + '-' + loc.lng} 
           position={{ lat: loc.lat, lng: loc.lng }}
           onClick={() => handleMarkerClick(loc)}
-          icon={eventMarkerIcon}
+          icon={eventMarkerIcon} // Use the PNG icon
         />
       ))}
 
@@ -131,7 +134,7 @@ export function GoogleMapComponent({
           position={infoWindowPosition}
           onCloseClick={handleMapClick} 
           options={{ 
-            pixelOffset: new window.google.maps.Size(0, -40), // Adjusted for new icon size
+            pixelOffset: new window.google.maps.Size(0, -50), // Adjusted offset for typical pin height
             disableAutoPan: true 
           }} 
         >
@@ -155,4 +158,3 @@ export function GoogleMapComponent({
     </GoogleMap>
   );
 }
-
