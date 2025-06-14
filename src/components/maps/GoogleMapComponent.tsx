@@ -6,7 +6,7 @@ import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-m
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { MapPin, Users, CalendarDays } from 'lucide-react'; // Added icons
+import { MapPin, Users, CalendarDays } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -40,6 +40,104 @@ const defaultMapContainerStyle: React.CSSProperties = {
 
 const libraries: ("places" | "marker")[] = ['places', 'marker'];
 
+const darkMapStyles: google.maps.MapTypeStyle[] = [
+  { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: "#263c3f" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#6b9a76" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#38414e" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#212a37" }],
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#9ca5b3" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#746855" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#1f2835" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#f3d19c" }],
+  },
+  {
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [{ color: "#2f3948" }],
+  },
+  {
+    featureType: "transit.station",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#17263c" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#515c6d" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.stroke",
+    stylers: [{ color: "#17263c" }],
+  },
+];
+
+const baseMapOptions: Omit<google.maps.MapOptions, 'styles'> = {
+  streetViewControl: false,
+  mapTypeControl: false,
+  fullscreenControl: false,
+};
+
+const lightMapOptions: google.maps.MapOptions = {
+  ...baseMapOptions,
+  // No specific styles, uses Google's default light map
+};
+
+const darkThemeMapOptions: google.maps.MapOptions = {
+  ...baseMapOptions,
+  styles: darkMapStyles,
+};
+
+
 export function GoogleMapComponent({ 
   center, 
   zoom = 12,
@@ -51,9 +149,10 @@ export function GoogleMapComponent({
   const [selectedEvents, setSelectedEvents] = useState<MapLocation[] | null>(null);
   const [infoWindowPosition, setInfoWindowPosition] = useState<{lat: number; lng: number} | null>(null);
   const [eventMarkerIcon, setEventMarkerIcon] = useState<google.maps.Icon | null>(null);
+  const [currentMapOptions, setCurrentMapOptions] = useState<google.maps.MapOptions>(lightMapOptions);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script', // Consistent ID with EventForm
+    id: 'google-map-script',
     googleMapsApiKey: apiKey || "",
     libraries,
     language: 'iw', 
@@ -65,9 +164,34 @@ export function GoogleMapComponent({
       setEventMarkerIcon({
         url: '/ring-marker.png', 
         scaledSize: new window.google.maps.Size(36, 48), 
-        anchor: new window.google.maps.Point(18, 48), // Anchor to bottom-center of a typical pin
+        anchor: new window.google.maps.Point(18, 48),
       });
     }
+  }, [isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded || typeof window === 'undefined') return;
+
+    const applyThemeStyles = () => {
+      const isDarkMode = document.documentElement.classList.contains('dark');
+      setCurrentMapOptions(isDarkMode ? darkThemeMapOptions : lightMapOptions);
+    };
+
+    applyThemeStyles(); // Apply on initial load (after isLoaded)
+
+    const observer = new MutationObserver((mutationsList) => {
+      for (const mutation of mutationsList) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          applyThemeStyles();
+        }
+      }
+    });
+
+    observer.observe(document.documentElement, { attributes: true });
+
+    return () => {
+      observer.disconnect();
+    };
   }, [isLoaded]);
 
 
@@ -114,11 +238,7 @@ export function GoogleMapComponent({
       mapContainerStyle={mapContainerStyle}
       center={center}
       zoom={zoom}
-      options={{
-        streetViewControl: false,
-        mapTypeControl: false,
-        fullscreenControl: false,
-      }}
+      options={currentMapOptions}
       onClick={handleMapClick}
     >
       {eventLocations.map((loc) => (
@@ -195,3 +315,4 @@ export function GoogleMapComponent({
     </GoogleMap>
   );
 }
+
