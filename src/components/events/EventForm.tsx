@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller, type FieldErrors } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, Loader2, ImagePlus, Info, Edit2, PlusCircle, UserX, Users } from "lucide-react";
+import { CalendarIcon, Loader2, ImagePlus, Info, Edit2, PlusCircle, UserX, Users, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -123,7 +123,7 @@ export function EventForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "שם האירוע שלכם",
-      ownerUids: [], // Will be populated by useEffect or initialEventData
+      ownerUids: [], 
       numberOfGuests: 10,
       paymentOption: "fixed" as PaymentOption,
       pricePerGuest: 100,
@@ -162,7 +162,7 @@ export function EventForm({
 
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
+    id: 'google-map-script', // Standardized ID
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries,
     language: 'iw',
@@ -177,7 +177,7 @@ export function EventForm({
       }
     });
     return () => unsubscribe();
-  }, [isEditMode, form]);
+  }, [isEditMode, form]); // form is now initialized before this useEffect
 
   useEffect(() => {
     if (isEditMode && initialEventData) {
@@ -204,7 +204,6 @@ export function EventForm({
       setTrueFormattedAddress(initialEventData.location || null);
       setIsEditingName(false);
     } else if (!isEditMode && currentUser) {
-        // Ensure current user is added to ownerUids if form is not in edit mode and user is available
         if (form.getValues("ownerUids").length === 0) {
             form.setValue("ownerUids", [currentUser.uid]);
         }
@@ -251,12 +250,9 @@ export function EventForm({
     if (watchedOwnerUids && watchedOwnerUids.length > 0) {
       fetchOwnerProfiles(watchedOwnerUids);
     } else if (currentUser && !isEditMode && (!watchedOwnerUids || watchedOwnerUids.length === 0)) {
-        // This case should ideally be handled by the initial defaultValues or the first useEffect
-        // If ownerUids is still empty here for a new form with a logged-in user, set it.
         form.setValue("ownerUids", [currentUser.uid]);
-        // fetchOwnerProfiles will be called by the change in watchedOwnerUids
     } else {
-        setOwnerProfileDetails([]); // Clear if no UIDs (e.g., after removing all)
+        setOwnerProfileDetails([]);
     }
   }, [watchedOwnerUids, fetchOwnerProfiles, currentUser, isEditMode, form]);
 
@@ -264,7 +260,6 @@ export function EventForm({
     const currentUids = form.getValues("ownerUids") || [];
     if (!currentUids.includes(newOwner.firebaseUid)) {
       form.setValue("ownerUids", [...currentUids, newOwner.firebaseUid], { shouldValidate: true, shouldDirty: true });
-      // ownerProfileDetails will be updated by the useEffect watching ownerUids
     }
     setShowAddOwnerModal(false);
   };
@@ -277,7 +272,6 @@ export function EventForm({
         return;
     }
     form.setValue("ownerUids", currentUids.filter(uid => uid !== uidToRemove), { shouldValidate: true, shouldDirty: true });
-    // ownerProfileDetails will be updated by the useEffect watching ownerUids
     setOwnerToRemove(null);
   };
 
@@ -286,7 +280,7 @@ export function EventForm({
   const eventNameValue = form.watch("name");
   const eventDateTimeValue = form.watch("dateTime");
   const pageTitle = propPageTitle || (isEditMode ? HEBREW_TEXT.event.editEvent : HEBREW_TEXT.event.createEventTitle);
-  const submitButtonText = propSubmitButtonText || (isEditMode ? "שמור שינויים" : HEBREW_TEXT.event.createEventButton);
+  const submitButtonText = propSubmitButtonText || (isEditMode ? HEBREW_TEXT.profile.saveChanges : HEBREW_TEXT.event.createEventButton);
 
   useEffect(() => {
     if (isEditingName && nameInputRef.current) {
@@ -330,14 +324,14 @@ export function EventForm({
         const formattedAddress = place.formatted_address || displayName;
 
         form.setValue("location", displayName, { shouldValidate: true });
-        form.setValue("locationDisplayName", displayName, { shouldValidate: false }); // No need to validate this specifically
+        form.setValue("locationDisplayName", displayName, { shouldValidate: false }); 
         setTrueFormattedAddress(formattedAddress);
 
         setLatitude(place.geometry.location.lat());
         setLongitude(place.geometry.location.lng());
       } else {
-        setTrueFormattedAddress(null); // Clear if place is invalid
-        const currentLocationValue = form.getValues("location"); // Keep the typed value
+        setTrueFormattedAddress(null); 
+        const currentLocationValue = form.getValues("location"); 
         form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false });
         setLatitude(null);
         setLongitude(null);
@@ -409,7 +403,7 @@ export function EventForm({
         ...values,
         ownerUids: values.ownerUids, 
         pricePerGuest: values.paymentOption === 'fixed' ? (values.pricePerGuest ?? 0) : null,
-        location: trueFormattedAddress || values.location, // Use trueFormattedAddress if available
+        location: trueFormattedAddress || values.location, 
         locationDisplayName: values.locationDisplayName || values.location.split(',')[0] || "מיקום לא ידוע",
         latitude: latitude,
         longitude: longitude,
@@ -423,7 +417,7 @@ export function EventForm({
 
       if (isEditMode && initialEventData?.id) {
         const eventDocRef = doc(db, "events", initialEventData.id);
-        const { createdAt, ...updatePayload } = eventDataPayload; // Exclude createdAt for updates
+        const { createdAt, ...updatePayload } = eventDataPayload; 
         await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
         toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" עודכן בהצלחה!` });
         router.push(`/events/${initialEventData.id}`);
@@ -473,6 +467,15 @@ export function EventForm({
     }
   };
 
+  const handleCancelEdit = () => {
+    if (isEditMode && initialEventData?.id) {
+        router.push(`/events/${initialEventData.id}`);
+    } else {
+        router.back(); // Fallback for other cases, though primarily for edit mode
+    }
+  };
+
+
   if (loadError) return <Card className="w-full max-w-3xl mx-auto p-6"><p className="text-destructive text-center">{HEBREW_TEXT.map.loadError}</p></Card>;
   if (!isLoaded && !process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
     return (
@@ -502,8 +505,8 @@ export function EventForm({
               objectFit="cover"
               className="transition-opacity duration-300 ease-in-out"
               data-ai-hint="event cover wedding"
-              key={currentImageToDisplay} // Re-render if URL changes
-              priority={!isEditMode} // Prioritize image loading for new events
+              key={currentImageToDisplay} 
+              priority={!isEditMode} 
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
 
@@ -627,7 +630,7 @@ export function EventForm({
             <FormField
                 control={form.control}
                 name="ownerUids"
-                render={() => ( // field is not directly used for rendering list but needed for react-hook-form
+                render={() => ( 
                     <FormItem>
                         <div className="flex justify-between items-center mb-2">
                             <FormLabel className="text-lg font-semibold flex items-center">
@@ -659,7 +662,7 @@ export function EventForm({
                                         {owner.email && <p className="text-xs text-muted-foreground">{owner.email}</p>}
                                     </div>
                                 </div>
-                                {currentUser?.uid !== owner.firebaseUid && (form.getValues("ownerUids") || []).length > 1 && ( // Check form values for current UIDs
+                                {currentUser?.uid !== owner.firebaseUid && (form.getValues("ownerUids") || []).length > 1 && ( 
                                      <Button
                                         type="button"
                                         variant="ghost"
@@ -715,7 +718,7 @@ export function EventForm({
                     <FormControl>
                         <RadioGroup
                         onValueChange={field.onChange}
-                        value={field.value}
+                        value={field.value} 
                         className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-4 rtl:md:space-x-reverse pt-2"
                         >
                         {paymentOptions.map(option => (
@@ -789,7 +792,7 @@ export function EventForm({
                             }}
                             onChange={(e) => {
                                 field.onChange(e);
-                                if (trueFormattedAddress || latitude || longitude) { // Clear geo data if user types manually
+                                if (trueFormattedAddress || latitude || longitude) { 
                                     setTrueFormattedAddress(null);
                                     setLatitude(null);
                                     setLongitude(null);
@@ -866,11 +869,29 @@ export function EventForm({
                     </FormItem>
                 )} />
             </div>
-            <Button type="submit" className="w-full font-body text-lg py-6" disabled={isSubmitting || isUploadingImage || (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) }>
-              {(isSubmitting || isUploadingImage) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-              {(!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && !isSubmitting && !isUploadingImage) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-              {submitButtonText}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                    type="submit" 
+                    className="w-full sm:flex-1 font-body text-lg py-6" 
+                    disabled={isSubmitting || isUploadingImage || (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) }
+                >
+                    {(isSubmitting || isUploadingImage) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+                    {(!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && !isSubmitting && !isUploadingImage) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+                    {submitButtonText}
+                </Button>
+                {isEditMode && (
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleCancelEdit} 
+                        className="w-full sm:flex-1 font-body text-lg py-6"
+                        disabled={isSubmitting || isUploadingImage}
+                    >
+                        <XCircle className="ml-2 h-5 w-5" />
+                        {HEBREW_TEXT.general.cancel}
+                    </Button>
+                )}
+            </div>
           </CardContent>
         </Card>
       </form>
