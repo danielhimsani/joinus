@@ -2,10 +2,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, type FieldErrors } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, Loader2, ImagePlus, Info, Edit2 } from "lucide-react"; // Added Edit2
+import { CalendarIcon, Loader2, ImagePlus, Info, Edit2 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import React, { useState, useEffect, useRef } from "react";
@@ -64,25 +64,28 @@ const paymentOptions: { value: PaymentOption; label: string }[] = [
 const formSchema = z.object({
   name: z.string().min(3, { message: "שם אירוע חייב להכיל לפחות 3 תווים." }),
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
-  paymentOption: z.enum(["fixed", "payWhatYouWant", "free"]),
+  paymentOption: z.enum(["fixed", "payWhatYouWant", "free"], { errorMap: () => ({ message: "יש לבחור אפשרות תשלום."}) }),
   pricePerGuest: z.coerce.number().optional(),
   location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }),
   locationDisplayName: z.string().optional(),
   dateTime: z.date({ required_error: "תאריך ושעה נדרשים." }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
   ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([25, 55]),
-  foodType: z.enum(["kosherMeat", "kosherDairy", "kosherParve", "notKosher"]),
-  religionStyle: z.enum(["secular", "traditional", "religious", "mixed"]),
-  imageUrl: z.string().optional(), // This will store the final URL or indicate a file is selected
+  foodType: z.enum(["kosherMeat", "kosherDairy", "kosherParve", "notKosher"], { errorMap: () => ({ message: "יש לבחור סוג אוכל."}) }),
+  religionStyle: z.enum(["secular", "traditional", "religious", "mixed"], { errorMap: () => ({ message: "יש לבחור סגנון דתי."}) }),
+  imageUrl: z.string().optional(),
 }).refine(data => {
     if (data.paymentOption === 'fixed') {
-        return data.pricePerGuest !== undefined && data.pricePerGuest >= 0; // Allow 0 for price
+        return data.pricePerGuest !== undefined && data.pricePerGuest >= 0;
     }
     return true;
 }, {
     message: "יש להזין מחיר לאורח (יכול להיות 0) כאשר אפשרות התשלום היא מחיר קבוע.",
     path: ["pricePerGuest"],
 });
+
+type FormSchemaType = z.infer<typeof formSchema>;
+
 
 function promiseWithTimeout<T>(promise: Promise<T>, ms: number, timeoutError = new Error('Operation timed out after ' + ms + 'ms')): Promise<T> {
   const timeout = new Promise<never>((_, reject) => {
@@ -120,7 +123,7 @@ export function EventForm({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false); 
   const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
-  const [isEditingName, setIsEditingName] = useState(!isEditMode); // Start editing name if not in edit mode
+  const [isEditingName, setIsEditingName] = useState(!isEditMode);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -142,7 +145,7 @@ export function EventForm({
     return () => unsubscribe();
   }, []);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: isEditMode && initialEventData ? initialEventData.name : "שם האירוע שלכם",
@@ -174,15 +177,15 @@ export function EventForm({
         ageRange: initialEventData.ageRange,
         foodType: initialEventData.foodType,
         religionStyle: initialEventData.religionStyle,
-        imageUrl: initialEventData.imageUrl, // For validation, not for display directly
+        imageUrl: initialEventData.imageUrl,
       });
       if (initialEventData.imageUrl && initialEventData.imageUrl !== "https://placehold.co/800x400.png?text=Event+Cover") {
         setImagePreviewUrl(initialEventData.imageUrl);
       }
       setLatitude(initialEventData.latitude || null);
       setLongitude(initialEventData.longitude || null);
-      setTrueFormattedAddress(initialEventData.location || null); // This is the full address
-      setIsEditingName(false); // Don't start editing name in edit mode by default
+      setTrueFormattedAddress(initialEventData.location || null);
+      setIsEditingName(false);
     }
   }, [isEditMode, initialEventData, form]);
 
@@ -216,12 +219,12 @@ export function EventForm({
         setImageFile(compressedFile);
         const previewUrl = URL.createObjectURL(compressedFile);
         setImagePreviewUrl(previewUrl);
-        form.setValue("imageUrl", "file-selected-for-upload"); // Indicate file is selected
+        form.setValue("imageUrl", "file-selected-for-upload"); 
       } catch (error) {
         console.error("Error compressing image:", error);
         toast({ title: "שגיאה בדחיסת תמונה", description: (error instanceof Error) ? error.message : String(error), variant: "destructive" });
         setImageFile(null); 
-        setImagePreviewUrl(isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : null); // Revert to original if edit mode
+        setImagePreviewUrl(isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : null);
         form.setValue("imageUrl", isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : undefined);
       }
     }
@@ -241,7 +244,6 @@ export function EventForm({
         setLatitude(place.geometry.location.lat());
         setLongitude(place.geometry.location.lng());
       } else {
-        // If place is not valid, clear specific location fields but keep user input
         setTrueFormattedAddress(null); 
         const currentLocationValue = form.getValues("location"); 
         form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false });
@@ -255,7 +257,7 @@ export function EventForm({
     autocompleteRef.current = autocompleteInstance;
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormSchemaType) => {
     setIsSubmitting(true);
     setIsUploadingImage(false); 
     setImageUploadProgress(null);
@@ -322,7 +324,6 @@ export function EventForm({
 
       if (isEditMode && initialEventData?.id) {
         const eventDocRef = doc(db, "events", initialEventData.id);
-        // Remove createdAt if it exists in payload to prevent updating it
         const { createdAt, ...updatePayload } = eventDataPayload; 
         await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
         toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" עודכן בהצלחה!` });
@@ -347,6 +348,28 @@ export function EventForm({
       setIsUploadingImage(false); 
     }
   };
+
+  const onInvalidSubmit = (errors: FieldErrors<FormSchemaType>) => {
+    console.error("Form validation errors:", errors);
+    toast({
+      title: HEBREW_TEXT.general.error,
+      description: HEBREW_TEXT.general.formValidationFailed,
+      variant: "destructive",
+    });
+    
+    // Attempt to scroll to the first field with an error
+    const firstInvalidElement = document.querySelector('[aria-invalid="true"]') as HTMLElement;
+    if (firstInvalidElement) {
+      firstInvalidElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Attempt to focus, but be mindful this might not always work with custom/complex inputs
+      try {
+        firstInvalidElement.focus({ preventScroll: true });
+      } catch (e) {
+        // Some elements might not be focusable or might throw an error.
+        console.warn("Could not focus on invalid element:", firstInvalidElement, e);
+      }
+    }
+  };
   
   if (loadError) return <Card className="w-full max-w-3xl mx-auto p-6"><p className="text-destructive text-center">{HEBREW_TEXT.map.loadError}</p></Card>;
   if (!isLoaded && !process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
@@ -366,7 +389,7 @@ export function EventForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)} className="space-y-8">
         <Card className="w-full max-w-3xl mx-auto overflow-hidden">
           <div className="relative w-full h-64 md:h-80 bg-muted group">
             <Image
@@ -377,7 +400,7 @@ export function EventForm({
               className="transition-opacity duration-300 ease-in-out"
               data-ai-hint="event cover wedding"
               key={currentImageToDisplay} 
-              priority={!isEditMode} // Prioritize only for new events
+              priority={!isEditMode}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
             
@@ -498,7 +521,6 @@ export function EventForm({
           )}
 
           <CardContent className="pt-6 space-y-8">
-             {/* Hidden field for imageUrl to satisfy schema if no image is explicitly uploaded/changed but one exists */}
             {isEditMode && initialEventData?.imageUrl && !imageFile && (
                 <FormField
                     control={form.control}
@@ -605,14 +627,10 @@ export function EventForm({
                             onChange={(e) => {
                                 field.onChange(e); 
                                 if (trueFormattedAddress || latitude || longitude) {
-                                    // If user types, clear previously selected autocomplete data
-                                    // This ensures that if they type and don't select from autocomplete,
-                                    // we don't use stale lat/lng.
                                     setTrueFormattedAddress(null);
                                     setLatitude(null);
                                     setLongitude(null);
                                 }
-                                // Keep locationDisplayName in sync with the input field for manual entries
                                 form.setValue("locationDisplayName", e.target.value, { shouldValidate: false });
                             }}
                         />

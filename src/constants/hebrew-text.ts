@@ -78,7 +78,7 @@ export const HEBREW_TEXT = {
     deleteConfirmationMessage: "האם אתה בטוח שברצונך למחוק אירוע זה? פעולה זו אינה ניתנת לשחזור.",
     eventDeletedSuccessfully: "האירוע נמחק בהצלחה.",
     errorDeletingEvent: "שגיאה במחיקת האירוע.",
-    errorDeletingImageFromStorage: "שגיאה במחיקת תמונת האירוע מהאחסון",
+    errorDeletingImageFromStorage: "שגיאה במחיקת תמונת האירוע מהאחסון. התמונה עשויה עדיין להתקיים בשרת.",
   },
   profile: {
     userProfile: "פרופיל משתמש",
@@ -120,7 +120,7 @@ export const HEBREW_TEXT = {
     actions: "פעולות",
     details: "פרטים",
     back: "חזור",
-    welcome: "ברוכים הבאים ל",
+    welcome: "ברוכים הבעים ל",
     appDescription: "פלטפורמה המחברת בין זוגות מארגני חתונות לבין אורחים המחפשים מקומות פנויים ברגע האחרון. עזרו לזוגות להימנע מהפסדים כספיים ומצאו לעצמכם מקום באירוע במחיר הוגן.",
     forCouples: "לזוגות",
     forGuests: "לאורחים",
@@ -135,6 +135,7 @@ export const HEBREW_TEXT = {
     howItWorks: "איך זה עובד?",
     delete: "מחק",
     cancel: "ביטול",
+    formValidationFailed: "אנא מלא את כל שדות החובה ותקן את השגיאות המסומנות.",
   },
   foodIcons: {
     kosherMeat: "בשרי",
