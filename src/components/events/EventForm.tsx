@@ -33,7 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Card, CardContent } from "@/components/ui/card"; // CardHeader, CardTitle removed for new design
+import { Card, CardContent } from "@/components/ui/card";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { PaymentOption, FoodType, ReligionStyle } from "@/types";
 import { cn } from "@/lib/utils";
@@ -67,8 +67,8 @@ const formSchema = z.object({
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
   paymentOption: z.enum(["fixed", "payWhatYouWant", "free"]),
   pricePerGuest: z.coerce.number().optional(),
-  location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }), // Will store formatted_address
-  locationDisplayName: z.string().optional(), // Will store place.name
+  location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }), // This will store the display name or typed input
+  locationDisplayName: z.string().optional(), // This will store place.name or typed input
   dateTime: z.date({ required_error: "תאריך ושעה נדרשים." }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
   ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([25, 55]),
@@ -103,6 +103,7 @@ export function EventForm() {
   const [, setCurrentUser] = useState<FirebaseUser | null>(null); 
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
+  const [trueFormattedAddress, setTrueFormattedAddress] = useState<string | null>(null);
   
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -116,9 +117,9 @@ export function EventForm() {
   const locationInputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script', // Consistent ID
+    id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries, // Consistent libraries
+    libraries, 
     language: 'iw',
     region: 'IL',
   });
@@ -183,32 +184,26 @@ export function EventForm() {
     }
   };
 
-  const handlePlaceChanged = () => {
+ const handlePlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
-      if (place) {
-        if (place.formatted_address) {
-          form.setValue("location", place.formatted_address, { shouldValidate: true });
-        }
-        if (place.name) {
-          form.setValue("locationDisplayName", place.name, { shouldValidate: false });
-        } else if (place.formatted_address) {
-          // Fallback for display name if place.name is not available
-          form.setValue("locationDisplayName", place.formatted_address.split(',')[0], { shouldValidate: false });
-        }
+      if (place && place.geometry && place.formatted_address) {
+        const displayName = place.name || place.formatted_address.split(',')[0];
+        const formattedAddress = place.formatted_address;
 
-        if (place.geometry?.location) {
-          setLatitude(place.geometry.location.lat());
-          setLongitude(place.geometry.location.lng());
-        } else {
-          setLatitude(null);
-          setLongitude(null);
-        }
+        form.setValue("location", displayName, { shouldValidate: true });
+        form.setValue("locationDisplayName", displayName, { shouldValidate: true });
+        setTrueFormattedAddress(formattedAddress);
+        
+        setLatitude(place.geometry.location.lat());
+        setLongitude(place.geometry.location.lng());
       } else {
-        // Clear coordinates if no place is properly selected or if Autocomplete returns no place
+        // User might have cleared the input, or selection was invalid
+        setTrueFormattedAddress(null);
+        const currentLocationValue = form.getValues("location"); // What's currently typed in the input
+        form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false });
         setLatitude(null);
         setLongitude(null);
-        form.setValue("locationDisplayName", "", { shouldValidate: false }); // Also clear display name
       }
     }
   };
@@ -273,8 +268,8 @@ export function EventForm() {
         ...values, 
         coupleId: firebaseUser.uid,
         pricePerGuest: values.paymentOption === 'fixed' ? values.pricePerGuest : null,
-        location: values.location,
-        locationDisplayName: values.locationDisplayName || values.location.split(',')[0] || "מיקום לא ידוע", // Ensure fallback
+        location: trueFormattedAddress || values.location, // Use true formatted address if available
+        locationDisplayName: values.locationDisplayName || values.location.split(',')[0] || "מיקום לא ידוע",
         latitude: latitude,
         longitude: longitude,
         dateTime: Timestamp.fromDate(values.dateTime),
@@ -538,10 +533,27 @@ export function EventForm() {
                         onPlaceChanged={handlePlaceChanged}
                         options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location"] }}
                       >
-                        <Input placeholder="התחל להקליד כתובת או שם מקום..." {...field} ref={locationInputRef} />
+                        <Input 
+                            placeholder="התחל להקליד כתובת או שם מקום..." 
+                            {...field} 
+                            ref={(e) => {
+                                field.ref(e);
+                                locationInputRef.current = e;
+                            }}
+                            onChange={(e) => {
+                                field.onChange(e); // Propagate change to RHF
+                                // If user types manually after selection, clear specific Google Place data
+                                if (trueFormattedAddress) {
+                                    setTrueFormattedAddress(null);
+                                    setLatitude(null);
+                                    setLongitude(null);
+                                    // form.setValue("locationDisplayName", e.target.value); // locationDisplayName tracks input
+                                }
+                                form.setValue("locationDisplayName", e.target.value, { shouldValidate: false });
+                            }}
+                        />
                       </Autocomplete>
                     </FormControl>
-                    {latitude && longitude && <FormDescription>קואורדינטות: {latitude.toFixed(6)}, {longitude.toFixed(6)}</FormDescription>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -619,3 +631,5 @@ export function EventForm() {
     </Form>
   );
 }
+
+    
