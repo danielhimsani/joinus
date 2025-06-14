@@ -131,7 +131,7 @@ export const HEBREW_TEXT = {
     errorCreatingChat: "שגיאה ביצירת הצ'אט.",
     errorFetchingChat: "שגיאה בטעינת הצ'אט.",
     chatAlreadyExists: "כבר פתחת צ'אט לאירוע זה. הנך מועבר אליו...",
-    typeYourMessage: "הקלד הודעה...",
+    typeYourMessage: "הקלד/י הודעה...",
     sendMessage: "שלח",
     acceptRequest: "אשר בקשה",
     declineRequest: "דחה בקשה",
@@ -142,7 +142,7 @@ export const HEBREW_TEXT = {
     statusApproved: "הבקשה אושרה",
     statusRejected: "הבקשה נדחתה",
     statusClosed: "סגור",
-    noMessagesYet: "אין הודעות עדיין. התחל את השיחה!",
+    noMessagesYet: "אין הודעות עדיין. התחל/י את השיחה!",
     chatWith: "שיחה עם", // e.g. Chat with Guest Name / Event Name
     guest: "אורח",
     eventOwner: "בעל אירוע",
@@ -165,6 +165,20 @@ export const HEBREW_TEXT = {
     errorFetchingChats: "שגיאה בטעינת הצ'אטים. נסה שוב מאוחר יותר.",
     errorFetchingFutureEvents: "שגיאה בטעינת אירועים עתידיים שבבעלותך.",
     messagesPageTitle: "ההודעות שלי",
+    chatPageTitle: "פרטי שיחה",
+    loadingChatDetails: "טוען פרטי שיחה...",
+    errorFetchingMessages: "שגיאה בטעינת הודעות.",
+    failedToSendMessage: "שליחת ההודעה נכשלה.",
+    messageSent: "ההודעה נשלחה.",
+    requestManagement: "ניהול בקשה",
+    chatClosedInfo: "שיחה זו נסגרה. לא ניתן לשלוח הודעות נוספות.",
+    requestRejectedInfo: "בקשת ההצטרפות נדחתה. לא ניתן לשלוח הודעות נוספות.",
+    requestApprovedMessage: "הבקשה להצטרפות לאירוע אושרה!",
+    requestDeclinedMessage: "הבקשה להצטרפות לאירוע נדחתה.",
+    chatClosedMessage: "השיחה נסגרה.",
+    closeChat: "סגור שיחה",
+    confirmAction: "אישור פעולה",
+    confirmCloseChatMessage: "האם אתה בטוח שברצונך לסגור שיחה זו?",
   },
   general: {
     loading: "טוען...",
@@ -224,3 +238,4 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
+

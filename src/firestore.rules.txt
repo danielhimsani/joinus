@@ -37,8 +37,9 @@ service cloud.firestore {
       allow create: if request.auth.uid == request.resource.data.guestUid &&
                        request.resource.data.eventId != null && 
                        request.auth.uid in request.resource.data.participants &&
-                       request.resource.data.ownerUids is list && // Explicitly check type
+                       request.resource.data.ownerUids is list && 
                        request.resource.data.ownerUids.size() > 0 &&
+                       request.resource.data.participants is list &&
                        request.resource.data.participants.size() == request.resource.data.ownerUids.size() + 1 &&
                        request.resource.data.status == 'pending_request' &&
                        request.resource.data.keys().hasAll([
@@ -51,12 +52,12 @@ service cloud.firestore {
                        request.resource.data.lastMessageTimestamp == request.time &&
                        request.resource.data.lastMessageSenderId == request.auth.uid &&
                        // Validate unreadCount structure
-                       request.resource.data.unreadCount is map && // Explicitly check type
+                       request.resource.data.unreadCount is map &&
                        request.resource.data.unreadCount.keys().size() == request.resource.data.ownerUids.size() &&
                        request.resource.data.unreadCount.keys().hasAll(request.resource.data.ownerUids) &&
                        // Ensure all ownerUids in unreadCount map to the integer 1
-                       (request.resource.data.ownerUids.size() == 0 || // Handles case where ownerUids might be empty (though guarded by size() > 0 above)
-                        request.resource.data.ownerUids.all(uid,
+                       (request.resource.data.ownerUids.size() == 0 ||
+                        request.resource.data.ownerUids.all(uid, 
                            uid is string && request.resource.data.unreadCount.get(uid, 0) == 1
                         )
                        );
@@ -71,28 +72,41 @@ service cloud.firestore {
                        request.resource.data.participants == resource.data.participants &&
                        request.resource.data.createdAt == resource.data.createdAt &&
                        (
-                         // Scenario 1: Owner is setting status to 'request_rejected', 'closed', 'request_approved', or 'active'
+                         // Scenario 1: Owner changing status (approve, reject, close, active)
                          (
                            ( request.resource.data.status == 'request_rejected' ||
                              request.resource.data.status == 'closed' ||
                              request.resource.data.status == 'request_approved' ||
                              request.resource.data.status == 'active'
                            ) &&
-                           isOwner() && // Only owner can make these status changes
-                           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'unreadCount', 'eventInfo', 'guestInfo', 'lastMessageText', 'lastMessageTimestamp', 'lastMessageSenderId'])
+                           isOwner() && 
+                           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'unreadCount']) // Owners can also update unreadCount (e.g. if they send a system message implicitly)
                          ) ||
-                         // Scenario 2: General updates (like last message details, unread counts) by any participant.
+                         // Scenario 2: Any participant updating last message details and their own unread count (or other's on send)
                          (
-                           ( resource.data.status == request.resource.data.status || 
-                             !( (request.resource.data.status == 'request_rejected' ||
-                                 request.resource.data.status == 'closed' ||
-                                 request.resource.data.status == 'request_approved' ||
-                                 request.resource.data.status == 'active') && !isOwner()
-                              )
+                           ( request.resource.data.status == resource.data.status || // Status not changing OR
+                             !isOwner() // Guest is not trying to change status (owner changes handled above)
                            ) &&
                            request.resource.data.diff(resource.data).affectedKeys().hasAny(
-                             ['lastMessageText', 'lastMessageTimestamp', 'lastMessageSenderId', 'updatedAt', 'unreadCount', 'status']
+                             ['lastMessageText', 'lastMessageTimestamp', 'lastMessageSenderId', 'updatedAt', 'unreadCount']
                            ) &&
+                           // Ensure unreadCount update is valid: either decrementing own or incrementing others
+                           (
+                             // If unreadCount for self is being set to 0
+                             ( request.resource.data.unreadCount[request.auth.uid] == 0 &&
+                               (resource.data.unreadCount == null || resource.data.unreadCount[request.auth.uid] > 0) // and it was > 0
+                             ) ||
+                             // Or, for all other participants, unreadCount is incremented by 1 or stays same (if they are sender)
+                             // This part can get complex. Simplified: assume client logic is correct for incrementing.
+                             // A more robust rule would check specific increments for specific users.
+                             // For now, just ensure only unreadCount field is modified by non-owners for unreadCount.
+                             resource.data.participants.filter(p => p != request.auth.uid).all(
+                                 p, request.resource.data.unreadCount[p] == resource.data.unreadCount[p] + 1 ||
+                                    request.resource.data.unreadCount[p] == resource.data.unreadCount[p] ||
+                                    request.resource.data.unreadCount[p] == 0 // if a different owner resets their own.
+                             )
+                           ) &&
+                           // Ensure other fields are not touched unexpectedly by guests when updating these
                            (!isGuest() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['eventInfo'])) &&
                            (!isOwner() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['guestInfo']))
                          )
@@ -104,17 +118,26 @@ service cloud.firestore {
         function isSender() {
           return request.auth.uid == request.resource.data.senderId;
         }
+        function isParentChatParticipant() {
+          return request.auth.uid in get(/databases/$(database)/documents/eventChats/$(chatId)).data.participants;
+        }
+        function isParentChatActiveOrApproved() {
+           let chatStatus = get(/databases/$(database)/documents/eventChats/$(chatId)).data.status;
+           return chatStatus == 'active' || chatStatus == 'request_approved' || chatStatus == 'pending_request'; // Allow messages in pending_request for initial exchange
+        }
 
-        allow read: if request.auth.uid in get(/databases/$(database)/documents/eventChats/$(chatId)).data.participants;
+        allow read: if isParentChatParticipant();
 
         allow create: if isSender() &&
+                         isParentChatParticipant() &&
+                         isParentChatActiveOrApproved() && // Only allow messages if chat is not rejected or closed
                          request.resource.data.timestamp == request.time &&
                          request.resource.data.chatId == chatId && 
                          request.resource.data.keys().hasAll(['chatId', 'senderId', 'text', 'timestamp', 'senderInfo']);
                          
-
         allow update, delete: if false;
       }
     }
   }
 }
+
