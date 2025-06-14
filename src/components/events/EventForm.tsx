@@ -118,6 +118,26 @@ export function EventForm({
 }: EventFormProps) {
   const router = useRouter();
   const { toast } = useToast();
+
+  const form = useForm<FormSchemaType>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "שם האירוע שלכם",
+      ownerUids: [], // Will be populated by useEffect or initialEventData
+      numberOfGuests: 10,
+      paymentOption: "fixed",
+      pricePerGuest: 100,
+      location: "",
+      locationDisplayName: "",
+      description: "",
+      ageRange: [25, 55],
+      foodType: "kosherParve",
+      religionStyle: "mixed",
+      imageUrl: "",
+      dateTime: undefined,
+    },
+  });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [latitude, setLatitude] = useState<number | null>(null);
@@ -140,24 +160,6 @@ export function EventForm({
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const locationInputRef = useRef<HTMLInputElement | null>(null);
 
-  const form = useForm<FormSchemaType>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "שם האירוע שלכם",
-      ownerUids: [], // Will be populated by useEffect or initialEventData
-      numberOfGuests: 10,
-      paymentOption: "fixed",
-      pricePerGuest: 100,
-      location: "",
-      locationDisplayName: "",
-      description: "",
-      ageRange: [25, 55],
-      foodType: "kosherParve",
-      religionStyle: "mixed",
-      imageUrl: "",
-      dateTime: undefined,
-    },
-  });
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script', // Standardized ID
@@ -715,7 +717,7 @@ export function EventForm({
                     <FormControl>
                         <RadioGroup
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                         className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-4 rtl:md:space-x-reverse pt-2"
                         >
                         {paymentOptions.map(option => (
