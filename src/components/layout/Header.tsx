@@ -35,7 +35,7 @@ const sheetNavItems = [
   { href: '/events', label: HEBREW_TEXT.navigation.events, icon: <Search className="ml-2 h-5 w-5" /> },
   { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: <PlusSquare className="ml-2 h-5 w-5" /> },
   { href: '/messages', label: HEBREW_TEXT.navigation.messages, icon: <MessageSquare className="ml-2 h-5 w-5" /> },
-  // { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: <UserCircle className="ml-2 h-5 w-5" /> }, // Removed
+  { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: <UserCircle className="ml-2 h-5 w-5" /> },
 ];
 
 
@@ -115,9 +115,9 @@ export default function Header() {
         {/* Left side: Logo, App Name, and Desktop Nav */}
         <div className="flex items-center">
           <Link href="/" className="flex items-center space-x-2 rtl:space-x-reverse">
-            {/* Replaced SVG AppLogo with PNG Image */}
+            {/* Replaced SVG AppLogo with PNG Image and removed text span */}
             <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={100} height={30} className="h-auto" data-ai-hint="app logo" />
-            <span className="font-headline text-xl font-bold text-primary hidden sm:inline-block">{HEBREW_TEXT.appName}</span>
+            {/* The text "Join us" (HEBREW_TEXT.appName) was here and has been removed */}
           </Link>
 
           {/* Desktop Navigation Links */}
@@ -164,9 +164,9 @@ export default function Header() {
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                 <SheetHeader className="mb-4 border-b pb-4">
                    <Link href="/" className="flex items-center space-x-2 rtl:space-x-reverse justify-center mb-2">
-                        {/* PNG Logo in Sheet Menu as well */}
+                        {/* PNG Logo in Sheet Menu as well and removed text span */}
                         <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={83} height={24} className="h-auto" data-ai-hint="app logo" />
-                        <span className="font-headline text-xl font-bold text-primary">{HEBREW_TEXT.appName}</span>
+                        {/* The text "Join us" (HEBREW_TEXT.appName) was here and has been removed */}
                     </Link>
                   <SheetTitle className="text-center text-lg font-normal text-muted-foreground">{HEBREW_TEXT.navigation.mobileMenuTitle}</SheetTitle>
                 </SheetHeader>
