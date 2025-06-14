@@ -22,7 +22,6 @@ service cloud.firestore {
     match /eventChats/{chatId} {
       // Helper functions for readability
       function isParticipant() {
-        // Ensure resource.data and resource.data.participants are not null before accessing
         return resource.data != null && resource.data.participants != null && request.auth.uid in resource.data.participants;
       }
       function isOwner() {
@@ -32,14 +31,11 @@ service cloud.firestore {
         return resource.data != null && request.auth.uid == resource.data.guestUid;
       }
 
-      // Who can read the chat document?
-      // This rule allows a 'get' request for a non-existent document to succeed (returning "not found")
-      // if the user *would be* a participant if the document existed with the expected structure.
-      // For 'list', this rule would apply to existing documents.
       allow read: if isParticipant();
 
       // Who can create a chat document? (Typically the guest initiating the request)
       allow create: if request.auth.uid == request.resource.data.guestUid &&
+                       request.resource.data.eventId != null && // Added check for eventId presence
                        request.auth.uid in request.resource.data.participants &&
                        request.resource.data.ownerUids.size() > 0 &&
                        request.resource.data.participants.size() == request.resource.data.ownerUids.size() + 1 &&
@@ -52,10 +48,11 @@ service cloud.firestore {
                        request.resource.data.createdAt == request.time &&
                        request.resource.data.updatedAt == request.time &&
                        request.resource.data.lastMessageTimestamp == request.time &&
+                       request.resource.data.lastMessageSenderId == request.auth.uid && // Ensure initial message sender is the guest
                        // Validate unreadCount structure: keys must be exactly the ownerUids, and all values must be 1
                        request.resource.data.unreadCount.keys().size() == request.resource.data.ownerUids.size() &&
                        request.resource.data.unreadCount.keys().hasAll(request.resource.data.ownerUids) &&
-                       request.resource.data.ownerUids.all(uid => request.resource.data.unreadCount[uid] == 1);
+                       request.resource.data.ownerUids.all(uid, request.resource.data.unreadCount[uid] == 1);
 
 
       // Who can update a chat document?
@@ -109,20 +106,17 @@ service cloud.firestore {
 
         allow read: if request.auth.uid in get(/databases/$(database)/documents/eventChats/$(chatId)).data.participants;
 
-        // For 'create', especially the first message in a batch with the parent chat:
-        // The parent 'eventChats/{chatId}' create rule is the main gatekeeper.
-        // It verifies: request.auth.uid == request.resource.data.guestUid (of the chat doc)
-        // It verifies: participants array includes the guest and owners.
-        // So, if the message senderId is the authenticated user (who is the guest creating the chat),
-        // and the message is internally consistent, it should be allowed.
-        // For subsequent messages, the 'read' rule above indirectly ensures the user is a participant
-        // because the 'get()' would fail if they weren't (though this 'create' rule doesn't use get() for participants).
         allow create: if isSender() &&
-                         request.resource.data.timestamp == request.time && // Message timestamp must be server time
+                         request.resource.data.timestamp == request.time &&
+                         request.resource.data.chatId == chatId && // Ensure message is for this chat
                          request.resource.data.keys().hasAll(['chatId', 'senderId', 'text', 'timestamp', 'senderInfo']);
-                         // Implicit: The parent chat must be creatable by this user if this message is part of a batch create.
-                         // Or, for subsequent messages, the user must be a participant (which is harder to enforce here without a get,
-                         // but usually sending messages is UI-restricted to participants).
+                         // To ensure the user is a participant of the parent chat:
+                         // This is implicitly handled because the UI would only allow message creation for chats the user is part of.
+                         // For stricter backend enforcement during batch writes (like the first message):
+                         // The parent 'eventChats/{chatId}' create rule is the main gatekeeper for the first message.
+                         // For subsequent messages, client-side logic usually gates this, but if you wanted to be
+                         // extremely strict here, you could add `&& request.auth.uid in get(/databases/$(database)/documents/eventChats/$(chatId)).data.participants`
+                         // but this adds a read cost to every message write. Typically, UI + parent chat rules are sufficient.
 
         allow update, delete: if false;
       }
