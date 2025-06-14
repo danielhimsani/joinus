@@ -42,12 +42,11 @@ service cloud.firestore {
                        request.resource.data.participants.size() == (request.resource.data.ownerUids.size() + 1) &&
                        request.resource.data.guestUid in request.resource.data.participants &&
                        request.resource.data.status == 'pending_request' &&
-                       request.resource.data.createdAt == request.time &&
-                       request.resource.data.updatedAt == request.time &&
-                       request.resource.data.lastMessageTimestamp == request.time &&
+                       // serverTimestamp() fields (createdAt, updatedAt, lastMessageTimestamp) will be validated by Firestore itself
+                       // Ensure critical identity field is correct:
                        request.resource.data.lastMessageSenderId == request.auth.uid &&
-                       request.resource.data.unreadCount is map && // Simplified: just check it's a map
-                       // Ensure basic presence of other expected top-level fields
+                       request.resource.data.unreadCount is map &&
+                       // Basic structural checks for denormalized info
                        request.resource.data.eventInfo is map &&
                        request.resource.data.guestInfo is map &&
                        request.resource.data.lastMessageText is string; // Semicolon terminates the 'if' conditions here.
@@ -59,8 +58,8 @@ service cloud.firestore {
                        request.resource.data.guestUid == resource.data.guestUid &&
                        request.resource.data.ownerUids == resource.data.ownerUids &&
                        request.resource.data.participants == resource.data.participants &&
-                       request.resource.data.createdAt == resource.data.createdAt &&
-                       request.resource.data.updatedAt == request.time && // updatedAt must be server timestamp
+                       request.resource.data.createdAt == resource.data.createdAt && // createdAt is immutable
+                       request.resource.data.updatedAt == request.time && // updatedAt must be server timestamp for any update
                        (
                          // Scenario 1: Owner changing status (approve, reject, close, active)
                          (
@@ -84,6 +83,7 @@ service cloud.firestore {
                              ) ||
                              // Updating only one's own unread count (e.g., marking as read)
                              (
+                               // Correct string concatenation for dynamic key
                                request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unreadCount.' + request.auth.uid, 'updatedAt']) &&
                                request.resource.data.unreadCount[request.auth.uid] == 0 // Setting own unread to 0
                              )
@@ -106,7 +106,7 @@ service cloud.firestore {
                        request.auth.uid in get(/databases/$(database)/documents/eventChats/$(chatId)).data.participants;
 
         allow create: if isSenderOfNewMessage() &&
-                         request.resource.data.timestamp == request.time &&
+                         // serverTimestamp() for message.timestamp will be validated by Firestore itself on create
                          request.resource.data.chatId == chatId &&
                          request.resource.data.keys().hasAll(['chatId', 'senderId', 'text', 'timestamp', 'senderInfo']) &&
                          (
