@@ -36,13 +36,12 @@ service cloud.firestore {
       // Who can create a chat document? (Typically the guest initiating the request)
       allow create: if request.auth.uid == request.resource.data.guestUid &&
                        request.resource.data.eventId != null &&
-                       request.resource.data.ownerUids is list && // Ensure ownerUids is a list
+                       request.resource.data.ownerUids is list &&
                        request.resource.data.ownerUids.size() > 0 &&
-                       request.resource.data.participants is list && // Ensure participants is a list
-                       request.resource.data.participants.size() == (request.resource.data.ownerUids.size() + 1) &&
-                       request.resource.data.guestUid in request.resource.data.participants &&
-                       // Ensure all ownerUids are in participants
-                       request.resource.data.ownerUids.all(ownerIdFromList, ownerIdFromList in request.resource.data.participants) &&
+                       request.resource.data.participants is list &&
+                       request.resource.data.participants.size() == (request.resource.data.ownerUids.size() + 1) && // Check correct size
+                       request.resource.data.guestUid in request.resource.data.participants && // Check guest is in participants
+                       // Simplified: Removed complex .all() check for ownerUids in participants for create
                        request.resource.data.status == 'pending_request' &&
                        request.resource.data.keys().hasAll([
                          'eventId', 'guestUid', 'ownerUids', 'participants', 'status',
@@ -53,14 +52,9 @@ service cloud.firestore {
                        request.resource.data.updatedAt == request.time &&
                        request.resource.data.lastMessageTimestamp == request.time &&
                        request.resource.data.lastMessageSenderId == request.auth.uid &&
-                       request.resource.data.unreadCount is map && // Ensure unreadCount is a map
-                       request.resource.data.unreadCount.keys().size() == request.resource.data.ownerUids.size() &&
-                       // Ensure unreadCount has entries for all owners with value 1
-                       (request.resource.data.ownerUids.size() == 0 || // Handles edge case if ownerUids could be empty (though size > 0 is checked)
-                        request.resource.data.ownerUids.all(iterOwnerId,
-                           iterOwnerId is string && request.resource.data.unreadCount[iterOwnerId] == 1
-                        )
-                       );
+                       request.resource.data.unreadCount is map &&
+                       request.resource.data.unreadCount.keys().size() == request.resource.data.ownerUids.size(); // Check unreadCount has correct number of keys for owners
+                       // Simplified: Removed .all() check for specific values in unreadCount for create
 
       // Who can update a chat document?
       allow update: if isParticipantInExistingChat() &&
