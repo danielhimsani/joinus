@@ -7,19 +7,31 @@ import { useEffect, useState } from 'react';
 import type { Event, UserProfile as GuestProfile } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, ThumbsUp, ThumbsDown, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, ThumbsUp, ThumbsDown, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
-import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
-import { doc, getDoc, Timestamp } from "firebase/firestore";
+import { db, auth as firebaseAuthInstance, storage } from "@/lib/firebase";
+import { doc, getDoc, Timestamp, deleteDoc } from "firebase/firestore";
+import { ref as storageRef, deleteObject } from "firebase/storage";
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -48,13 +60,12 @@ const safeToDate = (timestampField: any): Date => {
       return (timestampField as Timestamp).toDate();
     }
     if (timestampField instanceof Date) return timestampField;
-    // Attempt to parse if it's a string or number (milliseconds)
     if (typeof timestampField === 'string' || typeof timestampField === 'number') {
         const d = new Date(timestampField);
         if (!isNaN(d.getTime())) return d;
     }
     console.warn("safeToDate received unhandled type or invalid date:", timestampField);
-    return new Date(); // Fallback to current date if conversion fails
+    return new Date(); 
 };
 
 
@@ -68,8 +79,9 @@ export default function EventDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // For now, guest lists are simplified
   const [joinRequests, setJoinRequests] = useState<GuestProfile[]>([]); 
   const [approvedGuests, setApprovedGuests] = useState<GuestProfile[]>([]);
 
@@ -99,7 +111,7 @@ export default function EventDetailPage() {
           setEvent({
             id: docSnap.id,
             ...data,
-            ownerUids: data.ownerUids || [], // Use ownerUids
+            ownerUids: data.ownerUids || [],
             dateTime: safeToDate(data.dateTime),
             createdAt: safeToDate(data.createdAt),
             updatedAt: safeToDate(data.updatedAt),
@@ -153,6 +165,44 @@ export default function EventDetailPage() {
     });
   };
 
+  const handleDeleteEvent = async () => {
+    if (!event || !isOwner) {
+      toast({ title: HEBREW_TEXT.general.error, description: "אינך מורשה למחוק אירוע זה.", variant: "destructive"});
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      // Delete image from Firebase Storage if it exists and is not a placeholder
+      if (event.imageUrl && event.imageUrl.includes("firebasestorage.googleapis.com")) {
+        try {
+          const imageStorageRef = storageRef(storage, event.imageUrl);
+          await deleteObject(imageStorageRef);
+        } catch (storageError: any) {
+          // Log storage error but continue with Firestore deletion if it's not critical (e.g., file not found)
+          if (storageError.code !== 'storage/object-not-found') {
+            console.warn("Error deleting image from storage, proceeding with Firestore deletion:", storageError);
+            // Optionally, inform the user that the image couldn't be deleted but the event data will be.
+            // toast({ title: "אזהרה", description: "שגיאה במחיקת תמונת האירוע מהאחסון, אך נתוני האירוע יימחקו.", variant: "default"});
+          }
+        }
+      }
+
+      // Delete event document from Firestore
+      const eventDocRef = doc(db, "events", event.id);
+      await deleteDoc(eventDocRef);
+
+      toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.event.eventDeletedSuccessfully });
+      router.push('/profile'); 
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast({ title: HEBREW_TEXT.general.error, description: HEBREW_TEXT.event.errorDeletingEvent + (error instanceof Error ? `: ${error.message}` : ''), variant: "destructive"});
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-12">
@@ -180,8 +230,7 @@ export default function EventDetailPage() {
                     </div>
                 </div>
                 <div className="md:col-span-1 space-y-4">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-10 w-full" />
+                    {/* Skeleton for buttons that were previously here */}
                 </div>
             </div>
             </CardContent>
@@ -245,12 +294,7 @@ export default function EventDetailPage() {
             </div>
 
             <div className="md:col-span-1 space-y-4">
-              {isOwner ? (
-                <Button className="w-full font-body text-base py-3" variant="outline" onClick={() => router.push(`/events/edit/${event.id}`)}>
-                  <Edit3 className="ml-2 h-4 w-4" />
-                  {HEBREW_TEXT.event.editEvent}
-                </Button>
-              ) : (
+              {!isOwner && (
                 <Button className="w-full font-body text-lg py-3" onClick={handleRequestToJoin}>
                   {HEBREW_TEXT.event.requestToJoin}
                 </Button>
@@ -332,6 +376,50 @@ export default function EventDetailPage() {
             </>
           )}
         </CardContent>
+        {isOwner && (
+            <CardFooter className="border-t px-6 py-4 flex flex-col sm:flex-row sm:justify-end gap-3">
+                <Button 
+                    variant="outline" 
+                    onClick={() => router.push(`/events/edit/${event.id}`)}
+                    className="w-full sm:w-auto font-body"
+                    disabled={isDeleting}
+                >
+                    <Edit3 className="ml-2 h-4 w-4" />
+                    {HEBREW_TEXT.event.editEvent}
+                </Button>
+                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                    <AlertDialogTrigger asChild>
+                        <Button 
+                            variant="outline" 
+                            className="w-full sm:w-auto font-body border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Trash2 className="ml-2 h-4 w-4" />}
+                            {HEBREW_TEXT.event.deleteEvent}
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle className="text-right font-headline">{HEBREW_TEXT.event.deleteConfirmationTitle}</AlertDialogTitle>
+                        <AlertDialogDescription className="text-right">
+                            {HEBREW_TEXT.event.deleteConfirmationMessage}
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="flex-row-reverse sm:flex-row-reverse">
+                            <AlertDialogCancel disabled={isDeleting}>{HEBREW_TEXT.general.cancel}</AlertDialogCancel>
+                            <AlertDialogAction 
+                                onClick={handleDeleteEvent} 
+                                disabled={isDeleting}
+                                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                            >
+                                {isDeleting ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+                                {HEBREW_TEXT.general.delete}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </CardFooter>
+        )}
       </Card>
     </div>
   );

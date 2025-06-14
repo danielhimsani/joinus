@@ -66,13 +66,18 @@ export const HEBREW_TEXT = {
     rateGuest: "דרג אורח",
     broadcastMessage: "שלח הודעה לכל האורחים",
     eventDetails: "פרטי אירוע",
-    myEvents: "האירועים בבעלותי", // Changed for Profile Page
+    myEvents: "האירועים בבעלותי", 
     upcomingEvents: "אירועים קרובים",
     pastEvents: "אירועים קודמים",
     noEventsFound: "לא נמצאו אירועים התואמים את החיפוש.",
     confirmAttendance: "אישור הגעה",
     didNotAttend: "לא השתתף",
     automaticNegativeReview: "ביקורת שלילית אוטומטית תירשם עקב אי-הגעה.",
+    deleteEvent: "מחק אירוע",
+    deleteConfirmationTitle: "אישור מחיקת אירוע",
+    deleteConfirmationMessage: "האם אתה בטוח שברצונך למחוק אירוע זה? פעולה זו אינה ניתנת לשחזור.",
+    eventDeletedSuccessfully: "האירוע נמחק בהצלחה.",
+    errorDeletingEvent: "שגיאה במחיקת האירוע.",
   },
   profile: {
     userProfile: "פרופיל משתמש",
@@ -127,6 +132,8 @@ export const HEBREW_TEXT = {
     previous: "הקודם",
     getStarted: "התחבר והתחל",
     howItWorks: "איך זה עובד?",
+    delete: "מחק",
+    cancel: "ביטול",
   },
   foodIcons: {
     kosherMeat: "בשרי",
