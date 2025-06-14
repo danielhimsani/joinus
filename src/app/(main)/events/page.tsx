@@ -10,7 +10,7 @@ import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MapPin, SearchX, Loader2, Search, Filter as FilterIcon, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
-import { GoogleMapComponent } from "@/components/maps/GoogleMapComponent";
+import { GoogleMapComponent, type MapLocation } from "@/components/maps/GoogleMapComponent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -44,13 +44,12 @@ export default function EventsPage() {
       return (timestampField as Timestamp).toDate();
     }
     if (timestampField instanceof Date) return timestampField;
-    // Attempt to parse if it's a string or number (milliseconds)
     if (typeof timestampField === 'string' || typeof timestampField === 'number') {
         const d = new Date(timestampField);
         if (!isNaN(d.getTime())) return d;
     }
     console.warn("safeToDate received unhandled type or invalid date:", timestampField);
-    return new Date(); // Fallback to current date if conversion fails
+    return new Date();
   };
 
   useEffect(() => {
@@ -207,6 +206,18 @@ export default function EventsPage() {
       </div>
     ))
   );
+  
+  const mapEventLocations: MapLocation[] = filteredEvents
+    .filter(e => e.latitude != null && e.longitude != null)
+    .map(e => ({
+      id: e.id,
+      lat: e.latitude!,
+      lng: e.longitude!,
+      name: e.locationDisplayName || e.name,
+      dateTime: e.dateTime,
+      numberOfGuests: e.numberOfGuests,
+    }));
+
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -272,7 +283,7 @@ export default function EventsPage() {
                   <div className="mt-2 rounded-lg overflow-hidden shadow-md">
                     <GoogleMapComponent 
                         center={currentLocation} 
-                        eventLocations={filteredEvents.filter(e => e.latitude && e.longitude).map(e => ({lat: e.latitude!, lng: e.longitude!, name: e.locationDisplayName || e.name}))}
+                        eventLocations={mapEventLocations}
                     />
                   </div>
                 )}

@@ -8,11 +8,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { MapPin } from 'lucide-react';
 import { useState } from 'react';
+import Link from 'next/link';
+import { format } from 'date-fns';
+import { he } from 'date-fns/locale';
 
-interface MapLocation {
+export interface MapLocation {
+  id: string;
   lat: number;
   lng: number;
-  name?: string; // For event names
+  name?: string;
+  dateTime: Date;
+  numberOfGuests: number;
 }
 
 interface GoogleMapComponentProps {
@@ -40,15 +46,38 @@ export function GoogleMapComponent({
   eventLocations = []
 }: GoogleMapComponentProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const [selectedMarker, setSelectedMarker] = useState<MapLocation | null>(null);
+  
+  const [selectedEvents, setSelectedEvents] = useState<MapLocation[] | null>(null);
+  const [infoWindowPosition, setInfoWindowPosition] = useState<{lat: number; lng: number} | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script', // Consistent ID
+    id: 'google-map-script',
     googleMapsApiKey: apiKey || "",
     libraries,
     language: 'iw', 
     region: 'IL', 
   });
+
+  const handleMarkerClick = (clickedLocation: MapLocation) => {
+    const eventsAtSameSpot = eventLocations.filter(
+      loc => loc.lat === clickedLocation.lat && loc.lng === clickedLocation.lng
+    );
+    setSelectedEvents(eventsAtSameSpot.length > 0 ? eventsAtSameSpot : null);
+    setInfoWindowPosition(eventsAtSameSpot.length > 0 ? { lat: clickedLocation.lat, lng: clickedLocation.lng } : null);
+  };
+
+  const handleMapClick = () => {
+    setSelectedEvents(null);
+    setInfoWindowPosition(null);
+  };
+  
+  const transparentPixelIcon = {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="transparent" stroke="none"/></svg>'),
+    scaledSize: typeof window !== 'undefined' ? new window.google.maps.Size(1, 1) : undefined,
+    anchor: typeof window !== 'undefined' ? new window.google.maps.Point(0,0) : undefined,
+    labelOrigin: typeof window !== 'undefined' ? new window.google.maps.Point(0, -10) : undefined, // Adjust this to position label correctly
+  };
+
 
   if (loadError) {
     console.error("Google Maps API load error:", loadError);
@@ -85,34 +114,49 @@ export function GoogleMapComponent({
         mapTypeControl: false,
         fullscreenControl: false,
       }}
-      onClick={() => setSelectedMarker(null)} // Close InfoWindow when map is clicked
+      onClick={handleMapClick}
     >
-      {/* The explicit MarkerF for the user's 'center' location has been removed. */}
-      {/* The map will now use its default indicator (usually a blue dot) for the 'center'. */}
-
-      {eventLocations.map((loc, index) => (
+      {eventLocations.map((loc) => (
         <MarkerF
-          key={index}
+          key={loc.id + '-' + loc.lat + '-' + loc.lng} // Ensure unique key for multiple events at same spot that might share id if not careful
           position={{ lat: loc.lat, lng: loc.lng }}
-          title={loc.name || HEBREW_TEXT.map.eventLocationMarker}
-          onClick={() => setSelectedMarker(loc)}
-          // Event markers will use the default red pin
+          onClick={() => handleMarkerClick(loc)}
+          label={{
+            text: "💍",
+            fontSize: "20px", // Adjust size as needed
+            color: "#000000", // Emoji color might not be strictly controllable this way
+            className: "map-marker-emoji-label" // For potential future global CSS styling if needed
+          }}
+          icon={transparentPixelIcon}
         />
       ))}
 
-      {selectedMarker && (
+      {selectedEvents && infoWindowPosition && (
         <InfoWindowF
-          position={{ lat: selectedMarker.lat, lng: selectedMarker.lng }}
-          onCloseClick={() => setSelectedMarker(null)}
-          options={{ pixelOffset: new window.google.maps.Size(0, -30) }}
+          position={infoWindowPosition}
+          onCloseClick={handleMapClick} // Use same handler to clear state
+          options={{ 
+            pixelOffset: typeof window !== 'undefined' ? new window.google.maps.Size(0, -25) : undefined, // Adjust offset for emoji marker
+            disableAutoPan: true 
+          }} 
         >
-          <div>
-            <h4 className="font-semibold">{selectedMarker.name || 'אירוע'}</h4>
-            {/* Add more details here if needed, e.g., link to event page */}
+          <div className="p-1 space-y-2 max-w-[280px] bg-background rounded-md shadow-lg">
+            {selectedEvents.map(event => (
+              <div key={event.id} className="border-b border-border last:border-b-0 pb-1.5 mb-1.5 last:pb-0 last:mb-0">
+                <Link href={`/events/${event.id}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline text-sm block break-words">
+                  {event.name}
+                </Link>
+                <p className="text-xs text-muted-foreground">
+                  {format(new Date(event.dateTime), 'EEEE, d MMMM HH:mm', { locale: he })}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {HEBREW_TEXT.event.numberOfGuests}: {event.numberOfGuests}
+                </p>
+              </div>
+            ))}
           </div>
         </InfoWindowF>
       )}
     </GoogleMap>
   );
 }
-
