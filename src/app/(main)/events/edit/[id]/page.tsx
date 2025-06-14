@@ -32,37 +32,45 @@ export default function EditEventPage() {
   const eventId = params.id as string;
 
   const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // General loading for auth check and initial setup
+  const [isFetchingEvent, setIsFetchingEvent] = useState(false); // Specific loading for event data fetch
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
       setCurrentUser(user);
-      // Only proceed to fetch event data if user is identified, for ownership check.
       if (!user && eventId) {
-        setIsLoading(false);
+        // Not logged in but trying to access edit page for a specific event
         setFetchError("עליך להיות מחובר כדי לערוך אירוע.");
-        router.push('/signin'); // Redirect if not logged in
+        router.push('/signin');
       }
+      setIsLoading(false); // Auth check is done, stop initial loading
     });
     return () => unsubscribe();
   }, [router, eventId]);
 
 
   useEffect(() => {
-    if (!eventId || !currentUser) { // Wait for currentUser to be set
-        if(currentUser === null && !isLoading){ // if auth check is done and no user
-            // Error or redirect already handled by auth observer
-        } else if (!eventId) {
-            setIsLoading(false);
-            setFetchError("Event ID is missing.");
-        }
-      return;
+    if (isLoading) return; // Wait for auth check to complete
+
+    if (!eventId) {
+        setFetchError("Event ID is missing.");
+        setEventToEdit(null);
+        return;
+    }
+
+    if (!currentUser) {
+        // Auth check is done (isLoading is false), but still no user.
+        // The other useEffect should have handled redirection.
+        // This state implies user is not logged in.
+        setFetchError("עליך להיות מחובר כדי לערוך אירוע.");
+        setEventToEdit(null);
+        return;
     }
 
     const fetchEventData = async () => {
-      setIsLoading(true);
+      setIsFetchingEvent(true);
       setFetchError(null);
       try {
         const eventDocRef = doc(db, "events", eventId);
@@ -70,36 +78,33 @@ export default function EditEventPage() {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-           // Check for ownership
           if (!data.ownerUids || !data.ownerUids.includes(currentUser.uid)) {
             setFetchError("אינך מורשה לערוך אירוע זה.");
             setEventToEdit(null);
-            setIsLoading(false);
-            // router.push('/events'); // Optional: redirect if not owner
-            return;
+            // Optionally, router.push('/events');
+          } else {
+            setEventToEdit({
+              id: docSnap.id,
+              ...data,
+              ownerUids: data.ownerUids || [],
+              dateTime: safeToDate(data.dateTime),
+              createdAt: safeToDate(data.createdAt),
+              updatedAt: safeToDate(data.updatedAt),
+              name: data.name || "Unnamed Event",
+              numberOfGuests: data.numberOfGuests || 0,
+              paymentOption: data.paymentOption || "free",
+              pricePerGuest: data.pricePerGuest,
+              location: data.location || "No location specified",
+              locationDisplayName: data.locationDisplayName || "",
+              latitude: data.latitude || null,
+              longitude: data.longitude || null,
+              description: data.description || "",
+              ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
+              foodType: data.foodType || "notKosher",
+              religionStyle: data.religionStyle || "mixed",
+              imageUrl: data.imageUrl,
+            } as Event);
           }
-
-          setEventToEdit({
-            id: docSnap.id,
-            ...data,
-            ownerUids: data.ownerUids || [],
-            dateTime: safeToDate(data.dateTime),
-            createdAt: safeToDate(data.createdAt),
-            updatedAt: safeToDate(data.updatedAt),
-            name: data.name || "Unnamed Event",
-            numberOfGuests: data.numberOfGuests || 0,
-            paymentOption: data.paymentOption || "free",
-            pricePerGuest: data.pricePerGuest,
-            location: data.location || "No location specified",
-            locationDisplayName: data.locationDisplayName || "",
-            latitude: data.latitude || null,
-            longitude: data.longitude || null,
-            description: data.description || "",
-            ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
-            foodType: data.foodType || "notKosher",
-            religionStyle: data.religionStyle || "mixed",
-            imageUrl: data.imageUrl,
-          } as Event);
         } else {
           setFetchError(HEBREW_TEXT.event.noEventsFound);
           setEventToEdit(null);
@@ -109,14 +114,16 @@ export default function EditEventPage() {
         setFetchError(HEBREW_TEXT.general.error + " " + (error instanceof Error ? error.message : String(error)));
         setEventToEdit(null);
       } finally {
-        setIsLoading(false);
+        setIsFetchingEvent(false);
       }
     };
 
-    fetchEventData();
-  }, [eventId, currentUser, router, isLoading]); // isLoading is added to avoid re-fetch before auth check
+    if (eventId && currentUser) {
+        fetchEventData();
+    }
+  }, [eventId, currentUser, isLoading, router]); // Add isLoading here to re-evaluate when auth check finishes
 
-  if (isLoading) {
+  if (isLoading || isFetchingEvent) { // Show skeletons if either initial auth is loading OR event data is being fetched
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto space-y-6">
@@ -147,13 +154,14 @@ export default function EditEventPage() {
   }
 
   if (!eventToEdit) {
-    // This case might be covered by fetchError, but it's a fallback
+    // This case means loading is done, no fetch error reported, but eventToEdit is still null.
+    // This could be because the event wasn't found, or ownership check failed without explicitly setting a detailed fetchError.
     return (
       <div className="container mx-auto px-4 py-12 text-center">
         <Alert variant="default" className="max-w-lg mx-auto">
             <Loader2 className="h-5 w-5 animate-spin" />
             <AlertTitle className="font-headline">טוען נתוני אירוע...</AlertTitle>
-            <AlertDescription>אם הודעה זו נשארת, ייתכן שהאירוע לא נמצא או שאין לך הרשאה.</AlertDescription>
+            <AlertDescription>אם הודעה זו נשארת, ייתכן שהאירוע לא נמצא או שאין לך הרשאה לערוך אותו. בדוק את ההודעות למעלה אם קיימות.</AlertDescription>
         </Alert>
       </div>
     );
@@ -174,3 +182,4 @@ export default function EditEventPage() {
     </div>
   );
 }
+
