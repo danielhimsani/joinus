@@ -44,7 +44,8 @@ export default function ChatPage() {
   const { toast } = useToast();
   const chatId = params.chatId as string;
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const hasScrolledRef = useRef(false);
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null);
+
 
   const [chatDetails, setChatDetails] = useState<EventChat | null>(null);
   const [messages, setMessages] = useState<EventChatMessage[]>([]);
@@ -135,6 +136,8 @@ export default function ChatPage() {
         } as EventChatMessage);
       });
       setMessages(fetchedMessages);
+       // Scroll to bottom if the user is already near the bottom or if it's their own new message
+      // For now, only explicit scroll on send
     }, (err) => {
       console.error("Error fetching messages:", err);
       setError(HEBREW_TEXT.chat.errorFetchingMessages);
@@ -146,12 +149,8 @@ export default function ChatPage() {
     };
   }, [chatId, currentUser, updateUnreadCount]);
 
-  useEffect(() => {
-    if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
-
+  // Removed the useEffect that scrolled on every [messages] change to prevent aggressive auto-scrolling.
+  // Scrolling to bottom is now primarily handled after sending a message.
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !chatDetails || !currentUser) return;
@@ -242,7 +241,7 @@ export default function ChatPage() {
   const headerImage = isLoadingChat || !chatDetails ? undefined :
     (isCurrentUserOwner ? chatDetails.guestInfo?.profileImageUrl : chatDetails.eventInfo?.imageUrl);
   
-  const headerFallback = isLoadingChat || !chatDetails ? "?" :
+  const headerFallbackText = isLoadingChat || !chatDetails ? "?" :
     (isCurrentUserOwner ? (chatDetails.guestInfo?.name?.charAt(0) || 'G') : (chatDetails.eventInfo?.name?.charAt(0) || 'E')).toUpperCase();
 
   if (isLoadingChat && !chatDetails) {
@@ -302,6 +301,8 @@ export default function ChatPage() {
   }
 
 
+  const showOwnerActionBlock = isCurrentUserOwner && chatDetails.status === 'pending_request';
+
   return (
     <div className="container mx-auto px-0 md:px-4 py-0 md:py-8 h-screen md:h-[calc(100vh-120px)] flex flex-col">
       <Card className="flex-1 flex flex-col max-w-3xl mx-auto w-full shadow-lg overflow-hidden relative">
@@ -331,7 +332,7 @@ export default function ChatPage() {
                 )}
               </div>
             </div>
-            {isCurrentUserOwner && chatDetails.status !== 'closed' && (
+            {isCurrentUserOwner && chatDetails.status !== 'closed' && chatDetails.status !== 'request_rejected' && (
                  <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
                     <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
@@ -361,58 +362,59 @@ export default function ChatPage() {
         </CardHeader>
 
         {/* Messages Area */}
-        <ScrollArea className="flex-1 p-3 md:p-4 bg-background/70">
-          {/* Owner Actions for Pending Request - MOVED HERE */}
-          {isCurrentUserOwner && chatDetails.status === 'pending_request' && (
-            <div className="p-3 md:p-4 mb-4 border bg-amber-50 dark:bg-amber-900/30 rounded-lg shadow">
-              <p className="text-sm text-amber-700 dark:text-amber-300 mb-2 text-center font-medium">{HEBREW_TEXT.chat.requestManagement}</p>
-              <div className="flex gap-3 justify-center">
-                <Button 
-                  size="sm" 
-                  onClick={() => handleUpdateStatus('request_approved', HEBREW_TEXT.chat.requestApprovedMessage)} 
-                  disabled={isUpdatingStatus}
-                  className="bg-green-600 hover:bg-green-700 text-white flex-1"
-                >
-                  {isUpdatingStatus && <Loader2 className="ml-1.5 h-4 w-4 animate-spin" />}
-                  <CheckCircle className="ml-1.5 h-4 w-4" />
-                  {HEBREW_TEXT.chat.acceptRequest}
-                </Button>
-                <AlertDialog open={showDeclineDialog} onOpenChange={setShowDeclineDialog}>
-                  <AlertDialogTrigger asChild>
-                      <Button 
-                          size="sm" 
-                          variant="destructive" 
-                          disabled={isUpdatingStatus}
-                          className="flex-1"
-                      >
-                          <XCircle className="ml-1.5 h-4 w-4" />
-                          {HEBREW_TEXT.chat.declineRequest}
-                      </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                      <AlertDialogHeader>
-                          <AlertDialogTitle>{HEBREW_TEXT.chat.confirmDeclineRequestTitle}</AlertDialogTitle>
-                          <AlertDialogDescription>
-                              {HEBREW_TEXT.chat.confirmDeclineRequestMessage.replace('{guestName}', chatDetails.guestInfo?.name || HEBREW_TEXT.chat.guest)}
-                          </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter className="flex-row-reverse">
-                          <AlertDialogCancel disabled={isUpdatingStatus}>{HEBREW_TEXT.general.cancel}</AlertDialogCancel>
-                          <AlertDialogAction 
-                              onClick={() => handleUpdateStatus('request_rejected', HEBREW_TEXT.chat.requestDeclinedMessage)}
-                              disabled={isUpdatingStatus}
-                              className="bg-destructive hover:bg-destructive/90"
-                          >
-                              {isUpdatingStatus && <Loader2 className="ml-1.5 h-4 w-4 animate-spin" />}
-                              {HEBREW_TEXT.chat.declineRequest}
-                          </AlertDialogAction>
-                      </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </div>
-          )}
+        <ScrollArea ref={scrollAreaRef} className="flex-1 p-3 md:p-4 bg-background/70">
           <div className="flex flex-col space-y-1">
+            {showOwnerActionBlock && (
+                <div className="my-3 p-3 bg-muted/60 dark:bg-muted/40 rounded-lg shadow-sm w-full self-center max-w-md mx-auto">
+                  <p className="text-sm text-foreground mb-3 text-center font-medium">
+                    {HEBREW_TEXT.chat.requestManagement}
+                  </p>
+                  <div className="flex gap-3 justify-center">
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleUpdateStatus('request_approved', HEBREW_TEXT.chat.requestApprovedMessage)} 
+                      disabled={isUpdatingStatus}
+                      className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                    >
+                      {isUpdatingStatus && <Loader2 className="ml-1.5 h-4 w-4 animate-spin" />}
+                      <CheckCircle className="ml-1.5 h-4 w-4" />
+                      {HEBREW_TEXT.chat.acceptRequest}
+                    </Button>
+                    <AlertDialog open={showDeclineDialog} onOpenChange={setShowDeclineDialog}>
+                      <AlertDialogTrigger asChild>
+                          <Button 
+                              size="sm" 
+                              variant="destructive" 
+                              disabled={isUpdatingStatus}
+                              className="flex-1"
+                          >
+                              <XCircle className="ml-1.5 h-4 w-4" />
+                              {HEBREW_TEXT.chat.declineRequest}
+                          </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                          <AlertDialogHeader>
+                              <AlertDialogTitle>{HEBREW_TEXT.chat.confirmDeclineRequestTitle}</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                  {HEBREW_TEXT.chat.confirmDeclineRequestMessage.replace('{guestName}', chatDetails.guestInfo?.name || HEBREW_TEXT.chat.guest)}
+                              </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="flex-row-reverse">
+                              <AlertDialogCancel disabled={isUpdatingStatus}>{HEBREW_TEXT.general.cancel}</AlertDialogCancel>
+                              <AlertDialogAction 
+                                  onClick={() => handleUpdateStatus('request_rejected', HEBREW_TEXT.chat.requestDeclinedMessage)}
+                                  disabled={isUpdatingStatus}
+                                  className="bg-destructive hover:bg-destructive/90"
+                              >
+                                  {isUpdatingStatus && <Loader2 className="ml-1.5 h-4 w-4 animate-spin" />}
+                                  {HEBREW_TEXT.chat.declineRequest}
+                              </AlertDialogAction>
+                          </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              )}
             {messages.map((msg) => (
               <MessageBubble key={msg.id} message={msg} currentUser={currentUser} />
             ))}
@@ -435,7 +437,7 @@ export default function ChatPage() {
                     }
                 }}
                 rows={1}
-                className="min-h-[40px] max-h-[100px] flex-1 resize-none"
+                className="min-h-[40px] max-h-[100px] w-full resize-none"
                 disabled={isSendingMessage}
                 />
                 <Button type="button" size="icon" onClick={handleSendMessage} disabled={isSendingMessage || !newMessage.trim()}>
