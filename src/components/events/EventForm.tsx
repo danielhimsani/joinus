@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, Upload, Loader2, ImagePlus, Edit3, Info } from "lucide-react";
+import { CalendarIcon, Loader2, ImagePlus, Info } from "lucide-react";
 import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import React, { useState, useEffect, useRef } from "react";
@@ -15,6 +15,7 @@ import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebas
 import { db, auth as firebaseAuthInstance, storage } from "@/lib/firebase";
 import { Autocomplete, useJsApiLoader } from "@react-google-maps/api";
 import Image from "next/image";
+import imageCompression from 'browser-image-compression';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card"; // CardHeader, CardTitle removed for new design
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { PaymentOption, FoodType, ReligionStyle } from "@/types";
 import { cn } from "@/lib/utils";
@@ -72,7 +73,7 @@ const formSchema = z.object({
   ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([25, 55]),
   foodType: z.enum(["kosherMeat", "kosherDairy", "kosherParve", "notKosher"]),
   religionStyle: z.enum(["secular", "traditional", "religious", "mixed"]),
-  imageUrl: z.string().optional(), 
+  imageUrl: z.string().optional(),
 }).refine(data => {
     if (data.paymentOption === 'fixed') {
         return data.pricePerGuest !== undefined && data.pricePerGuest > 0;
@@ -98,14 +99,14 @@ export function EventForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [, setCurrentUser] = useState<FirebaseUser | null>(null); // currentUser state might not be strictly needed if using firebaseAuthInstance.currentUser directly
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false); // For image upload to storage specifically
+  const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -114,9 +115,9 @@ export function EventForm() {
   const locationInputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script', // Consistent ID
+    id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries, // Consistent libraries
+    libraries,
     language: 'iw',
     region: 'IL',
   });
@@ -136,6 +137,7 @@ export function EventForm() {
       paymentOption: "fixed",
       pricePerGuest: 100,
       location: "",
+      // dateTime: undefined, // Let user pick
       description: "",
       ageRange: [25, 55], 
       foodType: "kosherParve",
@@ -155,15 +157,33 @@ export function EventForm() {
     }
   }, [isEditingName]);
 
-  const handleImageFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setImageFile(file);
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreviewUrl(previewUrl);
-      form.setValue("imageUrl", previewUrl, {shouldDirty: true}); 
+      toast({ title: "דוחס תמונה...", description: "אנא המתן." });
+      try {
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        };
+        const compressedFile = await imageCompression(file, options);
+        toast({ title: "הדחיסה הושלמה", description: "התמונה מוכנה להעלאה." });
+        
+        setImageFile(compressedFile);
+        const previewUrl = URL.createObjectURL(compressedFile);
+        setImagePreviewUrl(previewUrl);
+        // No need to form.setValue("imageUrl", previewUrl) as it's a local blob.
+        // The actual URL will be set after upload to Firebase Storage.
+      } catch (error) {
+        console.error("Error compressing image:", error);
+        toast({ title: "שגיאה בדחיסת תמונה", description: (error instanceof Error) ? error.message : String(error), variant: "destructive" });
+        setImageFile(null); // Clear if compression fails
+        setImagePreviewUrl(null);
+      }
     }
   };
+
 
   const handlePlaceChanged = () => {
     if (autocompleteRef.current) {
@@ -185,8 +205,8 @@ export function EventForm() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
-    setIsUploading(false);
-    setUploadProgress(null);
+    setIsUploadingImage(false); // Reset specific image upload state
+    setImageUploadProgress(null);
 
     const firebaseUser = firebaseAuthInstance.currentUser;
     if (!firebaseUser?.uid) {
@@ -196,12 +216,10 @@ export function EventForm() {
       return;
     }
 
-    let finalImageUrl = values.imageUrl || `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name)}`;
-    finalImageUrl = finalImageUrl.startsWith('blob:') ? `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name)}` : finalImageUrl;
-
+    let finalImageUrl = `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name)}`; // Default placeholder
 
     if (imageFile) {
-      setIsUploading(true);
+      setIsUploadingImage(true);
       const filePath = `event_images/${firebaseUser.uid}/${Date.now()}-${imageFile.name}`;
       const imageStorageRef = storageRef(storage, filePath);
       const uploadTask = uploadBytesResumable(imageStorageRef, imageFile);
@@ -212,7 +230,7 @@ export function EventForm() {
             'state_changed',
             (snapshot) => {
               const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              setUploadProgress(progress);
+              setImageUploadProgress(progress);
             },
             (error) => {
               console.error("Image upload error:", error);
@@ -221,19 +239,20 @@ export function EventForm() {
             },
             async () => {
               finalImageUrl = await getDownloadURL(uploadTask.snapshot.ref);
-              form.setValue("imageUrl", finalImageUrl); 
+              // No need to form.setValue("imageUrl", finalImageUrl); here, it will be in eventData
               resolve();
             }
           );
         });
       } catch (error) {
-        setIsUploading(false);
+        // Error already toasted by uploadTask's error handler
+        setIsUploadingImage(false);
         setIsSubmitting(false);
-        setUploadProgress(null);
-        return;
+        setImageUploadProgress(null);
+        return; // Stop submission if image upload fails
       }
-      setIsUploading(false);
-      setUploadProgress(100); 
+      setIsUploadingImage(false);
+      setImageUploadProgress(100); 
     }
     
     try {
@@ -246,13 +265,13 @@ export function EventForm() {
         latitude: latitude,
         longitude: longitude,
         dateTime: Timestamp.fromDate(values.dateTime),
-        imageUrl: finalImageUrl,
+        imageUrl: finalImageUrl, // Use the URL from storage or the placeholder
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
       const addOperation = addDoc(collection(db, "events"), eventData);
-      const docRef = await promiseWithTimeout(addOperation, 15000); 
+      await promiseWithTimeout(addOperation, 15000); 
       
       toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" נוצר בהצלחה!` });
       router.push("/events");
@@ -260,11 +279,15 @@ export function EventForm() {
     } catch (error) {
       console.error("Error creating event:", error);
       let errorMessage = "שגיאה ביצירת האירוע.";
-       if (error instanceof Error) errorMessage = `${errorMessage} ${error.message}`;
+       if (error instanceof Error && error.message.includes('Operation timed out')) {
+           errorMessage = "יצירת האירוע ארכה זמן רב מדי. אנא בדוק אם האירוע נוצר או נסה שוב.";
+       } else if (error instanceof Error) {
+           errorMessage = `${errorMessage} ${error.message}`;
+       }
       toast({ title: HEBREW_TEXT.general.error, description: errorMessage, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
-      setIsUploading(false);
+      setIsUploadingImage(false); // Ensure this is also reset
     }
   };
   
@@ -280,8 +303,7 @@ export function EventForm() {
   }
   if (!isLoaded) return <Card className="w-full max-w-3xl mx-auto p-6 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary mb-2" /><p>{HEBREW_TEXT.general.loading} רכיב המיקום...</p></Card>;
 
-  const currentImageUrl = imagePreviewUrl || form.getValues("imageUrl") || "https://placehold.co/800x400.png?text=Event+Cover";
-  const displayImageUrl = currentImageUrl.startsWith('blob:') ? currentImageUrl : (form.getValues("imageUrl") || "https://placehold.co/800x400.png?text=Event+Cover");
+  const displayImageUrl = imagePreviewUrl || "https://placehold.co/800x400.png?text=Event+Cover";
 
 
   return (
@@ -320,23 +342,32 @@ export function EventForm() {
 
             <div className="absolute bottom-4 left-4 right-4 z-10 p-4 text-white">
               {isEditingName ? (
-                <Input
-                  ref={nameInputRef}
-                  defaultValue={eventNameValue}
-                  onBlur={(e) => {
-                    form.setValue("name", e.target.value, { shouldValidate: true });
-                    setIsEditingName(false);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault(); 
-                      form.setValue("name", (e.target as HTMLInputElement).value, { shouldValidate: true });
-                      setIsEditingName(false);
-                    } else if (e.key === 'Escape') {
-                       setIsEditingName(false);
-                    }
-                  }}
-                  className="text-3xl md:text-4xl font-bold bg-transparent border-0 border-b-2 border-white/50 focus:border-white focus:ring-0 p-0 h-auto text-white placeholder-white/70"
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <Input
+                      ref={(e) => {
+                        field.ref(e);
+                        nameInputRef.current = e;
+                      }}
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={(e) => {
+                        field.onBlur();
+                        setIsEditingName(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault(); 
+                          setIsEditingName(false);
+                        } else if (e.key === 'Escape') {
+                           setIsEditingName(false);
+                        }
+                      }}
+                      className="text-3xl md:text-4xl font-bold bg-transparent border-0 border-b-2 border-white/50 focus:border-white focus:ring-0 p-0 h-auto text-white placeholder-white/70"
+                    />
+                  )}
                 />
               ) : (
                 <h1 
@@ -396,40 +427,17 @@ export function EventForm() {
             </div>
           </div>
           
-          {isUploading && uploadProgress !== null && (
+          {isUploadingImage && imageUploadProgress !== null && (
             <div className="p-4">
-              <Progress value={uploadProgress} className="w-full h-2" />
+              <Progress value={imageUploadProgress} className="w-full h-2" />
               <p className="text-sm text-muted-foreground text-center mt-1">
-                {uploadProgress < 100 ? `מעלה תמונה... ${uploadProgress.toFixed(0)}%` : "התמונה הועלתה!"}
+                {imageUploadProgress < 100 ? `מעלה תמונה... ${imageUploadProgress.toFixed(0)}%` : "התמונה הועלתה!"}
               </p>
             </div>
           )}
 
           <CardContent className="pt-6 space-y-8">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem className="hidden">
-                  <FormLabel>{HEBREW_TEXT.event.eventName}</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-                control={form.control}
-                name="dateTime"
-                render={({ field }) => (
-                <FormItem className="hidden">
-                    <FormLabel>{HEBREW_TEXT.event.dateTime}</FormLabel>
-                    <FormControl><Input type="text" value={field.value?.toString()}/></FormControl>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
-
-
+            {/* Hidden inputs for name and dateTime are no longer needed as they are controlled by the interactive header */}
             <div className="grid md:grid-cols-2 gap-8">
               <FormField
                 control={form.control}
@@ -589,8 +597,8 @@ export function EventForm() {
                     </FormItem>
                 )} />
             </div>
-            <Button type="submit" className="w-full font-body text-lg py-6" disabled={isSubmitting || isUploading || !isLoaded}>
-              {(isSubmitting || isUploading) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+            <Button type="submit" className="w-full font-body text-lg py-6" disabled={isSubmitting || isUploadingImage || !isLoaded}>
+              {(isSubmitting || isUploadingImage) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
               {HEBREW_TEXT.event.createEventButton}
             </Button>
           </CardContent>
@@ -599,4 +607,3 @@ export function EventForm() {
     </Form>
   );
 }
-
