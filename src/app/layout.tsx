@@ -1,9 +1,10 @@
 
 import type { Metadata } from 'next';
-import { Rubik } from 'next/font/google'; // Removed Pacifico
+import { Rubik } from 'next/font/google'; 
 import { Toaster } from "@/components/ui/toaster";
 import './globals.css';
 import { cn } from '@/lib/utils';
+import { ThemeInitializer } from '@/components/layout/ThemeInitializer'; // Import the new client component
 
 const rubik = Rubik({
   subsets: ['latin', 'hebrew'],
@@ -11,8 +12,6 @@ const rubik = Rubik({
   display: 'swap',
   weight: ['300', '400', '500', '700']
 });
-
-// Pacifico font configuration removed
 
 export const metadata: Metadata = {
   title: 'Join us',
@@ -29,8 +28,8 @@ export default function RootLayout({
       <head>
         {/* Next/font handles font loading */}
       </head>
-      {/* Removed pacifico.variable from the body class */}
       <body className={cn('font-body antialiased', rubik.variable)}>
+        <ThemeInitializer />
         {children}
         <Toaster />
       </body>

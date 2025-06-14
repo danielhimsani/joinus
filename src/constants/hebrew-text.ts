@@ -89,6 +89,8 @@ export const HEBREW_TEXT = {
     pastEventsAttended: "אירועים קודמים שהשתתפת",
     reviews: "ביקורות",
     saveChanges: "שמור שינויים",
+    settings: "הגדרות",
+    darkMode: "מצב כהה",
   },
   notifications: {
     title: "התראות",

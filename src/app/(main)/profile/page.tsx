@@ -23,10 +23,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { UserProfile } from "@/types";
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut } from "lucide-react";
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Tooltip,
   TooltipContent,
@@ -52,6 +54,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -60,9 +63,9 @@ export default function ProfilePage() {
   
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (fbUser) => {
-      setIsLoading(true); // Set loading true while processing auth state
+      setIsLoading(true); 
       if (fbUser) {
-        console.log("Firebase User Object in ProfilePage:", fbUser); // Log the user object
+        console.log("Firebase User Object in ProfilePage:", fbUser); 
         setFirebaseUser(fbUser);
         const profileData: UserProfile = {
           id: fbUser.uid, 
@@ -70,9 +73,9 @@ export default function ProfilePage() {
           name: fbUser.displayName || "משתמש",
           email: fbUser.email || "לא סופק אימייל",
           profileImageUrl: fbUser.photoURL || "https://placehold.co/150x150.png",
-          bio: user?.bio || "", // Preserve existing bio if user re-auths
-          phone: user?.phone || "", // Preserve existing phone
-          birthday: user?.birthday || "", // Preserve existing birthday
+          bio: user?.bio || "", 
+          phone: user?.phone || "", 
+          birthday: user?.birthday || "", 
           isVerified: fbUser.emailVerified,
         };
         setUser(profileData);
@@ -92,7 +95,29 @@ export default function ProfilePage() {
     });
 
     return () => unsubscribe();
-  }, [form, router, user?.bio, user?.phone, user?.birthday]); // Added user properties to deps for preserving edits
+  }, [form, router, user?.bio, user?.phone, user?.birthday]);
+
+  useEffect(() => {
+    const currentTheme = localStorage.getItem("theme");
+    if (currentTheme === "dark") {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const handleThemeToggle = (checked: boolean) => {
+    setIsDarkMode(checked);
+    if (checked) {
+      localStorage.setItem("theme", "dark");
+      document.documentElement.classList.add("dark");
+    } else {
+      localStorage.setItem("theme", "light");
+      document.documentElement.classList.remove("dark");
+    }
+  };
 
   const onSubmit = async (values: z.infer<typeof profileFormSchema>) => {
     setIsSubmitting(true);
@@ -103,26 +128,19 @@ export default function ProfilePage() {
     }
 
     try {
-      // Update Firebase Auth profile if name changed
       if (values.name !== firebaseUser.displayName) {
         await updateProfile(firebaseUser, { displayName: values.name });
       }
-      // TODO: Implement actual profile update to Firestore for bio, phone, birthday
-      // For example: await updateUserProfileInFirestore(firebaseUser.uid, { bio: values.bio, phone: values.phone, birthday: values.birthday });
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate Firestore update
+      await new Promise(resolve => setTimeout(resolve, 1000)); 
       
       setUser(prevUser => prevUser ? { 
           ...prevUser, 
           name: values.name,
-          // email is not updated here
           birthday: values.birthday,
           bio: values.bio,
           phone: values.phone,
       } : null);
-      // Re-sync form with potentially updated firebaseUser (e.g., displayName) if needed,
-      // but for now, values are the source of truth post-submit for the form.
       form.reset(values);
-
 
       toast({
         title: HEBREW_TEXT.general.success,
@@ -144,7 +162,6 @@ export default function ProfilePage() {
   const handleSignOut = async () => {
     try {
       await firebaseAuthInstance.signOut();
-      // localStorage items related to mock auth are less relevant now, but good to clear
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('userName');
       toast({
@@ -162,7 +179,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading || !user) { // Keep !user check to prevent rendering before user data is ready
+  if (isLoading || !user) { 
     return (
       <div className="container mx-auto px-4 py-12">
          <Card className="max-w-3xl mx-auto">
@@ -185,7 +202,6 @@ export default function ProfilePage() {
     );
   }
 
-
   return (
     <TooltipProvider>
       <div className="container mx-auto px-4 py-12">
@@ -202,7 +218,6 @@ export default function ProfilePage() {
                       <Button variant="outline" size="icon" className="absolute bottom-0 left-0 bg-background rounded-full">
                           <Camera className="h-5 w-5"/>
                           <span className="sr-only">{HEBREW_TEXT.profile.uploadProfileImage}</span>
-                          {/* TODO: Implement image upload functionality & updateProfile for photoURL */}
                       </Button>
                   )}
                 </div>
@@ -356,6 +371,26 @@ export default function ProfilePage() {
 
                 <Separator className="my-8" />
 
+                <div>
+                  <h3 className="font-headline text-xl font-semibold mb-4">{HEBREW_TEXT.profile.settings}</h3>
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                       {isDarkMode ? <Moon className="h-5 w-5 text-primary" /> : <Sun className="h-5 w-5 text-primary" />}
+                       <Label htmlFor="dark-mode-switch" className="text-base">
+                         {HEBREW_TEXT.profile.darkMode}
+                       </Label>
+                    </div>
+                    <Switch
+                      id="dark-mode-switch"
+                      checked={isDarkMode}
+                      onCheckedChange={handleThemeToggle}
+                      aria-label={HEBREW_TEXT.profile.darkMode}
+                    />
+                  </div>
+                </div>
+
+                <Separator className="my-8" />
+
                 <Button 
                   variant="ghost" 
                   className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 font-body text-base py-3"
@@ -372,5 +407,3 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
-
-    
