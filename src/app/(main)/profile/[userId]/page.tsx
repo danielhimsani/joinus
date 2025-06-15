@@ -16,7 +16,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { UserProfile, Event as EventType } from "@/types";
-import { CalendarDays, MapPin, ShieldCheck, User as UserIcon, AlertCircle, ChevronLeft } from "lucide-react";
+import { CalendarDays, MapPin, ShieldCheck, User as UserIcon, AlertCircle, ChevronLeft, Cake } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -34,6 +34,18 @@ import { he } from 'date-fns/locale';
 import { safeToDate } from '@/lib/dateUtils';
 import type { User as FirebaseUser } from "firebase/auth";
 
+const calculateAge = (birthDateString?: string): number | null => {
+  if (!birthDateString) return null;
+  const birthDate = new Date(birthDateString);
+  if (isNaN(birthDate.getTime())) return null; 
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age < 0 ? null : age; // Ensure age is not negative if birthdate is in future
+};
 
 export default function UserProfilePage() {
   const params = useParams();
@@ -46,12 +58,13 @@ export default function UserProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
 
   useEffect(() => {
     const unsubscribe = firebaseAuthInstance.onAuthStateChanged(user => {
         setCurrentUser(user);
         if (!user) {
-            router.push('/signin'); // Redirect if not authenticated
+            router.push('/signin'); 
         }
     });
     return () => unsubscribe();
@@ -59,7 +72,7 @@ export default function UserProfilePage() {
 
 
   const fetchProfileAndEvents = useCallback(async () => {
-    if (!userId || !currentUser) { // Ensure currentUser is also available before fetching
+    if (!userId || !currentUser) { 
       setIsLoading(false);
       return;
     }
@@ -68,36 +81,34 @@ export default function UserProfilePage() {
     setError(null);
 
     try {
-      // Fetch user profile
       const userDocRef = doc(db, "users", userId);
       const userDocSnap = await getDoc(userDocRef);
 
       if (userDocSnap.exists()) {
         const data = userDocSnap.data();
-        setProfileData({
+        const userProfile: UserProfile = {
           id: userDocSnap.id,
           firebaseUid: data.firebaseUid || userId,
           name: data.name || "משתמש",
-          email: data.email, // Keep for internal use if needed, but don't display publicly
+          email: data.email, 
           profileImageUrl: data.profileImageUrl || `https://placehold.co/150x150.png?text=${(data.name || "U").charAt(0)}`,
           bio: data.bio || "",
+          birthday: data.birthday, // Fetch birthday string
           isVerified: data.isVerified || false,
-          // Exclude phone and birthday for public view
-        } as UserProfile);
+        };
+        setProfileData(userProfile);
+        setCalculatedAge(calculateAge(userProfile.birthday));
 
-        // Fetch future events owned by this user
         const eventsRef = collection(db, "events");
-        // Ensure dateTime is compared with a Timestamp for Firestore query
         const nowAsTimestamp = Timestamp.now();
         const q = query(eventsRef, where("ownerUids", "array-contains", userId), where("dateTime", ">=", nowAsTimestamp));
         const querySnapshot = await getDocs(q);
-        const fetchedEvents = querySnapshot.docs.map(doc => {
-          const eventData = doc.data();
+        const fetchedEvents = querySnapshot.docs.map(eventDoc => {
+          const eventData = eventDoc.data();
           return {
-            id: doc.id,
+            id: eventDoc.id,
             ...eventData,
             dateTime: safeToDate(eventData.dateTime),
-            // Ensure other date fields are also converted if necessary
             createdAt: eventData.createdAt ? safeToDate(eventData.createdAt) : new Date(),
             updatedAt: eventData.updatedAt ? safeToDate(eventData.updatedAt) : new Date(),
           } as EventType;
@@ -118,7 +129,7 @@ export default function UserProfilePage() {
   }, [userId, currentUser]);
 
   useEffect(() => {
-    if (currentUser) { // Only fetch if current user is resolved
+    if (currentUser) { 
         fetchProfileAndEvents();
     }
   }, [fetchProfileAndEvents, currentUser]);
@@ -164,7 +175,6 @@ export default function UserProfilePage() {
   }
 
   if (!profileData) {
-    // This case should ideally be covered by the error state if user not found
     return (
       <div className="container mx-auto px-4 py-12 text-center">
         <Alert variant="default" className="max-w-lg mx-auto">
@@ -180,9 +190,7 @@ export default function UserProfilePage() {
     );
   }
   
-  // If current user is viewing their own public profile, give option to go to editable profile
   const isViewingOwnProfile = currentUser?.uid === userId;
-
 
   return (
     <TooltipProvider>
@@ -204,25 +212,36 @@ export default function UserProfilePage() {
               </Avatar>
             </div>
             <CardTitle className="font-headline text-3xl">{profileData.name}</CardTitle>
-            {profileData.isVerified && (
-              <CardDescription className="flex items-center justify-center text-green-600">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <ShieldCheck className="mr-2 h-5 w-5" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{HEBREW_TEXT.profile.verifiedBadge}</p>
-                  </TooltipContent>
-                </Tooltip>
-                {HEBREW_TEXT.profile.verifiedBadge}
-              </CardDescription>
-            )}
+            <div className="flex items-center justify-center space-x-3 rtl:space-x-reverse mt-1">
+                {profileData.isVerified && (
+                <CardDescription className="flex items-center text-green-600">
+                    <Tooltip>
+                    <TooltipTrigger asChild>
+                        <ShieldCheck className="mr-2 h-5 w-5" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>{HEBREW_TEXT.profile.verifiedBadge}</p>
+                    </TooltipContent>
+                    </Tooltip>
+                    {HEBREW_TEXT.profile.verifiedBadge}
+                </CardDescription>
+                )}
+                 {calculatedAge !== null && (
+                    <>
+                    {profileData.isVerified && <Separator orientation="vertical" className="h-5" />}
+                    <CardDescription className="flex items-center text-muted-foreground">
+                        <Cake className="mr-2 h-5 w-5 text-primary/80" />
+                        {calculatedAge} {HEBREW_TEXT.profile.yearsOldSuffix}
+                    </CardDescription>
+                    </>
+                )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-6 pt-6">
             <div>
               <h3 className="font-semibold text-muted-foreground">{HEBREW_TEXT.profile.bio}</h3>
               <p className="text-foreground/90 whitespace-pre-line">
-                {profileData.bio || "לא סופק ביו."}
+                {profileData.bio || HEBREW_TEXT.profile.bioNotProvided}
               </p>
             </div>
             
@@ -247,19 +266,9 @@ export default function UserProfilePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground">ל{profileData.name.split(' ')[0]} אין אירועים עתידייים בבעלותו כרגע.</p>
+                <p className="text-muted-foreground">{HEBREW_TEXT.profile.noFutureEventsOwned.replace('{name}', profileData.name.split(' ')[0])}</p>
               )}
             </div>
-            
-            {/* Placeholder for reviews if you implement them later */}
-            {/* 
-            <Separator />
-            <div>
-              <h3 className="font-headline text-xl font-semibold mb-2">{HEBREW_TEXT.profile.reviews}</h3>
-              <p className="text-muted-foreground">ביקורות על {profileData.name.split(' ')[0]} יופיעו כאן.</p>
-            </div>
-            */}
-            
           </CardContent>
         </Card>
       </div>

@@ -23,8 +23,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import type { UserProfile, Event as EventType } from "@/types"; // Added EventType
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin } from "lucide-react"; // Added CalendarDays, MapPin
+import type { UserProfile, Event as EventType } from "@/types"; 
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake } from "lucide-react"; 
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -37,8 +37,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { onAuthStateChanged, type User as FirebaseUser, updateProfile } from "firebase/auth";
-import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; // Added db
-import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"; // Firebase imports
+import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; 
+import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"; 
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate } from '@/lib/dateUtils';
@@ -50,6 +50,19 @@ const profileFormSchema = z.object({
   bio: z.string().max(300, { message: "ביו יכול להכיל עד 300 תווים."}).optional(),
   phone: z.string().regex(/^0\d([\d]{0,1})([-]{0,1})\d{7}$/, { message: "מספר טלפון לא תקין."}).optional(),
 });
+
+const calculateAge = (birthDateString?: string): number | null => {
+  if (!birthDateString) return null;
+  const birthDate = new Date(birthDateString);
+  if (isNaN(birthDate.getTime())) return null; 
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age < 0 ? null : age;
+};
 
 
 export default function ProfilePage() {
@@ -63,6 +76,7 @@ export default function ProfilePage() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [ownedEvents, setOwnedEvents] = useState<EventType[]>([]);
   const [isLoadingOwnedEvents, setIsLoadingOwnedEvents] = useState(false);
+  const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -86,6 +100,7 @@ export default function ProfilePage() {
           isVerified: fbUser.emailVerified,
         };
         setUser(profileData);
+        setCalculatedAge(calculateAge(profileData.birthday));
         form.reset({
           name: profileData.name,
           email: profileData.email,
@@ -94,7 +109,6 @@ export default function ProfilePage() {
           phone: profileData.phone || "",
         });
 
-        // Fetch owned events
         setIsLoadingOwnedEvents(true);
         try {
           const eventsRef = collection(db, "events");
@@ -128,7 +142,13 @@ export default function ProfilePage() {
     });
 
     return () => unsubscribe();
-  }, [form, router, user?.bio, user?.phone, user?.birthday, toast]);
+  }, [form, router, user?.bio, user?.phone, user?.birthday, toast]); // Re-run if these user details change locally to re-calc age
+
+  useEffect(() => {
+    if (user?.birthday) {
+      setCalculatedAge(calculateAge(user.birthday));
+    }
+  }, [user?.birthday]);
 
   useEffect(() => {
     const currentTheme = localStorage.getItem("theme");
@@ -162,8 +182,7 @@ export default function ProfilePage() {
       if (values.name !== firebaseUser.displayName) {
         await updateProfile(firebaseUser, { displayName: values.name });
       }
-      // Note: Firestore update for bio, phone, birthday would go here if these fields are stored in Firestore
-      // For now, they are just in the local `user` state.
+      
       await new Promise(resolve => setTimeout(resolve, 1000)); 
       
       setUser(prevUser => prevUser ? { 
@@ -244,7 +263,7 @@ export default function ProfilePage() {
               <div className="flex-grow text-center">
                 <div className="relative inline-block mb-4">
                   <Avatar className="h-32 w-32 border-4 border-primary shadow-md">
-                    <AvatarImage src={user.profileImageUrl} alt={user.name} data-ai-hint="profile picture" />
+                    <AvatarImage src={user.profileImageUrl} alt={user.name} data-ai-hint="profile picture"/>
                     <AvatarFallback className="text-4xl">{user.name.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   {isEditing && (
@@ -361,17 +380,22 @@ export default function ProfilePage() {
               <div className="space-y-6">
                 <div>
                   <h3 className="font-semibold text-muted-foreground">{HEBREW_TEXT.profile.bio}</h3>
-                  <p className="text-foreground/90 whitespace-pre-line">{user.bio || "לא סופק ביו."}</p>
+                  <p className="text-foreground/90 whitespace-pre-line">{user.bio || HEBREW_TEXT.profile.bioNotProvided}</p>
                 </div>
                 <Separator/>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <h3 className="font-semibold text-muted-foreground">{HEBREW_TEXT.profile.phone}</h3>
-                    <p className="text-foreground/90">{user.phone || "לא סופק"}</p>
+                    <p className="text-foreground/90">{user.phone || HEBREW_TEXT.profile.infoNotProvided}</p>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-muted-foreground">{HEBREW_TEXT.profile.birthday}</h3>
-                    <p className="text-foreground/90">{user.birthday ? new Date(user.birthday).toLocaleDateString('he-IL') : "לא סופק"}</p>
+                     <h3 className="font-semibold text-muted-foreground flex items-center">
+                        <Cake className="ml-2 h-4 w-4 text-primary/80" />
+                        {HEBREW_TEXT.profile.age}
+                    </h3>
+                    <p className="text-foreground/90">
+                        {calculatedAge !== null ? `${calculatedAge} ${HEBREW_TEXT.profile.yearsOldSuffix}` : HEBREW_TEXT.profile.ageNotProvided}
+                    </p>
                   </div>
                 </div>
                 
@@ -417,7 +441,7 @@ export default function ProfilePage() {
                         ))}
                         </div>
                     ) : (
-                        <p className="text-muted-foreground">אין לך אירועים בבעלותך כרגע.</p>
+                        <p className="text-muted-foreground">{HEBREW_TEXT.profile.noFutureEventsOwned.replace('{name}', 'לך')}</p>
                     )}
                 </div>
 
@@ -469,3 +493,4 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
+
