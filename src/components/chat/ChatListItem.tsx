@@ -93,7 +93,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   );
 
   const handleAvatarClick = (e: React.MouseEvent | React.KeyboardEvent) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     if (avatarLink) {
       router.push(avatarLink);
     }
@@ -103,7 +103,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
         <CardContent className="p-3 sm:p-4 flex items-start justify-start space-x-3 rtl:space-x-reverse">
-          {/* Container for Text content (event/guest name, last message, timestamp, unread count) */}
+          {/* Block 1: Text content (name, message, timestamp, unread) - Will appear on the VISUAL RIGHT in RTL */}
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="flex justify-between items-start">
               <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
@@ -131,13 +131,13 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             )}
           </div>
 
-          {/* Container for Avatar and Status Badge */}
+          {/* Block 2: Avatar and Status Badge - Will appear on the VISUAL LEFT in RTL */}
           <div className="flex flex-col items-center space-y-1 flex-shrink-0">
             <div
               onClick={avatarLink ? handleAvatarClick : undefined}
               onKeyDown={(e) => {
                 if (avatarLink && (e.key === 'Enter' || e.key === ' ')) {
-                  e.preventDefault(); 
+                  e.preventDefault();
                   handleAvatarClick(e);
                 }
               }}
