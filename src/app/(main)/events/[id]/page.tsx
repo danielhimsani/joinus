@@ -3,15 +3,15 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link'; // Import Link
+import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
-import type { Event, EventOwnerInfo } from '@/types'; // Ensured EventOwnerInfo is imported
+import type { Event, EventOwnerInfo, EventChat } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2, MessageCircleMore } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2, MessageCircleMore, ListChecks } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -26,16 +26,17 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle as ShadAlertDialogTitle, // Renamed to avoid conflict
+  AlertDialogTitle as ShadAlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Import Tooltip components
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 import { RequestToJoinModal } from '@/components/events/RequestToJoinModal';
+import { ApprovedGuestListItem } from '@/components/events/ApprovedGuestListItem';
 
 import { db, auth as firebaseAuthInstance, storage } from "@/lib/firebase";
-import { doc, getDoc, Timestamp, deleteDoc, collection, query, where, getCountFromServer } from "firebase/firestore";
+import { doc, getDoc, Timestamp, deleteDoc, collection, query, where, getDocs, getCountFromServer } from "firebase/firestore";
 import { ref as storageRef, deleteObject } from "firebase/storage";
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
@@ -61,6 +62,12 @@ const getPriceDisplay = (event: Event) => {
     }
 }
 
+export interface ApprovedGuestData {
+  guestUid: string;
+  guestInfo?: EventChat['guestInfo'];
+  chatId: string;
+}
+
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -77,6 +84,9 @@ export default function EventDetailPage() {
   const [showRequestToJoinModal, setShowRequestToJoinModal] = useState(false);
   const [approvedGuestsCount, setApprovedGuestsCount] = useState(0);
   const [isLoadingApprovedCount, setIsLoadingApprovedCount] = useState(true);
+  
+  const [approvedGuestsData, setApprovedGuestsData] = useState<ApprovedGuestData[]>([]);
+  const [isLoadingApprovedGuestsData, setIsLoadingApprovedGuestsData] = useState(false);
 
 
   useEffect(() => {
@@ -86,17 +96,20 @@ export default function EventDetailPage() {
     return () => unsubscribe();
   }, []);
 
+  const isOwner = event && currentUser && event.ownerUids.includes(currentUser.uid);
 
-  const fetchEventAndApprovedCount = useCallback(async () => {
+  const fetchEventAndRelatedData = useCallback(async () => {
     if (!eventId) {
         setIsLoading(false);
         setIsLoadingApprovedCount(false);
+        setIsLoadingApprovedGuestsData(false);
         setFetchError("Event ID is missing.");
         return;
     }
 
     setIsLoading(true);
     setIsLoadingApprovedCount(true);
+    if (isOwner) setIsLoadingApprovedGuestsData(true);
     setFetchError(null);
 
     try {
@@ -104,6 +117,7 @@ export default function EventDetailPage() {
       const eventDocRef = doc(db, "events", eventId);
       const docSnap = await getDoc(eventDocRef);
 
+      let fetchedEvent: Event | null = null;
       if (docSnap.exists()) {
         const data = docSnap.data();
         const ownerData: EventOwnerInfo[] = data.ownerUids && Array.isArray(data.ownerUids)
@@ -121,7 +135,7 @@ export default function EventDetailPage() {
           }))
           : [];
 
-        setEvent({
+        fetchedEvent = {
           id: docSnap.id,
           ...data,
           ownerUids: data.ownerUids || [],
@@ -129,7 +143,7 @@ export default function EventDetailPage() {
           dateTime: safeToDate(data.dateTime),
           createdAt: safeToDate(data.createdAt),
           updatedAt: safeToDate(data.updatedAt),
-          name: data.name, // Name is now guaranteed to be a string
+          name: data.name,
           numberOfGuests: data.numberOfGuests || 0, 
           paymentOption: data.paymentOption || "free",
           location: data.location || "No location specified",
@@ -141,33 +155,64 @@ export default function EventDetailPage() {
           foodType: data.foodType || "notKosher",
           religionStyle: data.religionStyle || "mixed",
           imageUrl: data.imageUrl,
-        } as Event);
+        } as Event;
+        setEvent(fetchedEvent);
 
         // Fetch Approved Guests Count
         const chatsRef = collection(db, "eventChats");
-        const q = query(chatsRef, where("eventId", "==", eventId), where("status", "==", "request_approved"));
-        const countSnapshot = await getCountFromServer(q);
+        const qCount = query(chatsRef, where("eventId", "==", eventId), where("status", "==", "request_approved"));
+        const countSnapshot = await getCountFromServer(qCount);
         setApprovedGuestsCount(countSnapshot.data().count);
+        setIsLoadingApprovedCount(false);
+
+        // Fetch Approved Guests Detailed Data (only if current user is an owner)
+        // This check needs to happen after event data is fetched and `isOwner` can be determined more reliably
+        // However, we need `currentUser` to be set. We'll re-evaluate `isOwner` inside this block based on `fetchedEvent`.
+        const currentIsOwner = fetchedEvent && currentUser && fetchedEvent.ownerUids.includes(currentUser.uid);
+
+        if (currentIsOwner) {
+          setIsLoadingApprovedGuestsData(true);
+          const qApprovedData = query(chatsRef, where("eventId", "==", eventId), where("status", "==", "request_approved"));
+          const approvedSnapshot = await getDocs(qApprovedData);
+          const guests: ApprovedGuestData[] = [];
+          approvedSnapshot.forEach(doc => {
+            const chatData = doc.data() as EventChat; // Assuming EventChat type from types/index.ts
+            if (chatData.guestInfo && chatData.guestUid) {
+              guests.push({
+                guestUid: chatData.guestUid,
+                guestInfo: chatData.guestInfo,
+                chatId: doc.id
+              });
+            }
+          });
+          setApprovedGuestsData(guests);
+          setIsLoadingApprovedGuestsData(false);
+        } else {
+          setApprovedGuestsData([]); // Clear if not owner or no event
+          setIsLoadingApprovedGuestsData(false);
+        }
 
       } else {
         setFetchError(HEBREW_TEXT.event.noEventsFound);
         setEvent(null);
+        setIsLoadingApprovedCount(false);
+        setIsLoadingApprovedGuestsData(false);
       }
     } catch (error) {
-      console.error("Error fetching event or approved count:", error);
+      console.error("Error fetching event or related data:", error);
       setFetchError(HEBREW_TEXT.general.error + " " + (error instanceof Error ? error.message : String(error)));
       setEvent(null);
+      setIsLoadingApprovedCount(false);
+      setIsLoadingApprovedGuestsData(false);
     } finally {
       setIsLoading(false);
-      setIsLoadingApprovedCount(false);
     }
-  }, [eventId]);
+  }, [eventId, currentUser, isOwner]); // Added isOwner to dependency array to re-fetch guest data if ownership changes
 
   useEffect(() => {
-    fetchEventAndApprovedCount();
-  }, [fetchEventAndApprovedCount]);
+    fetchEventAndRelatedData();
+  }, [fetchEventAndRelatedData]);
 
-  const isOwner = event && currentUser && event.ownerUids.includes(currentUser.uid);
   const availableSpots = event ? event.numberOfGuests - approvedGuestsCount : 0;
 
 
@@ -298,7 +343,7 @@ export default function EventDetailPage() {
            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
         </div>
         <CardHeader className="relative z-10 -mt-16 md:-mt-20 p-6 bg-background/80 backdrop-blur-sm rounded-t-lg md:mx-4">
-          <CardTitle className="font-headline text-3xl md:text-4xl text-foreground">{event.name}</CardTitle>
+          <CardTitle className="font-headline text-3xl md:text-4xl text-foreground">{event.name || ""}</CardTitle>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-muted-foreground mt-2">
             <span className="flex items-center"><CalendarDays className="ml-1.5 h-5 w-5 text-primary" /> {format(new Date(event.dateTime), 'PPPPp', { locale: he })}</span>
             <span className="flex items-center"><MapPin className="ml-1.5 h-5 w-5 text-primary" /> {event.locationDisplayName || event.location}</span>
@@ -345,6 +390,42 @@ export default function EventDetailPage() {
                         ))}
                       </TooltipProvider>
                     </div>
+                  </div>
+                </>
+              )}
+
+             {isOwner && (
+                <>
+                  <Separator className="my-8" />
+                  <div>
+                    <h3 className="font-headline text-xl font-semibold mb-4 flex items-center">
+                      <ListChecks className="ml-2 h-6 w-6 text-primary" />
+                      {HEBREW_TEXT.event.approvedGuests} ({approvedGuestsData.length})
+                    </h3>
+                    {isLoadingApprovedGuestsData ? (
+                      <div className="space-y-3">
+                        {[...Array(2)].map((_, i) => (
+                           <Card key={i} className="p-3 shadow-sm">
+                                <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                                    <Skeleton className="h-10 w-10 rounded-full" />
+                                    <div className="flex-1 space-y-1">
+                                        <Skeleton className="h-4 w-2/4" />
+                                        <Skeleton className="h-3 w-1/4" />
+                                    </div>
+                                    <Skeleton className="h-8 w-20 rounded-md" />
+                                </div>
+                            </Card>
+                        ))}
+                      </div>
+                    ) : approvedGuestsData.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {approvedGuestsData.map(guest => (
+                          <ApprovedGuestListItem key={guest.guestUid} guest={guest} />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">{HEBREW_TEXT.event.noApprovedGuestsYet}</p>
+                    )}
                   </div>
                 </>
               )}
