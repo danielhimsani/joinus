@@ -103,7 +103,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
         <CardContent className="p-3 sm:p-4 flex items-start justify-start space-x-3 rtl:space-x-reverse">
-          {/* Container for Text content (Visually on the left in RTL with current flex settings) */}
+          {/* Container for Text content (event/guest name, last message, timestamp, unread count) */}
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="flex justify-between items-start">
               <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
@@ -131,7 +131,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             )}
           </div>
 
-          {/* Container for Avatar and Status Badge (Visually on the right in RTL with current flex settings) */}
+          {/* Container for Avatar and Status Badge */}
           <div className="flex flex-col items-center space-y-1 flex-shrink-0">
             <div
               onClick={avatarLink ? handleAvatarClick : undefined}
