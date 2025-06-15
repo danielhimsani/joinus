@@ -3,12 +3,13 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation'; // Import useRouter
 import type { EventChat } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { format } from 'date-fns'; 
+import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { MessageSquareText, Hash, Contact as UserPlaceholderIcon, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -27,9 +28,9 @@ const getChatStatusDisplay = (status: EventChat['status'], isOwner: boolean, gue
     case 'request_rejected':
       return { text: HEBREW_TEXT.chat.statusRejectedDisplay, variant: 'destructive' };
     case 'active':
-      return { text: HEBREW_TEXT.chat.statusActiveDisplay, variant: 'default' }; 
+      return { text: HEBREW_TEXT.chat.statusActiveDisplay, variant: 'default' };
     case 'closed':
-      return { text: HEBREW_TEXT.chat.statusClosedDisplay, variant: 'outline' }; 
+      return { text: HEBREW_TEXT.chat.statusClosedDisplay, variant: 'outline' };
     default:
       return { text: status, variant: 'default' };
   }
@@ -37,6 +38,7 @@ const getChatStatusDisplay = (status: EventChat['status'], isOwner: boolean, gue
 
 
 export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
+  const router = useRouter(); // Initialize router
   const isCurrentUserOwner = chat.ownerUids.includes(currentUserId);
 
   let avatarImageUrl: string | undefined;
@@ -81,19 +83,31 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     </Avatar>
   );
 
+  const handleAvatarClick = (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation(); // Prevent card's link navigation
+    if (avatarLink) {
+      router.push(avatarLink);
+    }
+  };
 
   return (
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
         <CardContent className="p-4 flex items-start space-x-4 rtl:space-x-reverse">
           {avatarLink ? (
-            <Link
-              href={avatarLink}
-              onClick={(e) => e.stopPropagation()}
-              className="cursor-pointer" /* Prevent card link trigger and apply styling */
+            <div // Changed from Link to div
+              onClick={handleAvatarClick}
+              onKeyDown={(e) => { // For keyboard accessibility
+                if (e.key === 'Enter' || e.key === ' ') {
+                  handleAvatarClick(e);
+                }
+              }}
+              className="cursor-pointer"
+              role="link" // For accessibility, indicate it behaves like a link
+              tabIndex={0} // Make it focusable
             >
               <AvatarContent />
-            </Link>
+            </div>
           ) : (
             <AvatarContent />
           )}
@@ -113,16 +127,16 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
 
             <p className={cn(
               "text-sm text-muted-foreground truncate",
-              secondaryTitle ? "mt-1" : "mt-0.5", 
+              secondaryTitle ? "mt-1" : "mt-0.5",
               !chat.lastMessageText && "italic"
             )}>
               {chat.lastMessageSenderId === currentUserId ? `${HEBREW_TEXT.chat.you}: ` : ''}
               {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
             </p>
-            
+
             <div className="flex justify-between items-center mt-1.5">
               <Badge
-                variant={statusDisplay.variant as any} 
+                variant={statusDisplay.variant as any}
                 className={cn(
                   "text-xs px-2 py-0.5 leading-tight",
                   statusDisplay.variant === 'warning' && "bg-amber-500/20 text-amber-700 border-amber-500/50 dark:text-amber-400",
@@ -141,5 +155,3 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     </Link>
   );
 }
-
-    
