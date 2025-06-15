@@ -126,7 +126,7 @@ export function EventForm({
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "שם האירוע שלכם",
+      name: "",
       ownerUids: [], 
       numberOfGuests: 10,
       paymentOption: "payWhatYouWant" as PaymentOption,
@@ -795,7 +795,7 @@ export function EventForm({
                         <FormControl>
                           <Input
                             type="number"
-                            placeholder="150"
+                            placeholder="200"
                             value={field.value === undefined || field.value === null || isNaN(field.value as number) ? '' : String(field.value)}
                             onChange={e => {
                               const rawValue = e.target.value;
