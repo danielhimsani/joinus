@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { UserProfile, Event as EventType } from "@/types";
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users } from "lucide-react";
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users, FileText, Gavel } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -548,6 +548,26 @@ export default function ProfilePage() {
                       onCheckedChange={handleThemeToggle}
                       aria-label={isDarkMode ? `העבר ל${HEBREW_TEXT.profile.lightMode}` : `העבר ל${HEBREW_TEXT.profile.darkMode}`}
                     />
+                  </div>
+                </div>
+                
+                <Separator className="my-8" />
+
+                <div>
+                  <h3 className="font-headline text-xl font-semibold mb-4">{HEBREW_TEXT.profile.legalInformationSectionTitle}</h3>
+                  <div className="space-y-3">
+                    <Button variant="outline" asChild className="w-full justify-start p-3 text-base">
+                        <Link href="/legal/terms-of-use" className="flex items-center">
+                            <Gavel className="ml-3 h-5 w-5 text-muted-foreground" />
+                            {HEBREW_TEXT.profile.termsOfUseLink}
+                        </Link>
+                    </Button>
+                    <Button variant="outline" asChild className="w-full justify-start p-3 text-base">
+                        <Link href="/legal/privacy-policy" className="flex items-center">
+                            <FileText className="ml-3 h-5 w-5 text-muted-foreground" />
+                            {HEBREW_TEXT.profile.privacyPolicyLink}
+                        </Link>
+                    </Button>
                   </div>
                 </div>
 

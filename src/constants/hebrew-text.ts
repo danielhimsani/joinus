@@ -177,6 +177,9 @@ export const HEBREW_TEXT = {
     nameMinLengthError: "שם חייב להכיל לפחות 2 תווים.",
     birthdayRequiredError: "תאריך לידה הוא שדה חובה.",
     noFutureEventsOwned: "ל{name} אין אירועים עתידיים בבעלותו כרגע.",
+    legalInformationSectionTitle: "מידע משפטי",
+    termsOfUseLink: "תנאי שימוש",
+    privacyPolicyLink: "מדיניות פרטיות",
   },
   notifications: {
     title: "התראות",
@@ -328,6 +331,10 @@ export const HEBREW_TEXT = {
     yourCurrentLocation: "המיקום הנוכחי שלך:",
     latitude: "קו רוחב",
     longitude: "קו אורך",
+  },
+  legal: {
+    privacyPolicyTitle: "מדיניות פרטיות",
+    termsOfUseTitle: "תנאי שימוש",
   }
 };
     
