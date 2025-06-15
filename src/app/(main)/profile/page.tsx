@@ -44,8 +44,8 @@ import { he } from 'date-fns/locale';
 import { safeToDate } from '@/lib/dateUtils';
 
 const profileFormSchema = z.object({
-  name: z.string().min(2, { message: "שם חייב להכיל לפחות 2 תווים." }),
-  email: z.string().email({ message: "אימייל לא תקין." }).optional(),
+  name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
+  email: z.string().email({ message: HEBREW_TEXT.auth.emailInvalid }).optional(),
   birthday: z.string().optional(),
   bio: z.string().max(300, { message: "ביו יכול להכיל עד 300 תווים."}).optional(),
   phone: z.string().refine(val => val === '' || !val || /^0\d([\d]{0,1})([-]{0,1})\d{7}$/.test(val), { 
@@ -56,15 +56,34 @@ const profileFormSchema = z.object({
 
 const calculateAge = (birthDateString?: string): number | null => {
   if (!birthDateString) return null;
-  const birthDate = new Date(birthDateString);
-  if (isNaN(birthDate.getTime())) return null; 
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDifference = today.getMonth() - birthDate.getMonth();
-  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
+  // Ensure the date string is valid, especially if it's YYYY-MM-DD
+  const parts = birthDateString.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+    const day = parseInt(parts[2], 10);
+    const birthDate = new Date(year, month, day);
+    if (isNaN(birthDate.getTime())) return null; 
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDifference = today.getMonth() - birthDate.getMonth();
+    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age < 0 ? null : age; 
+  } else {
+    // Fallback for other date string formats, though YYYY-MM-DD is standard for date inputs
+    const birthDate = new Date(birthDateString);
+    if (isNaN(birthDate.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDifference = today.getMonth() - birthDate.getMonth();
+    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age < 0 ? null : age;
   }
-  return age < 0 ? null : age;
 };
 
 
@@ -87,7 +106,7 @@ export default function ProfilePage() {
     defaultValues: {
         name: "",
         email: "",
-        birthday: "",
+        birthday: "", // Expected to be YYYY-MM-DD if set
         bio: "",
         phone: "",
     },
@@ -110,7 +129,7 @@ export default function ProfilePage() {
                     email: data.email || fbUser.email || "",
                     bio: data.bio || "",
                     phone: data.phone || "",
-                    birthday: data.birthday || "",
+                    birthday: data.birthday || "", // Should be YYYY-MM-DD if set
                 };
             }
         } catch (error) {
@@ -134,7 +153,7 @@ export default function ProfilePage() {
         form.reset({
           name: profileData.name,
           email: profileData.email,
-          birthday: profileData.birthday || "", 
+          birthday: profileData.birthday || "", // Use YYYY-MM-DD string or ""
           bio: profileData.bio || "",
           phone: profileData.phone || "",
         });
@@ -177,6 +196,8 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user?.birthday) {
       setCalculatedAge(calculateAge(user.birthday));
+    } else {
+      setCalculatedAge(null);
     }
   }, [user?.birthday]);
 
@@ -217,10 +238,10 @@ export default function ProfilePage() {
       
       // Prepare data for Firestore update
       const firestoreUpdateData: Partial<UserProfile> & { updatedAt: any } = {
-        name: values.name, // Keep name in sync
+        name: values.name, 
         bio: values.bio || "",
         phone: values.phone || "",
-        birthday: values.birthday || "",
+        birthday: values.birthday || "", // This will be YYYY-MM-DD string or ""
         updatedAt: serverTimestamp(),
       };
       
@@ -234,14 +255,20 @@ export default function ProfilePage() {
         const updatedUser = { 
           ...prevUser, 
           name: values.name,
-          birthday: values.birthday || undefined,
+          birthday: values.birthday || undefined, // Store as string or undefined
           bio: values.bio || undefined,
           phone: values.phone || undefined,
         };
         setCalculatedAge(calculateAge(updatedUser.birthday));
         return updatedUser;
       });
-      form.reset(values); // Reset form with new values
+      form.reset({ // Ensure form is reset with values in YYYY-MM-DD for date input
+        name: values.name,
+        email: values.email, // email is not editable here but kept for form structure
+        birthday: values.birthday || "",
+        bio: values.bio || "",
+        phone: values.phone || "",
+      });
 
       toast({
         title: HEBREW_TEXT.general.success,
@@ -395,7 +422,8 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.profile.birthday} ({HEBREW_TEXT.general.optional})</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          {/* Input type="date" expects value in YYYY-MM-DD format */}
+                          <Input type="date" {...field} value={field.value || ""} max={new Date().toISOString().split("T")[0]} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -542,3 +570,5 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
+
+    
