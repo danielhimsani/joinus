@@ -29,7 +29,7 @@ export function AnnouncementBubble({ announcement }: AnnouncementBubbleProps) {
             <div className="p-2 bg-primary/10 rounded-full">
                 <Megaphone className="h-5 w-5 text-primary" />
             </div>
-            <CardTitle className="text-sm font-semibold text-primary">הודעה מבעלי האירוע</CardTitle>
+            <CardTitle className="text-sm font-semibold text-primary">הודעה לכל המוזמנים</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-3 pt-0">
