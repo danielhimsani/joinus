@@ -468,27 +468,33 @@ export function EventForm({
   };
 
   const onInvalidSubmit = (errors: FieldErrors<FormSchemaType>) => {
-    console.error("Form validation errors:", errors);
-    toast({
-      title: HEBREW_TEXT.general.error,
-      description: HEBREW_TEXT.general.formValidationFailed,
-      variant: "destructive",
-    });
+    if (Object.keys(errors).length > 0) {
+      console.error("Form validation errors:", errors);
+      toast({
+        title: HEBREW_TEXT.general.error,
+        description: HEBREW_TEXT.general.formValidationFailed,
+        variant: "destructive",
+      });
 
-    const firstErrorField = Object.keys(errors)[0] as keyof FormSchemaType | undefined;
-    if (firstErrorField) {
-        const fieldElement = document.querySelector(`[name="${firstErrorField}"], [id^="${firstErrorField}-"], [data-fieldname="${firstErrorField}"]`) as HTMLElement;
+      const firstErrorField = Object.keys(errors)[0] as keyof FormSchemaType | undefined;
+      if (firstErrorField) {
+          const fieldElement = document.querySelector(`[name="${firstErrorField}"], [id^="${firstErrorField}-"], [data-fieldname="${firstErrorField}"]`) as HTMLElement;
 
-        if (fieldElement) {
-            fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            try {
-                if (typeof fieldElement.focus === 'function') {
-                    fieldElement.focus({ preventScroll: true });
-                }
-            } catch (e) {
-                console.warn("Could not focus on invalid element:", fieldElement, e);
-            }
-        }
+          if (fieldElement) {
+              fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              try {
+                  if (typeof fieldElement.focus === 'function') {
+                      fieldElement.focus({ preventScroll: true });
+                  }
+              } catch (e) {
+                  console.warn("Could not focus on invalid element:", fieldElement, e);
+              }
+          }
+      }
+    } else {
+      console.warn(
+        "onInvalidSubmit was called, but the errors object is empty. This may indicate an unexpected form state or a configuration issue with react-hook-form. No validation toast will be shown."
+      );
     }
   };
 
