@@ -22,34 +22,35 @@ export function AnnouncementBubble({ announcement }: AnnouncementBubbleProps) {
 
   return (
     <div className="my-3 w-full flex justify-center px-2">
-      <Card className="w-full max-w-xl shadow-md bg-amber-50 border border-amber-200 dark:bg-amber-900/30 dark:border-amber-700/50">
+      <Card className="w-full max-w-xl shadow-md bg-primary/10 border-primary/50 dark:bg-primary/20 dark:border-primary/60">
         <CardHeader className="p-3">
           <div className="flex items-center space-x-2 rtl:space-x-reverse">
-            <div className="p-2 bg-amber-100 dark:bg-amber-800 rounded-full">
-                <Megaphone className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            <div className="p-2 bg-primary/20 dark:bg-primary/30 rounded-full">
+                <Megaphone className="h-5 w-5 text-primary dark:text-primary-foreground/90" />
             </div>
-            <CardTitle className="text-sm font-semibold text-amber-800 dark:text-amber-300">הודעה מבעלי האירוע</CardTitle>
+            <CardTitle className="text-sm font-semibold text-primary dark:text-primary-foreground/90">הודעה מבעלי האירוע</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-3 pt-0">
-          <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line dir-rtl">{announcement.messageText}</p>
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-amber-200/60 dark:border-amber-700/40">
-            <div className='flex items-center text-xs text-gray-500 dark:text-gray-400'>
-                <Avatar className="h-6 w-6 ml-1.5 border border-amber-300 dark:border-amber-600">
+          <p className="text-sm text-foreground/90 dark:text-foreground/80 whitespace-pre-line" dir="rtl">{announcement.messageText}</p>
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-primary/30 dark:border-primary/40">
+            <div className='flex items-center text-xs text-muted-foreground dark:text-primary-foreground/70'>
+                <Avatar className="h-6 w-6 ml-1.5 border border-primary/60 dark:border-primary/70">
                     {announcement.ownerProfileImageUrl ? (
                         <AvatarImage src={announcement.ownerProfileImageUrl} alt={ownerName} data-ai-hint="owner avatar"/>
                     ) : (
-                        <AvatarFallback className="text-xs bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-300">
+                        <AvatarFallback className="text-xs bg-primary/20 dark:bg-primary/30 text-primary dark:text-primary-foreground/90">
                             {ownerName?.charAt(0)?.toUpperCase() || 'A'}
                         </AvatarFallback>
                     )}
                 </Avatar>
                 {ownerName}
             </div>
-            <span className="text-xs text-gray-500 dark:text-gray-400">{timestamp}</span>
+            <span className="text-xs text-muted-foreground dark:text-primary-foreground/70">{timestamp}</span>
           </div>
         </CardContent>
       </Card>
     </div>
   );
 }
+
