@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { UserProfile, Event as EventType } from "@/types"; 
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake } from "lucide-react"; 
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin } from "lucide-react"; 
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -39,7 +39,7 @@ import {
 import { onAuthStateChanged, type User as FirebaseUser, updateProfile } from "firebase/auth";
 import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; 
 import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"; 
-import { format } from 'date-fns';
+import { format as formatDate } from 'date-fns'; // Renamed to avoid conflict with component
 import { he } from 'date-fns/locale';
 import { safeToDate } from '@/lib/dateUtils';
 
@@ -76,7 +76,10 @@ export default function ProfilePage() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [ownedEvents, setOwnedEvents] = useState<EventType[]>([]);
   const [isLoadingOwnedEvents, setIsLoadingOwnedEvents] = useState(false);
+  // calculatedAge state is kept as it might be used elsewhere or for future features,
+  // but primary display for own profile (non-edit) will be full birthdate.
   const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
+
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -100,7 +103,7 @@ export default function ProfilePage() {
           isVerified: fbUser.emailVerified,
         };
         setUser(profileData);
-        setCalculatedAge(calculateAge(profileData.birthday));
+        setCalculatedAge(calculateAge(profileData.birthday)); // Still calculate for potential other uses
         form.reset({
           name: profileData.name,
           email: profileData.email,
@@ -142,13 +145,16 @@ export default function ProfilePage() {
     });
 
     return () => unsubscribe();
-  }, [form, router, user?.bio, user?.phone, user?.birthday, toast]); // Re-run if these user details change locally to re-calc age
+  }, [form, router, user?.bio, user?.phone, user?.birthday, toast]);
 
+  // This useEffect is mainly for re-calculating age if birthday changes,
+  // but the direct display of full birthday on own profile (non-edit) is now primary.
   useEffect(() => {
     if (user?.birthday) {
       setCalculatedAge(calculateAge(user.birthday));
     }
   }, [user?.birthday]);
+
 
   useEffect(() => {
     const currentTheme = localStorage.getItem("theme");
@@ -390,11 +396,11 @@ export default function ProfilePage() {
                   </div>
                   <div>
                      <h3 className="font-semibold text-muted-foreground flex items-center">
-                        <Cake className="ml-2 h-4 w-4 text-primary/80" />
-                        {HEBREW_TEXT.profile.age}
+                        <CalendarDays className="ml-2 h-4 w-4 text-primary/80" />
+                        {HEBREW_TEXT.profile.birthday}
                     </h3>
                     <p className="text-foreground/90">
-                        {calculatedAge !== null ? `${calculatedAge} ${HEBREW_TEXT.profile.yearsOldSuffix}` : HEBREW_TEXT.profile.ageNotProvided}
+                        {user.birthday ? formatDate(new Date(user.birthday), 'dd/MM/yyyy', { locale: he }) : HEBREW_TEXT.profile.infoNotProvided}
                     </p>
                   </div>
                 </div>
@@ -431,7 +437,7 @@ export default function ProfilePage() {
                                 <Card className="hover:shadow-md transition-shadow p-4">
                                     <CardTitle className="text-lg font-body mb-1">{event.name}</CardTitle>
                                     <div className="text-sm text-muted-foreground flex items-center mb-0.5">
-                                        <CalendarDays className="ml-1.5 h-4 w-4" /> {format(event.dateTime, 'dd/MM/yy, HH:mm', { locale: he })}
+                                        <CalendarDays className="ml-1.5 h-4 w-4" /> {formatDate(event.dateTime, 'dd/MM/yy, HH:mm', { locale: he })}
                                     </div>
                                     <div className="text-sm text-muted-foreground flex items-center">
                                         <MapPin className="ml-1.5 h-4 w-4" /> {event.locationDisplayName || event.location}
