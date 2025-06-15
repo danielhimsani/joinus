@@ -46,11 +46,14 @@ const statusFilterOptions: { value: ChatStatusFilter; label: string; icon?: Reac
 const defaultChatTimeFilter: ChatTimeFilter = 'future';
 const defaultChatStatusFilter: ChatStatusFilter = 'all';
 
-const areMessagesFiltersActive = (
+const countActiveMessageFilters = (
   timeFilter: ChatTimeFilter,
   statusFilter: ChatStatusFilter
-): boolean => {
-  return timeFilter !== defaultChatTimeFilter || statusFilter !== defaultChatStatusFilter;
+): number => {
+  let count = 0;
+  if (timeFilter !== defaultChatTimeFilter) count++;
+  if (statusFilter !== defaultChatStatusFilter) count++;
+  return count;
 };
 
 
@@ -247,7 +250,8 @@ export default function MessagesPage() {
     );
   }
 
-  const filtersApplied = areMessagesFiltersActive(chatTimeFilter, chatStatusFilter);
+  const activeFilterCount = countActiveMessageFilters(chatTimeFilter, chatStatusFilter);
+  const filtersApplied = activeFilterCount > 0;
   const FilterButtonIcon = filtersApplied ? ListFilter : Filter;
 
 
@@ -255,12 +259,12 @@ export default function MessagesPage() {
     <div className="container mx-auto px-2 sm:px-4 py-8 md:py-12">
       <Card className="max-w-3xl mx-auto shadow-lg">
         <CardHeader className="border-b p-3 md:p-4">
-          <div className="flex justify-end"> 
+          <div className="flex justify-start"> {/* Changed justify-end to justify-start */}
             <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant={filtersApplied ? "secondary" : "outline"} size="sm">
                   <FilterButtonIcon className="ml-1.5 h-4 w-4" />
-                  סינון
+                  {filtersApplied ? `סינון (${activeFilterCount})` : "סינון"}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
@@ -364,5 +368,3 @@ export default function MessagesPage() {
     </div>
   );
 }
-
-

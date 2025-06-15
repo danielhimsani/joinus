@@ -3,16 +3,17 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
 import type { EventChat } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { format } from 'date-fns';
+import { format as formatDateFns, isToday, isYesterday } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { MessageSquareText, Hash, Contact as UserPlaceholderIcon, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMemo } from 'react';
 
 interface ChatListItemProps {
   chat: EventChat;
@@ -38,7 +39,7 @@ const getChatStatusDisplay = (status: EventChat['status'], isOwner: boolean, gue
 
 
 export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
-  const router = useRouter(); // Initialize router
+  const router = useRouter();
   const isCurrentUserOwner = chat.ownerUids.includes(currentUserId);
 
   let avatarImageUrl: string | undefined;
@@ -54,25 +55,33 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     primaryTitle = chat.guestInfo?.name || HEBREW_TEXT.chat.guest;
     secondaryTitle = `${HEBREW_TEXT.event.eventName}: ${chat.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}`;
     avatarHint = "guest profile";
-    avatarLink = `/profile/${chat.guestUid}`; // Link to guest profile
+    avatarLink = `/profile/${chat.guestUid}`;
   } else {
     avatarImageUrl = chat.eventInfo?.imageUrl;
     avatarAltText = chat.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder;
     primaryTitle = chat.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder;
     avatarHint = "event image";
-    avatarLink = `/events/${chat.eventId}`; // Link to event detail page
+    avatarLink = `/events/${chat.eventId}`;
   }
 
   const unreadMessages = chat.unreadCount?.[currentUserId] || 0;
 
-  const lastMessageTimestamp = chat.lastMessageTimestamp
-    ? format(new Date(chat.lastMessageTimestamp), 'HH:mm', { locale: he })
-    : '';
+  const formattedTimestamp = useMemo(() => {
+    if (!chat.lastMessageTimestamp) return '';
+    const date = new Date(chat.lastMessageTimestamp);
+    if (isToday(date)) {
+      return formatDateFns(date, 'HH:mm', { locale: he });
+    }
+    if (isYesterday(date)) {
+      return HEBREW_TEXT.general.yesterday;
+    }
+    return formatDateFns(date, 'dd/MM/yy', { locale: he });
+  }, [chat.lastMessageTimestamp]);
 
   const statusDisplay = getChatStatusDisplay(chat.status, isCurrentUserOwner, chat.guestInfo?.name);
 
   const AvatarContent = () => (
-    <Avatar className="h-12 w-12 border mt-1">
+    <Avatar className="h-12 w-12 border">
         {avatarImageUrl ? (
         <AvatarImage src={avatarImageUrl} alt={avatarAltText} data-ai-hint={avatarHint} />
         ) : (
@@ -84,7 +93,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   );
 
   const handleAvatarClick = (e: React.MouseEvent | React.KeyboardEvent) => {
-    e.stopPropagation(); // Prevent card's link navigation
+    e.stopPropagation();
     if (avatarLink) {
       router.push(avatarLink);
     }
@@ -93,25 +102,29 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   return (
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
-        <CardContent className="p-4 flex items-start space-x-4 rtl:space-x-reverse">
-          {avatarLink ? (
+        <CardContent className="p-3 sm:p-4 flex items-start justify-between space-x-3 rtl:space-x-reverse">
+          {/* Left Part (Avatar and Timestamp) - Visually on the right for RTL */}
+          <div className="flex flex-col items-center space-y-1 flex-shrink-0">
             <div 
-              onClick={handleAvatarClick}
+              onClick={avatarLink ? handleAvatarClick : undefined}
               onKeyDown={(e) => { 
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault(); // Prevent scrolling or link activation if it were a real link
+                if (avatarLink && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
                   handleAvatarClick(e);
                 }
               }}
-              className="cursor-pointer"
-              role="link" 
-              tabIndex={0} 
+              className={cn(avatarLink && "cursor-pointer")}
+              role={avatarLink ? "link" : undefined} 
+              tabIndex={avatarLink ? 0 : undefined} 
             >
               <AvatarContent />
             </div>
-          ) : (
-            <AvatarContent />
-          )}
+            {formattedTimestamp && (
+              <p className="text-xs text-muted-foreground/90 whitespace-nowrap mt-0.5">{formattedTimestamp}</p>
+            )}
+          </div>
+
+          {/* Right Part (Text content) - Visually on the left for RTL */}
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="flex justify-between items-start">
               <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
@@ -135,7 +148,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
             </p>
 
-            <div className="flex justify-between items-center mt-1.5">
+            <div className="mt-1.5 self-start"> {/* self-start places it on the right in RTL */}
               <Badge
                 variant={statusDisplay.variant as any}
                 className={cn(
@@ -146,9 +159,6 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               >
                 {statusDisplay.text}
               </Badge>
-              <p className="text-xs text-muted-foreground/80">
-                {lastMessageTimestamp}
-              </p>
             </div>
           </div>
         </CardContent>
@@ -156,4 +166,3 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     </Link>
   );
 }
-

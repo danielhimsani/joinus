@@ -257,6 +257,7 @@ export const HEBREW_TEXT = {
     cancel: "ביטול",
     confirm: "אישור",
     formValidationFailed: "אנא מלא את כל שדות החובה ותקן את השגיאות המסומנות.",
+    yesterday: "אתמול",
   },
   foodIcons: {
     kosherMeat: "בשרי",
@@ -287,5 +288,3 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
-
-    
