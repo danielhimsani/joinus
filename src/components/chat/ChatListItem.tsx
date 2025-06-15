@@ -87,10 +87,12 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
         <CardContent className="p-4 flex items-start space-x-4 rtl:space-x-reverse">
           {avatarLink ? (
-            <Link href={avatarLink} passHref>
-              <a onClick={(e) => e.stopPropagation()} className="cursor-pointer"> {/* Prevent card link trigger */}
-                <AvatarContent />
-              </a>
+            <Link
+              href={avatarLink}
+              onClick={(e) => e.stopPropagation()}
+              className="cursor-pointer" /* Prevent card link trigger and apply styling */
+            >
+              <AvatarContent />
             </Link>
           ) : (
             <AvatarContent />
