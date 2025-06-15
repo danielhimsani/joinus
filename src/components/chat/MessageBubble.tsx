@@ -1,6 +1,7 @@
 
 "use client";
 
+import Link from 'next/link';
 import type { EventChatMessage } from '@/types';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,6 +22,18 @@ export function MessageBubble({ message, currentUser }: MessageBubbleProps) {
     ? format(new Date(message.timestamp), 'HH:mm', { locale: he })
     : '';
 
+  const AvatarComponent = () => (
+    <Avatar className={cn("h-8 w-8 border", isCurrentUserSender ? "ml-2" : "mr-2")}>
+      {message.senderInfo?.profileImageUrl ? (
+        <AvatarImage src={message.senderInfo.profileImageUrl} alt={senderName} data-ai-hint="sender avatar"/>
+      ) : (
+        <AvatarFallback className="bg-muted flex items-center justify-center">
+          <UserPlaceholderIcon className="h-5 w-5 text-muted-foreground" />
+        </AvatarFallback>
+      )}
+    </Avatar>
+  );
+
   return (
     <div
       className={cn(
@@ -28,15 +41,15 @@ export function MessageBubble({ message, currentUser }: MessageBubbleProps) {
         isCurrentUserSender ? "self-end flex-row-reverse" : "self-start"
       )}
     >
-      <Avatar className={cn("h-8 w-8 border", isCurrentUserSender ? "ml-2" : "mr-2")}>
-        {message.senderInfo?.profileImageUrl ? (
-          <AvatarImage src={message.senderInfo.profileImageUrl} alt={senderName} data-ai-hint="sender avatar"/>
-        ) : (
-          <AvatarFallback className="bg-muted flex items-center justify-center">
-            <UserPlaceholderIcon className="h-5 w-5 text-muted-foreground" />
-          </AvatarFallback>
-        )}
-      </Avatar>
+      {isCurrentUserSender ? (
+        <AvatarComponent />
+      ) : (
+        <Link href={`/profile/${message.senderId}`} passHref>
+            <a className="cursor-pointer">
+                <AvatarComponent />
+            </a>
+        </Link>
+      )}
       <div
         className={cn(
           "flex flex-col rounded-lg px-3 py-2 shadow-sm",
@@ -61,3 +74,5 @@ export function MessageBubble({ message, currentUser }: MessageBubbleProps) {
     </div>
   );
 }
+
+    

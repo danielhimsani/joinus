@@ -27,9 +27,9 @@ const getChatStatusDisplay = (status: EventChat['status'], isOwner: boolean, gue
     case 'request_rejected':
       return { text: HEBREW_TEXT.chat.statusRejectedDisplay, variant: 'destructive' };
     case 'active':
-      return { text: HEBREW_TEXT.chat.statusActiveDisplay, variant: 'default' }; // Or 'outline' for less emphasis
+      return { text: HEBREW_TEXT.chat.statusActiveDisplay, variant: 'default' }; 
     case 'closed':
-      return { text: HEBREW_TEXT.chat.statusClosedDisplay, variant: 'outline' }; // 'outline' is usually gray-ish
+      return { text: HEBREW_TEXT.chat.statusClosedDisplay, variant: 'outline' }; 
     default:
       return { text: status, variant: 'default' };
   }
@@ -44,6 +44,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   let primaryTitle: string;
   let secondaryTitle: string | undefined;
   let avatarHint: string;
+  let avatarLink: string | undefined;
 
   if (isCurrentUserOwner) {
     avatarImageUrl = chat.guestInfo?.profileImageUrl;
@@ -51,11 +52,13 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     primaryTitle = chat.guestInfo?.name || HEBREW_TEXT.chat.guest;
     secondaryTitle = `${HEBREW_TEXT.event.eventName}: ${chat.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}`;
     avatarHint = "guest profile";
+    avatarLink = `/profile/${chat.guestUid}`; // Link to guest profile
   } else {
     avatarImageUrl = chat.eventInfo?.imageUrl;
     avatarAltText = chat.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder;
     primaryTitle = chat.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder;
     avatarHint = "event image";
+    avatarLink = `/events/${chat.eventId}`; // Link to event detail page
   }
 
   const unreadMessages = chat.unreadCount?.[currentUserId] || 0;
@@ -66,19 +69,32 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
 
   const statusDisplay = getChatStatusDisplay(chat.status, isCurrentUserOwner, chat.guestInfo?.name);
 
+  const AvatarContent = () => (
+    <Avatar className="h-12 w-12 border mt-1">
+        {avatarImageUrl ? (
+        <AvatarImage src={avatarImageUrl} alt={avatarAltText} data-ai-hint={avatarHint} />
+        ) : (
+        <AvatarFallback className="bg-muted flex items-center justify-center">
+            <UserPlaceholderIcon className="h-7 w-7 text-muted-foreground" />
+        </AvatarFallback>
+        )}
+    </Avatar>
+  );
+
+
   return (
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
         <CardContent className="p-4 flex items-start space-x-4 rtl:space-x-reverse">
-          <Avatar className="h-12 w-12 border mt-1">
-            {avatarImageUrl ? (
-              <AvatarImage src={avatarImageUrl} alt={avatarAltText} data-ai-hint={avatarHint} />
-            ) : (
-              <AvatarFallback className="bg-muted flex items-center justify-center">
-                <UserPlaceholderIcon className="h-7 w-7 text-muted-foreground" />
-              </AvatarFallback>
-            )}
-          </Avatar>
+          {avatarLink ? (
+            <Link href={avatarLink} passHref>
+              <a onClick={(e) => e.stopPropagation()} className="cursor-pointer"> {/* Prevent card link trigger */}
+                <AvatarContent />
+              </a>
+            </Link>
+          ) : (
+            <AvatarContent />
+          )}
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="flex justify-between items-start">
               <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
@@ -95,7 +111,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
 
             <p className={cn(
               "text-sm text-muted-foreground truncate",
-              secondaryTitle ? "mt-1" : "mt-0.5", // Adjust margin based on presence of secondary title
+              secondaryTitle ? "mt-1" : "mt-0.5", 
               !chat.lastMessageText && "italic"
             )}>
               {chat.lastMessageSenderId === currentUserId ? `${HEBREW_TEXT.chat.you}: ` : ''}
@@ -124,3 +140,4 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   );
 }
 
+    

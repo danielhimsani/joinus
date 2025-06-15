@@ -83,10 +83,12 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
                   <TooltipProvider key={owner.uid}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Avatar className="h-7 w-7 border cursor-default">
-                          <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="organizer avatar" />
-                          <AvatarFallback className="text-xs">{owner.name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
-                        </Avatar>
+                        <Link href={`/profile/${owner.uid}`} passHref>
+                          <Avatar className="h-7 w-7 border cursor-pointer hover:ring-2 hover:ring-primary transition-all">
+                            <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="organizer avatar" />
+                            <AvatarFallback className="text-xs">{owner.name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                          </Avatar>
+                        </Link>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>{owner.name}</p>
@@ -120,3 +122,4 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
   );
 }
 
+    

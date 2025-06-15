@@ -3,8 +3,9 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link'; // Import Link
 import { useEffect, useState, useCallback } from 'react';
-import type { Event } from '@/types';
+import type { Event, EventOwnerInfo } from '@/types'; // Ensured EventOwnerInfo is imported
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -25,9 +26,11 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle as ShadAlertDialogTitle, // Renamed to avoid conflict
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Import Tooltip components
+
 
 import { RequestToJoinModal } from '@/components/events/RequestToJoinModal';
 
@@ -103,7 +106,7 @@ export default function EventDetailPage() {
 
       if (docSnap.exists()) {
         const data = docSnap.data();
-        const ownerData: Event['owners'] = data.ownerUids 
+        const ownerData: EventOwnerInfo[] = data.ownerUids && Array.isArray(data.ownerUids)
           ? await Promise.all(data.ownerUids.map(async (uid: string) => {
               const userDoc = await getDoc(doc(db, "users", uid));
               if (userDoc.exists()) {
@@ -127,7 +130,7 @@ export default function EventDetailPage() {
           createdAt: safeToDate(data.createdAt),
           updatedAt: safeToDate(data.updatedAt),
           name: data.name || "",
-          numberOfGuests: data.numberOfGuests || 0, // Total capacity
+          numberOfGuests: data.numberOfGuests || 0, 
           paymentOption: data.paymentOption || "free",
           location: data.location || "No location specified",
           locationDisplayName: data.locationDisplayName || "",
@@ -200,7 +203,6 @@ export default function EventDetailPage() {
             console.log("Image not found in storage (already deleted or never existed). This is okay.");
           } else {
             console.error("Error deleting image from storage:", storageError);
-            // Don't block event deletion for image deletion failure, but inform user
             toast({
               title: HEBREW_TEXT.general.error,
               description: HEBREW_TEXT.event.errorDeletingImageFromStorage + (storageError.message ? `: ${storageError.message}` : '. אנא בדוק הרשאות אחסון ב-Firebase.'),
@@ -316,6 +318,34 @@ export default function EventDetailPage() {
                 <div className="flex items-start"><Info className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.religionStyle}:</strong> {event.religionStyle}</span></div>
                 <div className="flex items-start"><Clock className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.ageRange}:</strong> {event.ageRange[0]} - {event.ageRange[1]}</span></div>
               </div>
+              
+              {event.owners && event.owners.length > 0 && (
+                <>
+                  <Separator className="my-6" />
+                  <div>
+                    <h3 className="font-headline text-xl font-semibold mb-3">{HEBREW_TEXT.event.owners}</h3>
+                    <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                      <TooltipProvider>
+                        {event.owners.map(owner => (
+                          <Tooltip key={owner.uid}>
+                            <TooltipTrigger asChild>
+                              <Link href={`/profile/${owner.uid}`} passHref>
+                                <Avatar className="h-10 w-10 border cursor-pointer hover:ring-2 hover:ring-primary transition-all">
+                                  <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="organizer avatar" />
+                                  <AvatarFallback>{owner.name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                                </Avatar>
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{owner.name}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </TooltipProvider>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="md:col-span-1 space-y-4">
@@ -369,7 +399,7 @@ export default function EventDetailPage() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                        <AlertDialogTitle className="text-right font-headline">{HEBREW_TEXT.event.deleteConfirmationTitle}</AlertDialogTitle>
+                        <ShadAlertDialogTitle className="text-right font-headline">{HEBREW_TEXT.event.deleteConfirmationTitle}</ShadAlertDialogTitle>
                         <AlertDialogDescription className="text-right">
                             {HEBREW_TEXT.event.deleteConfirmationMessage}
                         </AlertDialogDescription>
@@ -402,3 +432,5 @@ export default function EventDetailPage() {
     </div>
   );
 }
+
+    

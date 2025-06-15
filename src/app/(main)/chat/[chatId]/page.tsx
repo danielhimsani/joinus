@@ -30,7 +30,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle as ShadAlertDialogTitle, // Renamed
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
@@ -219,11 +219,12 @@ export default function ChatPage() {
     const chatDocRef = doc(db, "eventChats", chatId);
     
     try {
-      // No need for batch if only updating chat status here
       await updateDoc(chatDocRef, {
         status: newStatus,
         updatedAt: serverTimestamp(),
       });
+
+      // No longer decrementing event.numberOfGuests here
 
       toast({ title: HEBREW_TEXT.general.success, description: successMessage });
       if (newStatus === 'request_rejected') setShowDeclineDialog(false);
@@ -239,12 +240,27 @@ export default function ChatPage() {
   const isCurrentUserOwner = chatDetails?.ownerUids.includes(currentUser?.uid || "") || false;
   const canSendMessage = chatDetails && chatDetails.status !== 'closed' && chatDetails.status !== 'request_rejected';
 
-  const headerTitle = (isLoadingChat && !chatDetails) ? HEBREW_TEXT.chat.loadingChatDetails :
-    (isCurrentUserOwner ? `${HEBREW_TEXT.chat.chatWith} ${chatDetails?.guestInfo?.name || HEBREW_TEXT.chat.guest}` :
-                           `${HEBREW_TEXT.event.eventName}: ${chatDetails?.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}`);
+  let headerTitleElement: React.ReactNode;
+  let headerImage: string | undefined;
+  let headerLink: string | undefined;
 
-  const headerImage = (isLoadingChat && !chatDetails) ? undefined :
-    (isCurrentUserOwner ? chatDetails?.guestInfo?.profileImageUrl : chatDetails?.eventInfo?.imageUrl);
+  if (isLoadingChat && !chatDetails) {
+      headerTitleElement = <CardTitle className="font-headline text-lg md:text-xl leading-tight">{HEBREW_TEXT.chat.loadingChatDetails}</CardTitle>;
+      headerImage = undefined;
+  } else if (chatDetails) {
+      if (isCurrentUserOwner) {
+          headerTitleElement = <CardTitle className="font-headline text-lg md:text-xl leading-tight">{`${HEBREW_TEXT.chat.chatWith} ${chatDetails.guestInfo?.name || HEBREW_TEXT.chat.guest}`}</CardTitle>;
+          headerImage = chatDetails.guestInfo?.profileImageUrl;
+          headerLink = `/profile/${chatDetails.guestUid}`;
+      } else {
+          headerTitleElement = <CardTitle className="font-headline text-lg md:text-xl leading-tight">{`${HEBREW_TEXT.event.eventName}: ${chatDetails.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}`}</CardTitle>;
+          headerImage = chatDetails.eventInfo?.imageUrl;
+          headerLink = `/events/${chatDetails.eventId}`;
+      }
+  } else {
+       headerTitleElement = <CardTitle className="font-headline text-lg md:text-xl leading-tight">{HEBREW_TEXT.chat.chatPageTitle}</CardTitle>;
+  }
+
 
   const showOwnerActionBlock = isCurrentUserOwner && chatDetails?.status === 'pending_request';
 
@@ -255,7 +271,7 @@ export default function ChatPage() {
             <CardHeader className="border-b p-3 md:p-4">
                 <div className="flex items-center space-x-3 rtl:space-x-reverse">
                     <Skeleton className="h-10 w-10 rounded-full" />
-                    <CardTitle className="font-headline text-lg md:text-xl leading-tight">{HEBREW_TEXT.chat.loadingChatDetails}</CardTitle>
+                    <div className="font-headline text-lg md:text-xl leading-tight"><Skeleton className="h-6 w-40" /></div>
                 </div>
             </CardHeader>
             <CardContent className="flex-1 p-3 md:p-4 overflow-y-auto">
@@ -304,6 +320,12 @@ export default function ChatPage() {
     );
   }
 
+  const HeaderAvatar = () => (
+    <Avatar className="h-10 w-10 border">
+      {headerImage ? <AvatarImage src={headerImage} alt="Chat participant" data-ai-hint="chat participant"/> : <AvatarFallback><UserPlaceholderIcon className="h-6 w-6 text-muted-foreground" /></AvatarFallback>}
+    </Avatar>
+  );
+
   return (
     <div className="container mx-auto px-0 md:px-4 py-0 md:py-8 h-screen md:h-[calc(100vh-120px)] flex flex-col">
       <Card className="flex-1 flex flex-col max-w-3xl mx-auto w-full shadow-lg overflow-hidden relative">
@@ -314,11 +336,21 @@ export default function ChatPage() {
                  <Button variant="ghost" size="icon" onClick={() => router.back()} className="md:hidden mr-1">
                     <ChevronLeft className="h-6 w-6" />
                  </Button>
-              <Avatar className="h-10 w-10 border">
-                {headerImage ? <AvatarImage src={headerImage} alt="Chat participant" data-ai-hint="chat participant"/> : <AvatarFallback><UserPlaceholderIcon className="h-6 w-6 text-muted-foreground" /></AvatarFallback>}
-              </Avatar>
+              {headerLink ? (
+                <Link href={headerLink} passHref>
+                  <HeaderAvatar />
+                </Link>
+              ) : (
+                <HeaderAvatar />
+              )}
               <div>
-                <CardTitle className="font-headline text-lg md:text-xl leading-tight">{headerTitle}</CardTitle>
+                {headerLink ? (
+                    <Link href={headerLink} passHref className="hover:underline">
+                        {headerTitleElement}
+                    </Link>
+                ) : (
+                    headerTitleElement
+                )}
                 {chatDetails.status === 'pending_request' && isCurrentUserOwner && (
                     <p className="text-xs text-amber-600">{HEBREW_TEXT.chat.statusPending}</p>
                 )}
@@ -354,7 +386,7 @@ export default function ChatPage() {
         <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                <AlertDialogTitle>{HEBREW_TEXT.chat.confirmAction}</AlertDialogTitle>
+                <ShadAlertDialogTitle>{HEBREW_TEXT.chat.confirmAction}</ShadAlertDialogTitle>
                 <AlertDialogDescription>{HEBREW_TEXT.chat.confirmCloseChatMessage}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-row-reverse">
@@ -402,7 +434,7 @@ export default function ChatPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                           <AlertDialogHeader>
-                              <AlertDialogTitle>{HEBREW_TEXT.chat.confirmDeclineRequestTitle}</AlertDialogTitle>
+                              <ShadAlertDialogTitle>{HEBREW_TEXT.chat.confirmDeclineRequestTitle}</ShadAlertDialogTitle>
                               <AlertDialogDescription>
                                   {HEBREW_TEXT.chat.confirmDeclineRequestMessage.replace('{guestName}', chatDetails.guestInfo?.name || HEBREW_TEXT.chat.guest)}
                               </AlertDialogDescription>
@@ -466,3 +498,5 @@ export default function ChatPage() {
     </div>
   );
 }
+
+    

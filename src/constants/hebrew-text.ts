@@ -35,7 +35,7 @@ export const HEBREW_TEXT = {
     eventName: "שם האירוע",
     eventNameDisplayPlaceholder: "שם האירוע שלכם",
     eventNameGenericPlaceholder: "אירוע",
-    numberOfGuests: "סה\"כ מקומות", // Represents total capacity
+    numberOfGuests: "סה\"כ מקומות", 
     availableSpots: "מקומות פנויים",
     pricePerGuest: "מחיר לאורח",
     paymentOptions: "אפשרויות תשלום",
