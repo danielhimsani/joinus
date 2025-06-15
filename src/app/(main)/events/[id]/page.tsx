@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2, MessageCircleMore, ListChecks, Share2 } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2, MessageCircleMore, ListChecks, Share2, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -84,7 +84,7 @@ export default function EventDetailPage() {
   const [showRequestToJoinModal, setShowRequestToJoinModal] = useState(false);
   const [approvedGuestsCount, setApprovedGuestsCount] = useState(0);
   const [isLoadingApprovedCount, setIsLoadingApprovedCount] = useState(true);
-  
+
   const [approvedGuestsData, setApprovedGuestsData] = useState<ApprovedGuestData[]>([]);
   const [isLoadingApprovedGuestsData, setIsLoadingApprovedGuestsData] = useState(false);
 
@@ -144,7 +144,7 @@ export default function EventDetailPage() {
           createdAt: safeToDate(data.createdAt),
           updatedAt: safeToDate(data.updatedAt),
           name: data.name,
-          numberOfGuests: data.numberOfGuests || 0, 
+          numberOfGuests: data.numberOfGuests || 0,
           paymentOption: data.paymentOption || "free",
           location: data.location || "No location specified",
           locationDisplayName: data.locationDisplayName || "",
@@ -260,7 +260,7 @@ export default function EventDetailPage() {
       await deleteDoc(eventDocRef);
 
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.event.eventDeletedSuccessfully });
-      router.push('/events'); 
+      router.push('/events');
     } catch (error)
     {
       console.error("Error deleting event (Firestore or other):", error);
@@ -370,7 +370,7 @@ export default function EventDetailPage() {
       </div>
     );
   }
-  
+
   const placeholderImageSrc = `https://placehold.co/800x400.png${event.name ? `?text=${encodeURIComponent(event.name)}` : ''}`;
 
   return (
@@ -447,15 +447,23 @@ export default function EventDetailPage() {
                 <div className="flex items-start"><Info className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.religionStyle}:</strong> {event.religionStyle}</span></div>
                 <div className="flex items-start"><Clock className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.ageRange}:</strong> {event.ageRange[0]} - {event.ageRange[1]}</span></div>
               </div>
-              
+
              {isOwner && (
                 <>
                   <Separator className="my-8" />
                   <div>
-                    <h3 className="font-headline text-xl font-semibold mb-4 flex items-center">
-                      <ListChecks className="ml-2 h-6 w-6 text-primary" />
-                      {HEBREW_TEXT.event.approvedGuests} ({approvedGuestsData.length})
-                    </h3>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-headline text-xl font-semibold flex items-center">
+                            <ListChecks className="ml-2 h-6 w-6 text-primary" />
+                            {HEBREW_TEXT.event.approvedGuests} ({approvedGuestsData.length})
+                        </h3>
+                        <Button asChild variant="outline" size="sm">
+                            <Link href={`/events/manage/${event.id}`}>
+                                <Users className="ml-1.5 h-4 w-4" />
+                                {HEBREW_TEXT.event.manageGuestsTitle}
+                            </Link>
+                        </Button>
+                    </div>
                     {isLoadingApprovedGuestsData ? (
                       <div className="space-y-3">
                         {[...Array(2)].map((_, i) => (
@@ -473,7 +481,7 @@ export default function EventDetailPage() {
                       </div>
                     ) : approvedGuestsData.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {approvedGuestsData.map(guest => (
+                        {approvedGuestsData.slice(0, 4).map(guest => ( // Show max 4 guests preview
                           <ApprovedGuestListItem key={guest.guestUid} guest={guest} />
                         ))}
                       </div>
@@ -499,7 +507,7 @@ export default function EventDetailPage() {
                     </Button>
                  )
               )}
-               {!currentUser && ( 
+               {!currentUser && (
                 <Button className="w-full font-body text-lg py-3" onClick={() => router.push('/signin')}>
                     <MessageCircleMore className="ml-2 h-5 w-5" />
                     התחבר כדי לבקש להצטרף
@@ -511,8 +519,8 @@ export default function EventDetailPage() {
         </CardContent>
         {isOwner && (
             <CardFooter className="border-t px-6 py-4 flex flex-col sm:flex-row sm:justify-end gap-3">
-                <Button 
-                    variant="outline" 
+                <Button
+                    variant="outline"
                     onClick={() => router.push(`/events/edit/${event.id}`)}
                     className="w-full sm:w-auto font-body"
                     disabled={isDeleting}
@@ -522,8 +530,8 @@ export default function EventDetailPage() {
                 </Button>
                 <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                     <AlertDialogTrigger asChild>
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             className="w-full sm:w-auto font-body border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
                             disabled={isDeleting}
                         >
@@ -540,8 +548,8 @@ export default function EventDetailPage() {
                         </AlertDialogHeader>
                         <AlertDialogFooter className="flex-row-reverse sm:flex-row-reverse">
                             <AlertDialogCancel disabled={isDeleting}>{HEBREW_TEXT.general.cancel}</AlertDialogCancel>
-                            <AlertDialogAction 
-                                onClick={handleDeleteEvent} 
+                            <AlertDialogAction
+                                onClick={handleDeleteEvent}
                                 disabled={isDeleting}
                                 className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                             >
@@ -566,4 +574,4 @@ export default function EventDetailPage() {
     </div>
   );
 }
-
+    

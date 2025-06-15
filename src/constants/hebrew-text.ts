@@ -36,7 +36,7 @@ export const HEBREW_TEXT = {
     eventNameDisplayPlaceholder: "שם האירוע שלכם",
     eventNameGenericPlaceholder: "אירוע",
     eventNameMinLengthError: "שם האירוע חייב להכיל לפחות 2 תווים.",
-    numberOfGuests: "סה\"כ מקומות", 
+    numberOfGuests: "סה\"כ מקומות",
     availableSpots: "מקומות פנויים",
     pricePerGuest: "מחיר לאורח",
     paymentOptions: "אפשרויות תשלום",
@@ -114,6 +114,26 @@ export const HEBREW_TEXT = {
     linkCopiedToClipboard: "הקישור הועתק ללוח!",
     errorCopyingLink: "שגיאה בהעתקת הקישור.",
     checkOutEvent: "בדוק את האירוע הזה",
+    manageGuestsTitle: "ניהול אורחים",
+    manageGuestsPageTitle: "ניהול אורחי האירוע",
+    exportToCsv: "יצא ל-CSV",
+    exportingGuests: "מייצא רשימת אורחים...",
+    guestsExportedSuccessfully: "רשימת האורחים יוצאה בהצלחה!",
+    errorExportingGuests: "שגיאה ביצוא רשימת האורחים.",
+    noGuestsToExport: "אין אורחים מאושרים לייצוא.",
+    guestList: "רשימת אורחים",
+    broadcastAnnouncements: "הודעות לכלל האורחים",
+    latestAnnouncements: "הודעות אחרונות",
+    sendNewAnnouncement: "שלח הודעה חדשה",
+    announcementMessagePlaceholder: "כתוב את הודעתך כאן...",
+    sendAnnouncement: "שלח הודעה",
+    announcementSentSuccessfully: "ההודעה נשלחה בהצלחה לכל האורחים המאושרים.",
+    errorSendingAnnouncement: "שגיאה בשליחת ההודעה.",
+    noAnnouncementsYet: "עדיין לא נשלחו הודעות לאורחים.",
+    announcementBy: "נשלח על ידי:",
+    fullName: "שם מלא",
+    phone: "טלפון",
+    age: "גיל",
   },
   profile: {
     userProfile: "פרופיל משתמש",
@@ -294,4 +314,4 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
-
+    

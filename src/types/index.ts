@@ -124,4 +124,13 @@ export interface LeaderboardEntry {
   rank?: number;
 }
 
+export interface EventAnnouncement {
+  id: string; // Firestore document ID
+  eventId: string;
+  ownerUid: string; // UID of the owner who sent the announcement
+  ownerName?: string; // Denormalized for display
+  ownerProfileImageUrl?: string; // Denormalized for display
+  messageText: string;
+  timestamp: Date; // Firestore Timestamp
+}
     

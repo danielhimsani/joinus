@@ -23,8 +23,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import type { UserProfile, Event as EventType } from "@/types"; 
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake } from "lucide-react"; 
+import type { UserProfile, Event as EventType } from "@/types";
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -37,54 +37,21 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { onAuthStateChanged, type User as FirebaseUser, updateProfile } from "firebase/auth";
-import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; 
-import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore"; 
+import { auth as firebaseAuthInstance, db } from "@/lib/firebase";
+import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { format as formatDate } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { safeToDate } from '@/lib/dateUtils';
+import { safeToDate, calculateAge } from '@/lib/dateUtils';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
   email: z.string().email({ message: HEBREW_TEXT.auth.emailInvalid }).optional(),
   birthday: z.string().optional(),
   bio: z.string().max(300, { message: "ביו יכול להכיל עד 300 תווים."}).optional(),
-  phone: z.string().refine(val => val === '' || !val || /^0\d([\d]{0,1})([-]{0,1})\d{7}$/.test(val), { 
+  phone: z.string().refine(val => val === '' || !val || /^0\d([\d]{0,1})([-]{0,1})\d{7}$/.test(val), {
     message: "מספר טלפון לא תקין. אם הוזן, חייב להיות בפורמט ישראלי תקין."
   }).optional(),
 });
-
-
-const calculateAge = (birthDateString?: string): number | null => {
-  if (!birthDateString) return null;
-  // Ensure the date string is valid, especially if it's YYYY-MM-DD
-  const parts = birthDateString.split('-');
-  if (parts.length === 3) {
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
-    const day = parseInt(parts[2], 10);
-    const birthDate = new Date(year, month, day);
-    if (isNaN(birthDate.getTime())) return null; 
-
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDifference = today.getMonth() - birthDate.getMonth();
-    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age < 0 ? null : age; 
-  } else {
-    // Fallback for other date string formats, though YYYY-MM-DD is standard for date inputs
-    const birthDate = new Date(birthDateString);
-    if (isNaN(birthDate.getTime())) return null;
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDifference = today.getMonth() - birthDate.getMonth();
-    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age < 0 ? null : age;
-  }
-};
 
 
 export default function ProfilePage() {
@@ -98,7 +65,7 @@ export default function ProfilePage() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [ownedEvents, setOwnedEvents] = useState<EventType[]>([]);
   const [isLoadingOwnedEvents, setIsLoadingOwnedEvents] = useState(false);
-  const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
+  const [calculatedAgeState, setCalculatedAgeState] = useState<number | null>(null);
 
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
@@ -111,13 +78,13 @@ export default function ProfilePage() {
         phone: "",
     },
   });
-  
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, async (fbUser) => {
-      setIsLoading(true); 
+      setIsLoading(true);
       if (fbUser) {
         setFirebaseUser(fbUser);
-        
+
         let firestoreProfileData = { bio: "", phone: "", birthday: "", name: fbUser.displayName || "משתמש", email: fbUser.email || "" };
         try {
             const userDocRef = doc(db, "users", fbUser.uid);
@@ -138,18 +105,18 @@ export default function ProfilePage() {
         }
 
         const profileData: UserProfile = {
-          id: fbUser.uid, 
+          id: fbUser.uid,
           firebaseUid: fbUser.uid,
           name: firestoreProfileData.name,
           email: firestoreProfileData.email,
           profileImageUrl: fbUser.photoURL || "https://placehold.co/150x150.png",
-          bio: firestoreProfileData.bio, 
-          phone: firestoreProfileData.phone, 
-          birthday: firestoreProfileData.birthday, 
+          bio: firestoreProfileData.bio,
+          phone: firestoreProfileData.phone,
+          birthday: firestoreProfileData.birthday,
           isVerified: fbUser.emailVerified,
         };
         setUser(profileData);
-        setCalculatedAge(calculateAge(profileData.birthday));
+        setCalculatedAgeState(calculateAge(profileData.birthday));
         form.reset({
           name: profileData.name,
           email: profileData.email,
@@ -186,7 +153,7 @@ export default function ProfilePage() {
         setUser(null);
         setFirebaseUser(null);
         setOwnedEvents([]);
-        router.push('/signin'); 
+        router.push('/signin');
       }
       setIsLoading(false);
     });
@@ -196,9 +163,9 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user?.birthday) {
-      setCalculatedAge(calculateAge(user.birthday));
+      setCalculatedAgeState(calculateAge(user.birthday));
     } else {
-      setCalculatedAge(null);
+      setCalculatedAgeState(null);
     }
   }, [user?.birthday]);
 
@@ -236,31 +203,31 @@ export default function ProfilePage() {
       if (values.name !== firebaseUser.displayName) {
         await updateProfile(firebaseUser, { displayName: values.name });
       }
-      
+
       // Prepare data for Firestore update
       const firestoreUpdateData: Partial<UserProfile> & { updatedAt: any } = {
-        name: values.name, 
+        name: values.name,
         bio: values.bio || "",
         phone: values.phone || "",
         birthday: values.birthday || "", // This will be YYYY-MM-DD string or ""
         updatedAt: serverTimestamp(),
       };
-      
+
       // Update user document in Firestore
       const userDocRef = doc(db, "users", firebaseUser.uid);
       await setDoc(userDocRef, firestoreUpdateData, { merge: true });
-      
+
       // Update local state
       setUser(prevUser => {
         if (!prevUser) return null;
-        const updatedUser = { 
-          ...prevUser, 
+        const updatedUser = {
+          ...prevUser,
           name: values.name,
           birthday: values.birthday || undefined, // Store as string or undefined
           bio: values.bio || undefined,
           phone: values.phone || undefined,
         };
-        setCalculatedAge(calculateAge(updatedUser.birthday));
+        setCalculatedAgeState(calculateAge(updatedUser.birthday));
         return updatedUser;
       });
       form.reset({ // Ensure form is reset with values in YYYY-MM-DD for date input
@@ -291,13 +258,13 @@ export default function ProfilePage() {
   const handleSignOut = async () => {
     try {
       await firebaseAuthInstance.signOut();
-      localStorage.removeItem('isAuthenticated'); 
-      localStorage.removeItem('userName'); 
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userName');
       toast({
         title: HEBREW_TEXT.auth.signOut,
         description: "התנתקת בהצלחה. הנך מועבר לדף הבית.",
       });
-      router.push('/'); 
+      router.push('/');
     } catch (error) {
       console.error("Error signing out: ", error);
       toast({
@@ -308,7 +275,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading || !user) { 
+  if (isLoading || !user) {
     return (
       <div className="container mx-auto px-4 py-12">
          <Card className="max-w-3xl mx-auto">
@@ -352,7 +319,7 @@ export default function ProfilePage() {
                 </div>
                 <CardTitle className="font-headline text-3xl">{user.name}</CardTitle>
                 <CardDescription className="flex items-center justify-center">
-                  {user.email} 
+                  {user.email}
                   {user.isVerified && (
                      <Tooltip>
                         <TooltipTrigger asChild>
@@ -473,13 +440,12 @@ export default function ProfilePage() {
                     </h3>
                     <p className="text-foreground/90">
                         {user.birthday ? formatDate(new Date(user.birthday + "T00:00:00"), 'dd/MM/yyyy', { locale: he }) : HEBREW_TEXT.profile.infoNotProvided}
+                        {calculatedAgeState !== null && ` (גיל ${calculatedAgeState})`}
                     </p>
                   </div>
                 </div>
-                
-                <Separator/>
-                
-                {!user.isVerified && ( 
+
+                {!user.isVerified && (
                   <Card className="bg-accent/50 p-4">
                       <CardTitle className="text-lg mb-2 flex items-center">
                           <ShieldCheck className="ml-2 h-5 w-5 text-primary"/>
@@ -508,6 +474,7 @@ export default function ProfilePage() {
                                             <Skeleton className="h-4 w-1/2" />
                                             <Skeleton className="h-4 w-1/3" />
                                         </div>
+                                        <Skeleton className="h-8 w-24 rounded-md" />
                                     </div>
                                 </Card>
                             ))}
@@ -515,10 +482,10 @@ export default function ProfilePage() {
                     ) : ownedEvents.length > 0 ? (
                         <div className="space-y-3">
                         {ownedEvents.map(event => (
-                            <Link href={`/events/${event.id}`} key={event.id} className="block">
-                                <Card className="hover:shadow-md transition-shadow p-3">
-                                    <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                                        <div className="relative w-20 h-16 rounded-md overflow-hidden shrink-0">
+                            <Card key={event.id} className="hover:shadow-md transition-shadow p-3">
+                                <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                                    <Link href={`/events/${event.id}`} className="shrink-0">
+                                        <div className="relative w-20 h-16 rounded-md overflow-hidden">
                                             <Image
                                                 src={event.imageUrl || `https://placehold.co/100x75.png${event.name ? `?text=${encodeURIComponent(event.name)}` : ''}`}
                                                 alt={event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}
@@ -527,18 +494,26 @@ export default function ProfilePage() {
                                                 data-ai-hint="event mini image"
                                             />
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <CardTitle className="text-md font-body mb-1 truncate">{event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}</CardTitle>
-                                            <div className="text-xs text-muted-foreground flex items-center mb-0.5">
-                                                <CalendarDays className="ml-1.5 h-3 w-3" /> {formatDate(event.dateTime, 'dd/MM/yy, HH:mm', { locale: he })}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground flex items-center truncate">
-                                                <MapPin className="ml-1.5 h-3 w-3" /> {event.locationDisplayName || event.location}
-                                            </div>
+                                    </Link>
+                                    <div className="flex-1 min-w-0">
+                                        <Link href={`/events/${event.id}`}>
+                                            <CardTitle className="text-md font-body mb-1 truncate hover:underline">{event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}</CardTitle>
+                                        </Link>
+                                        <div className="text-xs text-muted-foreground flex items-center mb-0.5">
+                                            <CalendarDays className="ml-1.5 h-3 w-3" /> {formatDate(event.dateTime, 'dd/MM/yy, HH:mm', { locale: he })}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground flex items-center truncate">
+                                            <MapPin className="ml-1.5 h-3 w-3" /> {event.locationDisplayName || event.location}
                                         </div>
                                     </div>
-                                </Card>
-                            </Link>
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href={`/events/manage/${event.id}`}>
+                                            <Users className="ml-1.5 h-4 w-4" />
+                                            {HEBREW_TEXT.event.manageGuestsTitle}
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </Card>
                         ))}
                         </div>
                     ) : (
@@ -578,8 +553,8 @@ export default function ProfilePage() {
 
                 <Separator className="my-8" />
 
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 font-body text-base py-3"
                   onClick={handleSignOut}
                 >
@@ -594,4 +569,4 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
-
+    
