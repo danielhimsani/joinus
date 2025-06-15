@@ -73,7 +73,11 @@ const formSchema = z.object({
   pricePerGuest: z.coerce.number().optional(),
   location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }),
   locationDisplayName: z.string().optional(),
-  dateTime: z.date({ required_error: "תאריך ושעה נדרשים." }),
+  dateTime: z.date({ required_error: HEBREW_TEXT.event.dateTimeRequiredError })
+    .refine(date => {
+      if (!date) return true; // Handled by required_error
+      return date > new Date();
+    }, { message: HEBREW_TEXT.event.dateTimeInFutureError }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
   ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([25, 55]),
   foodType: z.enum(["kosherMeat", "kosherDairy", "kosherParve", "notKosher"], { errorMap: () => ({ message: "יש לבחור סוג אוכל."}) }),
@@ -575,7 +579,7 @@ export function EventForm({
                         title="לחץ לעריכת תאריך ושעה"
                     >
                         <CalendarIcon className="ml-1.5 h-4 w-4" />
-                        {eventDateTimeValue ? format(eventDateTimeValue, "EEEE, d MMMM yyyy, HH:mm", { locale: he }) : "בחר תאריך ושעה"}
+                        {eventDateTimeValue ? format(eventDateTimeValue, "EEEE, d MMMM yyyy, HH:mm", { locale: he }) : HEBREW_TEXT.event.selectDateTimePlaceholder}
                     </p>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -598,12 +602,15 @@ export function EventForm({
                                     defaultValue={field.value ? format(field.value, 'HH:mm') : "19:00"}
                                     onChange={(e) => {
                                         const [hours, minutes] = e.target.value.split(':').map(Number);
-                                        const newDate = field.value ? new Date(field.value) : new Date();
-                                        newDate.setHours(hours);
-                                        newDate.setMinutes(minutes);
-                                        newDate.setSeconds(0);
-                                        newDate.setMilliseconds(0);
-                                        field.onChange(newDate);
+                                        const newDate = field.value ? new Date(field.value) : new Date(); // Use current date if no date selected yet
+                                        if (isNaN(newDate.getTime())) { // Handle case where field.value might be initially undefined or invalid
+                                          const todayForTime = new Date();
+                                          todayForTime.setHours(hours, minutes, 0, 0);
+                                          field.onChange(todayForTime);
+                                        } else {
+                                          newDate.setHours(hours, minutes, 0, 0);
+                                          field.onChange(newDate);
+                                        }
                                     }}
                                     className="w-full"
                                 />
@@ -614,6 +621,9 @@ export function EventForm({
                     />
                 </PopoverContent>
               </Popover>
+               {form.formState.errors.dateTime && !eventDateTimeValue && (
+                  <p className="text-destructive text-xs mt-1">{form.formState.errors.dateTime.message}</p>
+              )}
             </div>
           </div>
 
@@ -864,7 +874,7 @@ export function EventForm({
                     <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="בחר סגנון" /></SelectTrigger></FormControl>
                         <SelectContent>
-                        {religionStyles.map(style => (<SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>))}
+                        {religionStyles.map(style => (<SelectItem key={style.value} value={type.value}>{style.label}</SelectItem>))}
                         </SelectContent>
                     </Select>
                     <FormMessage />
@@ -930,5 +940,7 @@ export function EventForm({
     </>
   );
 }
+
+    
 
     

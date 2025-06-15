@@ -95,6 +95,9 @@ export const HEBREW_TEXT = {
     confirmRemoveOwnerMessage: "האם אתה בטוח שברצונך להסיר את {userName} מבעלי האירוע?",
     cannotRemoveSelf: "אינך יכול להסיר את עצמך אם אתה הבעלים היחיד.",
     cannotRemoveLastOwner: "לא ניתן להסיר את הבעלים האחרון של האירוע.",
+    dateTimeRequiredError: "תאריך ושעת האירוע הם שדה חובה.",
+    dateTimeInFutureError: "תאריך ושעת האירוע חייבים להיות בעתיד.",
+    selectDateTimePlaceholder: "בחר תאריך ושעה",
   },
   profile: {
     userProfile: "פרופיל משתמש",
@@ -245,3 +248,6 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
+
+
+    
