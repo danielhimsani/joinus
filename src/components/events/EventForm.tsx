@@ -66,7 +66,7 @@ const paymentOptions: { value: PaymentOption; label: string }[] = [
 ];
 
 const formSchema = z.object({
-  name: z.string(), // Name is now optional (empty string allowed)
+  name: z.string(),
   ownerUids: z.array(z.string()).min(1, { message: "חייב להיות לפחות בעלים אחד לאירוע." }),
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
   paymentOption: z.enum(["fixed", "payWhatYouWant", "free"], { errorMap: () => ({ message: "יש לבחור אפשרות תשלום."}) }),
@@ -75,7 +75,7 @@ const formSchema = z.object({
   locationDisplayName: z.string().optional(),
   dateTime: z.date({ required_error: HEBREW_TEXT.event.dateTimeRequiredError })
     .refine(date => {
-      if (!date) return true; // Let required_error handle undefined
+      if (!date) return true; 
       return date > new Date();
     }, { message: HEBREW_TEXT.event.dateTimeInFutureError }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
@@ -292,11 +292,12 @@ export function EventForm({
   const submitButtonText = propSubmitButtonText || (isEditMode ? HEBREW_TEXT.profile.saveChanges : HEBREW_TEXT.event.createEventButton);
 
   useEffect(() => {
+    if (!isEditMode) setIsEditingName(false);
     if (isEditingName && nameInputRef.current) {
       nameInputRef.current.focus();
       nameInputRef.current.select();
     }
-  }, [isEditingName]);
+  }, [isEditingName, isEditMode]);
 
   const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -314,7 +315,7 @@ export function EventForm({
         setImageFile(compressedFile);
         const previewUrl = URL.createObjectURL(compressedFile);
         setImagePreviewUrl(previewUrl);
-        form.setValue("imageUrl", "file-selected-for-upload", { shouldValidate: true }); // Temporary value to indicate a file is selected
+        form.setValue("imageUrl", "file-selected-for-upload", { shouldValidate: true }); 
       } catch (error) {
         console.error("Error compressing image:", error);
         toast({ title: "שגיאה בדחיסת תמונה", description: (error instanceof Error) ? error.message : String(error), variant: "destructive" });
@@ -338,11 +339,10 @@ export function EventForm({
 
         setLatitude(place.geometry.location.lat());
         setLongitude(place.geometry.location.lng());
-
-        const currentFormImageUrl = form.getValues("imageUrl");
-        const isDefaultPlaceholder = !currentFormImageUrl || currentFormImageUrl.startsWith("https://placehold.co");
-
-        if (!imageFile && isDefaultPlaceholder && place.photos && place.photos.length > 0) {
+        
+        // If the user hasn't selected a file for upload in the current session,
+        // and the new Google Place has photos, update the image.
+        if (!imageFile && place.photos && place.photos.length > 0) {
             const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
             if (photoUrl) {
                 setImagePreviewUrl(photoUrl);
@@ -413,7 +413,7 @@ export function EventForm({
         setIsUploadingImage(false);
         setIsSubmitting(false);
         setImageUploadProgress(null);
-        return; // Stop submission if image upload fails
+        return; 
       }
       setIsUploadingImage(false);
       setImageUploadProgress(100);
@@ -442,7 +442,7 @@ export function EventForm({
 
       if (isEditMode && initialEventData?.id) {
         const eventDocRef = doc(db, "events", initialEventData.id);
-        const { createdAt, ...updatePayload } = eventDataPayload; // Ensure createdAt is not passed on update
+        const { createdAt, ...updatePayload } = eventDataPayload; 
         await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
         toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}" עודכן בהצלחה!` });
         router.push(`/events/${initialEventData.id}`);
@@ -513,7 +513,7 @@ export function EventForm({
   }
   if (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return <Card className="w-full max-w-3xl mx-auto p-6 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary mb-2" /><p>{HEBREW_TEXT.general.loading} רכיב המיקום...</p></Card>;
 
-  const currentImageToDisplay = imagePreviewUrl || (isEditMode && initialEventData?.imageUrl && !initialEventData.imageUrl.startsWith("https://placehold.co") ? initialEventData.imageUrl : `https://placehold.co/800x400.png?text=${encodeURIComponent(eventNameValue || HEBREW_TEXT.event.eventNameDisplayPlaceholder)}`);
+  const currentImageToDisplay = imagePreviewUrl || (isEditMode && initialEventData?.imageUrl && !initialEventData.imageUrl.startsWith("https://placehold.co") ? initialEventData.imageUrl : `https://placehold.co/800x400.png?text=${encodeURIComponent(eventNameValue || HEBREW_TEXT.event.eventNameGenericPlaceholder)}`);
   const headerTitle = eventNameValue || (isEditMode && initialEventData?.name) || HEBREW_TEXT.event.eventNameDisplayPlaceholder;
 
 
@@ -579,7 +579,7 @@ export function EventForm({
                     <h1
                         className={cn(
                             "text-3xl md:text-4xl font-bold cursor-pointer hover:opacity-80 transition-opacity flex-grow",
-                            !eventNameValue && "text-white/70" // Style placeholder differently
+                            !eventNameValue && "text-white/70" 
                         )}
                         onClick={() => setIsEditingName(true)}
                         title="לחץ לעריכת שם האירוע"
@@ -629,7 +629,7 @@ export function EventForm({
                             const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                                 const [newHours, newMinutes] = e.target.value.split(':').map(Number);
                                 const currentFieldValue = field.value;
-                                const currentDatePart = currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime()) ? currentFieldValue : new Date(); // Default to today if no date part
+                                const currentDatePart = currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime()) ? currentFieldValue : new Date();
 
                                 const newDateTime = new Date(currentDatePart);
                                 newDateTime.setHours(newHours, newMinutes, 0, 0);
@@ -641,7 +641,7 @@ export function EventForm({
                                 if (currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime())) {
                                     return format(currentFieldValue, 'HH:mm');
                                 }
-                                return "19:30"; // Default time display
+                                return "19:30"; 
                             };
 
                             return (
