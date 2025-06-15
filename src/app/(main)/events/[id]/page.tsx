@@ -372,6 +372,10 @@ export default function EventDetailPage() {
   }
 
   const placeholderImageSrc = `https://placehold.co/800x400.png${event.name ? `?text=${encodeURIComponent(event.name)}` : ''}`;
+  const googleMapsQuery = event.latitude && event.longitude
+    ? `${event.latitude},${event.longitude}`
+    : encodeURIComponent(event.locationDisplayName || event.location);
+  const googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${googleMapsQuery}`;
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -400,7 +404,16 @@ export default function EventDetailPage() {
           <CardTitle className="font-headline text-3xl md:text-4xl text-foreground">{event.name || ""}</CardTitle>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-muted-foreground mt-2">
             <span className="flex items-center"><CalendarDays className="ml-1.5 h-5 w-5 text-primary" /> {format(new Date(event.dateTime), 'PPPPp', { locale: he })}</span>
-            <span className="flex items-center"><MapPin className="ml-1.5 h-5 w-5 text-primary" /> {event.locationDisplayName || event.location}</span>
+            <Link
+              href={googleMapsLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center hover:underline text-muted-foreground hover:text-primary transition-colors"
+              title="פתח בגוגל מפות"
+            >
+              <MapPin className="ml-1.5 h-5 w-5 text-primary" />
+              {event.locationDisplayName || event.location}
+            </Link>
           </div>
         </CardHeader>
         <CardContent className="p-6">
