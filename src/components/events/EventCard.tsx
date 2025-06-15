@@ -5,12 +5,13 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Button } from "@/components/ui/button";
 import type { Event } from "@/types";
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
-import { CalendarDays, MapPin, Users, Tag, Utensils } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Tag, Utensils, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 
 interface EventCardProps {
   event: Event;
+  availableSpots: number;
 }
 
 const getFoodTypeLabel = (foodType: Event['foodType']) => {
@@ -32,20 +33,20 @@ const getPriceDisplay = (event: Event) => {
     }
 }
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event, availableSpots }: EventCardProps) {
   return (
     <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg h-full">
       <div className="relative w-full h-48">
         <Image
           src={event.imageUrl || "https://placehold.co/600x400.png"}
-          alt={event.name}
+          alt={event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}
           layout="fill"
           objectFit="cover"
           data-ai-hint="wedding event"
         />
       </div>
       <CardHeader className="flex-grow">
-        <CardTitle className="font-headline text-xl mb-1">{event.name}</CardTitle>
+        <CardTitle className="font-headline text-xl mb-1">{event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}</CardTitle>
         <CardDescription className="flex items-center text-sm text-muted-foreground mb-1">
           <CalendarDays className="ml-1.5 h-4 w-4" />
           {format(new Date(event.dateTime), 'eeee, d MMMM yyyy', { locale: he })}
@@ -58,7 +59,7 @@ export function EventCard({ event }: EventCardProps) {
       <CardContent className="text-sm space-y-2 flex-grow">
          <div className="flex items-center text-muted-foreground">
             <Users className="ml-1.5 h-4 w-4 text-primary" />
-            <span>{HEBREW_TEXT.event.numberOfGuests}: {event.numberOfGuests}</span>
+            <span>{HEBREW_TEXT.event.availableSpots}: {availableSpots > 0 ? availableSpots : HEBREW_TEXT.event.noSpotsAvailableShort}</span>
         </div>
         <div className="flex items-center text-muted-foreground">
             <Tag className="ml-1.5 h-4 w-4 text-primary" />
@@ -70,9 +71,16 @@ export function EventCard({ event }: EventCardProps) {
         </div>
       </CardContent>
       <CardFooter>
-        <Button asChild className="w-full font-body">
-          <Link href={`/events/${event.id}`}>{HEBREW_TEXT.general.details}</Link>
-        </Button>
+        {availableSpots > 0 ? (
+            <Button asChild className="w-full font-body">
+              <Link href={`/events/${event.id}`}>{HEBREW_TEXT.general.details}</Link>
+            </Button>
+        ) : (
+            <Button className="w-full font-body" disabled>
+                <XCircle className="ml-2 h-4 w-4" />
+                {HEBREW_TEXT.event.noSpotsAvailableTitle}
+            </Button>
+        )}
       </CardFooter>
     </Card>
   );

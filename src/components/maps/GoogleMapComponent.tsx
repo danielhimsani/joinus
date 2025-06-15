@@ -16,10 +16,10 @@ export interface MapLocation {
   id: string;
   lat: number;
   lng: number;
-  eventName: string; // Can be an empty string
+  eventName: string;
   locationDisplayName: string;
   dateTime: Date;
-  numberOfGuests: number;
+  numberOfGuests: number; // This should represent AVAILABLE spots
 }
 
 interface GoogleMapComponentProps {
@@ -129,7 +129,6 @@ const baseMapOptions: Omit<google.maps.MapOptions, 'styles'> = {
 
 const lightMapOptions: google.maps.MapOptions = {
   ...baseMapOptions,
-  // No specific styles, uses Google's default light map
 };
 
 const darkThemeMapOptions: google.maps.MapOptions = {
@@ -177,7 +176,7 @@ export function GoogleMapComponent({
       setCurrentMapOptions(isDarkMode ? darkThemeMapOptions : lightMapOptions);
     };
 
-    applyThemeStyles(); // Apply on initial load (after isLoaded)
+    applyThemeStyles(); 
 
     const observer = new MutationObserver((mutationsList) => {
       for (const mutation of mutationsList) {
@@ -280,7 +279,7 @@ export function GoogleMapComponent({
                         </p>
                         <p className="flex items-center text-muted-foreground">
                             <Users className="ml-1.5 h-4 w-4 text-primary/80 flex-shrink-0" />
-                            {HEBREW_TEXT.event.numberOfGuests}: {event.numberOfGuests}
+                             {HEBREW_TEXT.event.availableSpots}: {event.numberOfGuests > 0 ? event.numberOfGuests : HEBREW_TEXT.event.noSpotsAvailableShort }
                         </p>
                     </div>
                   </div>
@@ -303,7 +302,7 @@ export function GoogleMapComponent({
                       </p>
                       <p className="text-xs text-muted-foreground flex items-center">
                         <Users className="ml-1 h-3 w-3 text-primary/70 flex-shrink-0" />
-                        {HEBREW_TEXT.event.numberOfGuests}: {event.numberOfGuests}
+                        {HEBREW_TEXT.event.availableSpots}: {event.numberOfGuests > 0 ? event.numberOfGuests : HEBREW_TEXT.event.noSpotsAvailableShort}
                       </p>
                     </div>
                   ))}

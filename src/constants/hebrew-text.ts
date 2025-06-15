@@ -35,7 +35,8 @@ export const HEBREW_TEXT = {
     eventName: "שם האירוע",
     eventNameDisplayPlaceholder: "שם האירוע שלכם",
     eventNameGenericPlaceholder: "אירוע",
-    numberOfGuests: "מספר אורחים",
+    numberOfGuests: "סה\"כ מקומות", // Represents total capacity
+    availableSpots: "מקומות פנויים",
     pricePerGuest: "מחיר לאורח",
     paymentOptions: "אפשרויות תשלום",
     payWhatYouWant: "שלם כפי יכולתך",
@@ -76,7 +77,11 @@ export const HEBREW_TEXT = {
     myEvents: "האירועים בבעלותי",
     upcomingEvents: "אירועים קרובים",
     pastEvents: "אירועים קודמים",
-    noEventsFound: "לא נמצאו אירועים התואמים את החיפוש.",
+    noEventsFound: "לא נמצאו אירועים",
+    noEventsFoundMessage: "לא נמצאו אירועים התואמים את החיפוש.",
+    noSpotsAvailableTitle: "אין מקומות פנויים",
+    noSpotsAvailableMessage: "לא נותרו מקומות פנויים באירוע זה.",
+    noSpotsAvailableShort: "אזלו",
     confirmAttendance: "אישור הגעה",
     didNotAttend: "לא השתתף",
     automaticNegativeReview: "ביקורת שלילית אוטומטית תירשם עקב אי-הגעה.",
@@ -199,7 +204,6 @@ export const HEBREW_TEXT = {
     allChats: "כל השיחות",
     futureEventChats: "שיחות לאירועים עתידיים",
     pastEventChats: "שיחות לאירועים שעברו",
-    // Statuses for display and filtering
     statusPendingDisplayGuest: "בקשתך ממתינה",
     statusPendingDisplayOwner: "בקשה חדשה ממתינה",
     statusApprovedDisplay: "אושרה",
@@ -273,4 +277,3 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
-

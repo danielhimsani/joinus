@@ -3,8 +3,8 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
-import type { Event, UserProfile as GuestProfile } from '@/types'; // GuestProfile might be removed if not used elsewhere
+import { useEffect, useState, useCallback } from 'react';
+import type { Event } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -29,10 +29,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-import { RequestToJoinModal } from '@/components/events/RequestToJoinModal'; // Import the new modal
+import { RequestToJoinModal } from '@/components/events/RequestToJoinModal';
 
 import { db, auth as firebaseAuthInstance, storage } from "@/lib/firebase";
-import { doc, getDoc, Timestamp, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, Timestamp, deleteDoc, collection, query, where, getCountFromServer } from "firebase/firestore";
 import { ref as storageRef, deleteObject } from "firebase/storage";
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
@@ -72,6 +72,9 @@ export default function EventDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRequestToJoinModal, setShowRequestToJoinModal] = useState(false);
+  const [approvedGuestsCount, setApprovedGuestsCount] = useState(0);
+  const [isLoadingApprovedCount, setIsLoadingApprovedCount] = useState(true);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
@@ -80,75 +83,90 @@ export default function EventDetailPage() {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
+
+  const fetchEventAndApprovedCount = useCallback(async () => {
     if (!eventId) {
         setIsLoading(false);
+        setIsLoadingApprovedCount(false);
         setFetchError("Event ID is missing.");
         return;
     }
 
-    const fetchEventData = async () => {
-      setIsLoading(true);
-      setFetchError(null);
-      try {
-        const eventDocRef = doc(db, "events", eventId);
-        const docSnap = await getDoc(eventDocRef);
+    setIsLoading(true);
+    setIsLoadingApprovedCount(true);
+    setFetchError(null);
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const ownerData: Event['owners'] = data.ownerUids 
-            ? await Promise.all(data.ownerUids.map(async (uid: string) => {
-                const userDoc = await getDoc(doc(db, "users", uid));
-                if (userDoc.exists()) {
-                    const userData = userDoc.data();
-                    return {
-                        uid: uid,
-                        name: userData.name || "Unknown Owner",
-                        profileImageUrl: userData.profileImageUrl || ""
-                    };
-                }
-                return { uid: uid, name: "Unknown Owner", profileImageUrl: "" };
-            }))
-            : [];
+    try {
+      // Fetch Event Data
+      const eventDocRef = doc(db, "events", eventId);
+      const docSnap = await getDoc(eventDocRef);
 
-          setEvent({
-            id: docSnap.id,
-            ...data,
-            ownerUids: data.ownerUids || [],
-            owners: ownerData,
-            dateTime: safeToDate(data.dateTime),
-            createdAt: safeToDate(data.createdAt),
-            updatedAt: safeToDate(data.updatedAt),
-            name: data.name || "", // Set to empty string if name is not present
-            numberOfGuests: data.numberOfGuests || 0,
-            paymentOption: data.paymentOption || "free",
-            location: data.location || "No location specified",
-            locationDisplayName: data.locationDisplayName || "",
-            latitude: data.latitude || null,
-            longitude: data.longitude || null,
-            description: data.description || "",
-            ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
-            foodType: data.foodType || "notKosher",
-            religionStyle: data.religionStyle || "mixed",
-            imageUrl: data.imageUrl,
-          } as Event);
-        } else {
-          setFetchError(HEBREW_TEXT.event.noEventsFound);
-          setEvent(null);
-        }
-      } catch (error) {
-        console.error("Error fetching event:", error);
-        setFetchError(HEBREW_TEXT.general.error + " " + (error instanceof Error ? error.message : String(error)));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const ownerData: Event['owners'] = data.ownerUids 
+          ? await Promise.all(data.ownerUids.map(async (uid: string) => {
+              const userDoc = await getDoc(doc(db, "users", uid));
+              if (userDoc.exists()) {
+                  const userData = userDoc.data();
+                  return {
+                      uid: uid,
+                      name: userData.name || "Unknown Owner",
+                      profileImageUrl: userData.profileImageUrl || ""
+                  };
+              }
+              return { uid: uid, name: "Unknown Owner", profileImageUrl: "" };
+          }))
+          : [];
+
+        setEvent({
+          id: docSnap.id,
+          ...data,
+          ownerUids: data.ownerUids || [],
+          owners: ownerData,
+          dateTime: safeToDate(data.dateTime),
+          createdAt: safeToDate(data.createdAt),
+          updatedAt: safeToDate(data.updatedAt),
+          name: data.name || "",
+          numberOfGuests: data.numberOfGuests || 0, // Total capacity
+          paymentOption: data.paymentOption || "free",
+          location: data.location || "No location specified",
+          locationDisplayName: data.locationDisplayName || "",
+          latitude: data.latitude || null,
+          longitude: data.longitude || null,
+          description: data.description || "",
+          ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
+          foodType: data.foodType || "notKosher",
+          religionStyle: data.religionStyle || "mixed",
+          imageUrl: data.imageUrl,
+        } as Event);
+
+        // Fetch Approved Guests Count
+        const chatsRef = collection(db, "eventChats");
+        const q = query(chatsRef, where("eventId", "==", eventId), where("status", "==", "request_approved"));
+        const countSnapshot = await getCountFromServer(q);
+        setApprovedGuestsCount(countSnapshot.data().count);
+
+      } else {
+        setFetchError(HEBREW_TEXT.event.noEventsFound);
         setEvent(null);
-      } finally {
-        setIsLoading(false);
       }
-    };
-
-    fetchEventData();
+    } catch (error) {
+      console.error("Error fetching event or approved count:", error);
+      setFetchError(HEBREW_TEXT.general.error + " " + (error instanceof Error ? error.message : String(error)));
+      setEvent(null);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingApprovedCount(false);
+    }
   }, [eventId]);
 
+  useEffect(() => {
+    fetchEventAndApprovedCount();
+  }, [fetchEventAndApprovedCount]);
+
   const isOwner = event && currentUser && event.ownerUids.includes(currentUser.uid);
+  const availableSpots = event ? event.numberOfGuests - approvedGuestsCount : 0;
+
 
   const handleOpenRequestToJoinModal = () => {
     if (!currentUser) {
@@ -156,7 +174,11 @@ export default function EventDetailPage() {
         router.push('/signin');
         return;
     }
-    if (event && currentUser) { // Ensure event and currentUser are loaded
+    if (event && currentUser) {
+        if (availableSpots <= 0) {
+            toast({ title: HEBREW_TEXT.event.noSpotsAvailableTitle, description: HEBREW_TEXT.event.noSpotsAvailableMessage, variant: "default" });
+            return;
+        }
         setShowRequestToJoinModal(true);
     }
   };
@@ -178,6 +200,7 @@ export default function EventDetailPage() {
             console.log("Image not found in storage (already deleted or never existed). This is okay.");
           } else {
             console.error("Error deleting image from storage:", storageError);
+            // Don't block event deletion for image deletion failure, but inform user
             toast({
               title: HEBREW_TEXT.general.error,
               description: HEBREW_TEXT.event.errorDeletingImageFromStorage + (storageError.message ? `: ${storageError.message}` : '. אנא בדוק הרשאות אחסון ב-Firebase.'),
@@ -204,7 +227,7 @@ export default function EventDetailPage() {
   };
 
 
-  if (isLoading) {
+  if (isLoading || isLoadingApprovedCount) {
     return (
       <div className="container mx-auto px-4 py-12">
         <Card className="overflow-hidden">
@@ -231,6 +254,8 @@ export default function EventDetailPage() {
                     </div>
                 </div>
                 <div className="md:col-span-1 space-y-4">
+                     <Skeleton className="h-12 w-full" />
+                     <Skeleton className="h-10 w-full" />
                 </div>
             </div>
             </CardContent>
@@ -246,7 +271,7 @@ export default function EventDetailPage() {
             <AlertCircle className="h-5 w-5" />
             <AlertTitle className="font-headline">{fetchError ? HEBREW_TEXT.general.error : HEBREW_TEXT.event.noEventsFound}</AlertTitle>
             <AlertDescription>
-                {fetchError || HEBREW_TEXT.event.noEventsFound}
+                {fetchError || HEBREW_TEXT.event.noEventsFoundMessage}
             </AlertDescription>
         </Alert>
         <Button onClick={() => router.push('/events')} className="mt-4">{HEBREW_TEXT.general.back} {HEBREW_TEXT.navigation.events}</Button>
@@ -269,7 +294,7 @@ export default function EventDetailPage() {
            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
         </div>
         <CardHeader className="relative z-10 -mt-16 md:-mt-20 p-6 bg-background/80 backdrop-blur-sm rounded-t-lg md:mx-4">
-          <CardTitle className="font-headline text-3xl md:text-4xl text-foreground">{event.name}</CardTitle>
+          <CardTitle className="font-headline text-3xl md:text-4xl text-foreground">{event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}</CardTitle>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-muted-foreground mt-2">
             <span className="flex items-center"><CalendarDays className="ml-1.5 h-5 w-5 text-primary" /> {format(new Date(event.dateTime), 'PPPPp', { locale: he })}</span>
             <span className="flex items-center"><MapPin className="ml-1.5 h-5 w-5 text-primary" /> {event.locationDisplayName || event.location}</span>
@@ -285,7 +310,7 @@ export default function EventDetailPage() {
 
               <h3 className="font-headline text-xl font-semibold mb-4">פרטים נוספים</h3>
               <div className="grid sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                <div className="flex items-start"><Users className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.numberOfGuests}:</strong> {event.numberOfGuests}</span></div>
+                <div className="flex items-start"><Users className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.availableSpots}:</strong> {availableSpots > 0 ? availableSpots : HEBREW_TEXT.event.noSpotsAvailableShort}</span></div>
                 <div className="flex items-start"><Tag className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.paymentOptions}:</strong> {getPriceDisplay(event)}</span></div>
                 <div className="flex items-start"><Utensils className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.foodType}:</strong> {getFoodTypeLabel(event.foodType)}</span></div>
                 <div className="flex items-start"><Info className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.religionStyle}:</strong> {event.religionStyle}</span></div>
@@ -295,10 +320,17 @@ export default function EventDetailPage() {
 
             <div className="md:col-span-1 space-y-4">
               {!isOwner && currentUser && (
-                <Button className="w-full font-body text-lg py-3" onClick={handleOpenRequestToJoinModal}>
-                  <MessageCircleMore className="ml-2 h-5 w-5" />
-                  {HEBREW_TEXT.event.requestToJoin}
-                </Button>
+                 availableSpots > 0 ? (
+                    <Button className="w-full font-body text-lg py-3" onClick={handleOpenRequestToJoinModal}>
+                      <MessageCircleMore className="ml-2 h-5 w-5" />
+                      {HEBREW_TEXT.event.requestToJoin}
+                    </Button>
+                 ) : (
+                    <Button className="w-full font-body text-lg py-3" disabled>
+                        <XCircle className="ml-2 h-5 w-5" />
+                        {HEBREW_TEXT.event.noSpotsAvailableTitle}
+                    </Button>
+                 )
               )}
                {!currentUser && ( 
                 <Button className="w-full font-body text-lg py-3" onClick={() => router.push('/signin')}>

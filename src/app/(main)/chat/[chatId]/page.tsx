@@ -217,33 +217,20 @@ export default function ChatPage() {
 
     setIsUpdatingStatus(true);
     const chatDocRef = doc(db, "eventChats", chatId);
-    const eventDocRef = doc(db, "events", chatDetails.eventId);
-
+    
     try {
-      const batch = writeBatch(db);
-
-      batch.update(chatDocRef, {
+      // No need for batch if only updating chat status here
+      await updateDoc(chatDocRef, {
         status: newStatus,
         updatedAt: serverTimestamp(),
       });
-
-      if (newStatus === 'request_approved') {
-        // Atomically decrement the numberOfGuests for the event
-        batch.update(eventDocRef, {
-          numberOfGuests: increment(-1)
-        });
-      }
-      // Future consideration: if newStatus is 'request_rejected' or 'closed' AFTER being 'request_approved',
-      // you might want to increment numberOfGuests back. This is not part of the current request.
-
-      await batch.commit();
 
       toast({ title: HEBREW_TEXT.general.success, description: successMessage });
       if (newStatus === 'request_rejected') setShowDeclineDialog(false);
       if (newStatus === 'closed') setShowCloseDialog(false);
     } catch (e) {
-      console.error("Error updating chat status or event guest count:", e);
-      toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בעדכון סטטוס השיחה ו/או ספירת האורחים באירוע.", variant: "destructive" });
+      console.error("Error updating chat status:", e);
+      toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בעדכון סטטוס השיחה.", variant: "destructive" });
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -254,7 +241,7 @@ export default function ChatPage() {
 
   const headerTitle = (isLoadingChat && !chatDetails) ? HEBREW_TEXT.chat.loadingChatDetails :
     (isCurrentUserOwner ? `${HEBREW_TEXT.chat.chatWith} ${chatDetails?.guestInfo?.name || HEBREW_TEXT.chat.guest}` :
-                           `${HEBREW_TEXT.event.eventName}: ${chatDetails?.eventInfo?.name || 'אירוע'}`);
+                           `${HEBREW_TEXT.event.eventName}: ${chatDetails?.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}`);
 
   const headerImage = (isLoadingChat && !chatDetails) ? undefined :
     (isCurrentUserOwner ? chatDetails?.guestInfo?.profileImageUrl : chatDetails?.eventInfo?.imageUrl);

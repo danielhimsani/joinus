@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy, Timestamp, where } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, Timestamp, where,getCountFromServer } from "firebase/firestore";
 import { safeToDate } from '@/lib/dateUtils';
 
 
@@ -32,7 +32,9 @@ const PULL_INDICATOR_TRAVEL = 60; // Max pixels the indicator travels down
 export default function EventsPage() {
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
+  const [approvedCountsMap, setApprovedCountsMap] = useState<Map<string, number>>(new Map());
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [isLoadingApprovedCounts, setIsLoadingApprovedCounts] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [advancedFilters, setAdvancedFilters] = useState<Filters>({});
   const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
@@ -52,7 +54,6 @@ export default function EventsPage() {
   const bodyRef = useRef<HTMLDivElement>(null);
 
 
-
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 767px)"); // Tailwind 'md' breakpoint is 768px
     const handleResize = () => setIsMobileView(mediaQuery.matches);
@@ -61,17 +62,44 @@ export default function EventsPage() {
     return () => mediaQuery.removeEventListener('change', handleResize);
   }, []);
 
+  const fetchApprovedCountsForEvents = useCallback(async (eventsToQuery: Event[]) => {
+    if (eventsToQuery.length === 0) {
+      setApprovedCountsMap(new Map());
+      setIsLoadingApprovedCounts(false);
+      return;
+    }
+    setIsLoadingApprovedCounts(true);
+    const newApprovedCountsMap = new Map<string, number>();
+    try {
+      const countPromises = eventsToQuery.map(async (event) => {
+        const chatsRef = collection(db, "eventChats");
+        const q = query(chatsRef, where("eventId", "==", event.id), where("status", "==", "request_approved"));
+        const snapshot = await getCountFromServer(q);
+        return { eventId: event.id, count: snapshot.data().count };
+      });
+      const counts = await Promise.all(countPromises);
+      counts.forEach(item => newApprovedCountsMap.set(item.eventId, item.count));
+      setApprovedCountsMap(newApprovedCountsMap);
+    } catch (error) {
+      console.error("Error fetching approved counts:", error);
+      // Not setting fetchError here as it's for main event fetching
+      setApprovedCountsMap(new Map()); // Reset or keep stale data? Reset for now.
+    } finally {
+      setIsLoadingApprovedCounts(false);
+    }
+  }, []);
+
 
   const fetchEventsFromFirestore = useCallback(async () => {
-    setIsLoadingEvents(true); // General loading state
+    setIsLoadingEvents(true);
+    setIsLoadingApprovedCounts(true); // Also set this true initially
     setFetchError(null);
     try {
       const eventsCollectionRef = collection(db, "events");
-      // Fetch only events with numberOfGuests > 0 and order by dateTime
       const q = query(
         eventsCollectionRef, 
-        where("numberOfGuests", ">", 0), 
-        orderBy("numberOfGuests", "asc"), // Optional: if you also want to sort by spots, but dateTime is primary
+        where("numberOfGuests", ">", 0), // Fetch events that have capacity > 0
+        orderBy("numberOfGuests", "asc"), 
         orderBy("dateTime", "asc")
       ); 
       const querySnapshot = await getDocs(q);
@@ -84,7 +112,7 @@ export default function EventsPage() {
           createdAt: safeToDate(data.createdAt),
           updatedAt: safeToDate(data.updatedAt),
           name: data.name || "",
-          numberOfGuests: data.numberOfGuests || 0,
+          numberOfGuests: data.numberOfGuests || 0, // This is total capacity
           paymentOption: data.paymentOption || "free",
           location: data.location || "No location specified",
           locationDisplayName: data.locationDisplayName || "",
@@ -98,14 +126,19 @@ export default function EventsPage() {
         } as Event;
       });
       setAllEvents(fetchedEvents);
+      await fetchApprovedCountsForEvents(fetchedEvents); // Fetch counts after events are fetched
     } catch (error) {
       console.error("Error fetching events from Firestore:", error);
       setFetchError(HEBREW_TEXT.general.error + " " + HEBREW_TEXT.general.tryAgainLater);
+      setAllEvents([]);
+      setApprovedCountsMap(new Map());
+      setIsLoadingApprovedCounts(false); // Ensure this is false on error too
     } finally {
       setIsLoadingEvents(false);
-      setIsRefreshingViaPull(false); // Specifically reset pull refresh loading state
+      // setIsLoadingApprovedCounts will be set by fetchApprovedCountsForEvents
+      setIsRefreshingViaPull(false);
     }
-  }, []);
+  }, [fetchApprovedCountsForEvents]);
 
   useEffect(() => {
     fetchEventsFromFirestore();
@@ -113,7 +146,18 @@ export default function EventsPage() {
 
 
   useEffect(() => {
-    let eventsToFilter = [...allEvents]; // allEvents is already pre-filtered by numberOfGuests > 0 from Firestore
+    if (isLoadingEvents || isLoadingApprovedCounts) { // Don't filter until counts are loaded
+        setFilteredEvents([]); // Or keep stale data, but empty is safer
+        return;
+    }
+
+    let eventsToFilter = [...allEvents]; 
+
+    // Primary filter: only show events with available spots
+    eventsToFilter = eventsToFilter.filter(event => {
+        const approvedCount = approvedCountsMap.get(event.id) || 0;
+        return (event.numberOfGuests - approvedCount) > 0;
+    });
 
     if (simpleSearchQuery.trim()) {
       const queryText = simpleSearchQuery.toLowerCase().trim();
@@ -169,7 +213,7 @@ export default function EventsPage() {
 
     setFilteredEvents(eventsToFilter);
 
-  }, [allEvents, simpleSearchQuery, advancedFilters]);
+  }, [allEvents, approvedCountsMap, simpleSearchQuery, advancedFilters, isLoadingEvents, isLoadingApprovedCounts]);
 
 
   useEffect(() => {
@@ -200,12 +244,12 @@ export default function EventsPage() {
 
   // Pull to refresh event handlers
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (window.scrollY === 0 && !isRefreshingViaPull && !isLoadingEvents) {
+    if (window.scrollY === 0 && !isRefreshingViaPull && !isLoadingEvents && !isLoadingApprovedCounts) {
       setPullStart(e.touches[0].clientY);
       setIsPulling(true);
       setPullDistance(0); // Reset pull distance
     }
-  }, [isRefreshingViaPull, isLoadingEvents]);
+  }, [isRefreshingViaPull, isLoadingEvents, isLoadingApprovedCounts]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (!isPulling) return;
@@ -213,9 +257,7 @@ export default function EventsPage() {
     const distance = Math.max(0, currentY - pullStart);
     setPullDistance(distance);
     
-    // Prevent default scroll behavior when pulling down if you want to avoid browser's overscroll
     if (distance > 0 && window.scrollY === 0) {
-        // This might be too aggressive, but for a true pull-to-refresh feel:
         // e.preventDefault(); // This requires { passive: false } on listener
     }
   }, [isPulling, pullStart]);
@@ -225,21 +267,18 @@ export default function EventsPage() {
     setIsPulling(false);
     if (pullDistance > PULL_TO_REFRESH_THRESHOLD) {
       setIsRefreshingViaPull(true);
-      fetchEventsFromFirestore();
+      fetchEventsFromFirestore(); // This will also trigger re-fetch of approved counts
     }
-    // Reset pullDistance regardless of refresh, for next pull
-    // The visual indicator will naturally retract or disappear based on isPulling and pullDistance
-    // Setting pullDistance to 0 here ensures a clean state for the indicator if not refreshing
-    setTimeout(() => setPullDistance(0), 200); // Delay reset for smoother visual retraction
+    setTimeout(() => setPullDistance(0), 200);
   }, [isPulling, pullDistance, fetchEventsFromFirestore]);
 
   useEffect(() => {
     if (!isMobileView || !bodyRef.current) return;
 
-    const el = bodyRef.current.parentElement; // Attach to parent to avoid react interference or the main document
+    const el = bodyRef.current.parentElement; 
     if (!el) return;
 
-    const options = { passive: true }; // Use passive true if not preventing default scroll
+    const options = { passive: true }; 
 
     el.addEventListener("touchstart", handleTouchStart, options);
     el.addEventListener("touchmove", handleTouchMove, options);
@@ -286,10 +325,10 @@ export default function EventsPage() {
       id: e.id,
       lat: e.latitude!,
       lng: e.longitude!,
-      eventName: e.name,
+      eventName: e.name || "",
       locationDisplayName: e.locationDisplayName || e.location,
       dateTime: e.dateTime,
-      numberOfGuests: e.numberOfGuests,
+      numberOfGuests: e.numberOfGuests - (approvedCountsMap.get(e.id) || 0), // Available spots
     }));
 
   const canActuallyRefresh = pullDistance > PULL_TO_REFRESH_THRESHOLD;
@@ -299,15 +338,15 @@ export default function EventsPage() {
 
 
   return (
-    <div ref={bodyRef} className="relative min-h-screen"> {/* Added relative for indicator positioning if needed, and min-h-screen */}
+    <div ref={bodyRef} className="relative min-h-screen">
       {isMobileView && (
         <div
           style={{
             position: 'fixed',
-            top: isRefreshingViaPull || isPulling ? `${Math.max(0, indicatorY - 20)}px` : '-60px', // Start off-screen, move into view
+            top: isRefreshingViaPull || isPulling ? `${Math.max(0, indicatorY - 20)}px` : '-60px', 
             left: '50%',
             transform: 'translateX(-50%)',
-            zIndex: 1000, // High z-index
+            zIndex: 1000, 
             padding: '10px',
             background: 'hsl(var(--background))',
             borderRadius: '50%',
@@ -408,7 +447,7 @@ export default function EventsPage() {
 
         <Separator className="my-8"/>
 
-        {fetchError && !isLoadingEvents && ( // Only show fetch error if not also loading
+        {fetchError && !(isLoadingEvents || isLoadingApprovedCounts) && (
           <Alert variant="destructive" className="my-8">
             <AlertCircle className="h-5 w-5" />
             <AlertTitle className="font-headline">{HEBREW_TEXT.general.error}</AlertTitle>
@@ -416,17 +455,18 @@ export default function EventsPage() {
           </Alert>
         )}
 
-        {(isLoadingEvents && !isRefreshingViaPull) ? ( // Show skeletons only on initial load or filter change, not during pull-refresh
+        {(isLoadingEvents || isLoadingApprovedCounts) && !isRefreshingViaPull ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {renderSkeletons()}
           </div>
         ) : !fetchError && filteredEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredEvents.map(event => (
-              <EventCard key={event.id} event={event} />
-            ))}
+            {filteredEvents.map(event => {
+               const availableSpots = event.numberOfGuests - (approvedCountsMap.get(event.id) || 0);
+               return <EventCard key={event.id} event={event} availableSpots={availableSpots} />;
+            })}
           </div>
-        ) : !fetchError && filteredEvents.length === 0 && !isLoadingEvents ? (
+        ) : !fetchError && filteredEvents.length === 0 && !(isLoadingEvents || isLoadingApprovedCounts) ? (
           <Alert variant="default" className="mt-8">
               <SearchX className="h-5 w-5" />
             <AlertTitle className="font-headline">{HEBREW_TEXT.event.noEventsFound}</AlertTitle>
