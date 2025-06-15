@@ -29,6 +29,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'maps.googleapis.com', // Added for Google Places photos from PhotoService
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
 };
