@@ -4,7 +4,8 @@ import { Rubik } from 'next/font/google';
 import { Toaster } from "@/components/ui/toaster";
 import './globals.css';
 import { cn } from '@/lib/utils';
-import { ThemeInitializer } from '@/components/layout/ThemeInitializer'; // Import the new client component
+import { ThemeInitializer } from '@/components/layout/ThemeInitializer';
+import { GlobalSettingsDialog } from '@/components/layout/GlobalSettingsDialog'; // Import new component
 
 const rubik = Rubik({
   subsets: ['latin', 'hebrew'],
@@ -30,6 +31,7 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased', rubik.variable)}>
         <ThemeInitializer />
+        <GlobalSettingsDialog /> {/* Add the dialog and its trigger here */}
         {children}
         <Toaster />
       </body>
