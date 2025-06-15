@@ -126,28 +126,18 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               {chat.lastMessageSenderId === currentUserId ? `${HEBREW_TEXT.chat.you}: ` : ''}
               {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
             </p>
-
-            <div className="mt-1.5 self-start"> {/* self-start places it on the right in RTL within this flex column */}
-              <Badge
-                variant={statusDisplay.variant}
-                className={cn(
-                  "text-xs px-2 py-0.5 leading-tight",
-                  statusDisplay.variant === 'warning' && "bg-amber-500/20 text-amber-700 border-amber-500/50 dark:text-amber-400",
-                  statusDisplay.variant === 'success' && "bg-green-500/20 text-green-700 border-green-500/50 dark:text-green-400"
-                )}
-              >
-                {statusDisplay.text}
-              </Badge>
-            </div>
+            {formattedTimestamp && (
+              <p className="text-xs text-muted-foreground/90 whitespace-nowrap mt-1.5 self-start">{formattedTimestamp}</p>
+            )}
           </div>
 
-          {/* Container for Avatar and Timestamp (Visually to the left of Text content in RTL) */}
+          {/* Container for Avatar and NEWLY MOVED Badge (Visually to the left of Text content in RTL) */}
           <div className="flex flex-col items-center space-y-1 flex-shrink-0">
             <div
               onClick={avatarLink ? handleAvatarClick : undefined}
               onKeyDown={(e) => {
                 if (avatarLink && (e.key === 'Enter' || e.key === ' ')) {
-                  e.preventDefault(); // Prevent default action for space/enter if it's a link
+                  e.preventDefault(); 
                   handleAvatarClick(e);
                 }
               }}
@@ -158,12 +148,22 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             >
               <AvatarContent />
             </div>
-            {formattedTimestamp && (
-              <p className="text-xs text-muted-foreground/90 whitespace-nowrap mt-0.5">{formattedTimestamp}</p>
-            )}
+            <div className="mt-0.5">
+                <Badge
+                    variant={statusDisplay.variant}
+                    className={cn(
+                    "text-xs px-2 py-0.5 leading-tight",
+                    statusDisplay.variant === 'warning' && "bg-amber-500/20 text-amber-700 border-amber-500/50 dark:text-amber-400",
+                    statusDisplay.variant === 'success' && "bg-green-500/20 text-green-700 border-green-500/50 dark:text-green-400"
+                    )}
+                >
+                    {statusDisplay.text}
+                </Badge>
+            </div>
           </div>
         </CardContent>
       </Card>
     </Link>
   );
 }
+
