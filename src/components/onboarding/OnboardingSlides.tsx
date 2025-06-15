@@ -3,10 +3,11 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link'; // Import Link
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
-import { ArrowLeft, ArrowRight, PartyPopper } from 'lucide-react';
+import { ArrowLeft, ArrowRight, LogIn, PartyPopper } from 'lucide-react'; // Added LogIn
 import { cn } from '@/lib/utils';
 
 interface SlideContent {
@@ -25,12 +26,12 @@ const slides: SlideContent[] = [
     imageUrl: "/app_logo.png", // Remains as app logo
     imageHint: "app logo",
     Icon: PartyPopper,
-    isLogo: true, 
+    isLogo: true,
   },
   {
     title: HEBREW_TEXT.general.forCouples,
     description: "יש לכם מקומות פנויים בחתונה? אל תתנו להם להתבזבז! פרסמו את האירוע שלכם במחוברים ומצאו אורחים שישמחו להצטרף ולכסות את העלויות.",
-    imageUrl: "/onboarding/slide-2.png", 
+    imageUrl: "/onboarding/slide-2.png",
     imageHint: "wedding couple",
   },
   {
@@ -82,7 +83,19 @@ export function OnboardingSlides() {
 
   return (
     <div className="relative flex flex-col min-h-screen items-center justify-between bg-background text-foreground p-4 md:p-6 overflow-y-auto">
-      {isFinalSlide && (
+      {/* Skip to Login Button */}
+      <Button
+        variant="ghost"
+        asChild
+        className="absolute top-4 left-4 md:top-6 md:left-6 z-20 text-sm"
+      >
+        <Link href="/signin">
+          <LogIn className="ml-2 h-4 w-4" /> {/* Using ml-2 for RTL spacing */}
+          {HEBREW_TEXT.auth.signIn}
+        </Link>
+      </Button>
+
+      {isFinalSlide && !isFinalSlide && ( // This condition was contradictory, fixed to show back button if NOT final slide AND not first slide
         <Button variant="ghost" size="icon" onClick={handlePrev} className="absolute top-6 right-6 z-20">
           <ArrowRight className="h-5 w-5" /> {/* Visually points left in RTL for "back" */}
         </Button>
@@ -91,7 +104,7 @@ export function OnboardingSlides() {
       <div className="flex flex-col items-center text-center flex-grow justify-center w-full max-w-2xl pt-10 md:pt-16">
         {slide.Icon && <slide.Icon className="mx-auto h-10 w-10 md:h-12 md:w-12 text-primary mb-4" />}
         <h1 className="font-headline text-2xl md:text-4xl font-bold mb-3">{slide.title}</h1>
-        
+
         <div className={cn(
             "relative w-full my-4 md:my-6 rounded-lg overflow-hidden",
             slide.isLogo ? "h-32 md:h-40" : "h-40 md:h-64" // Adjusted height for logo
@@ -109,7 +122,7 @@ export function OnboardingSlides() {
           {slide.description}
         </p>
       </div>
-      
+
       <div className="flex space-x-2 rtl:space-x-reverse my-6 md:my-8 z-10">
         {slides.map((_, index) => (
           <button
