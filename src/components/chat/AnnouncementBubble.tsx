@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { Megaphone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { HEBREW_TEXT } from '@/constants/hebrew-text'; // Added import
+import { HEBREW_TEXT } from '@/constants/hebrew-text';
 
 interface AnnouncementBubbleProps {
   announcement: EventAnnouncement;
@@ -29,7 +29,7 @@ export function AnnouncementBubble({ announcement }: AnnouncementBubbleProps) {
             <div className="p-2 bg-primary/10 rounded-full">
                 <Megaphone className="h-5 w-5 text-primary" />
             </div>
-            <CardTitle className="text-sm font-semibold text-primary">{HEBREW_TEXT.chat.eventOwner.toUpperCase()} MESSAGE</CardTitle>
+            <CardTitle className="text-sm font-semibold text-primary">הודעה מבעלי האירוע</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-3 pt-0">
