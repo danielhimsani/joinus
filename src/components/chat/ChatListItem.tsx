@@ -103,35 +103,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
         <CardContent className="p-3 sm:p-4 flex items-start justify-start space-x-3 rtl:space-x-reverse">
-          {/* Container for Text content (Visually on the right in RTL) */}
-          <div className="flex-1 min-w-0 flex flex-col">
-            <div className="flex justify-between items-start">
-              <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
-              {unreadMessages > 0 && (
-                <Badge variant="destructive" className="text-xs px-1.5 py-0.5 leading-none h-5 shrink-0">
-                  {unreadMessages}
-                </Badge>
-              )}
-            </div>
-
-            {secondaryTitle && (
-              <p className="text-xs text-muted-foreground truncate mt-0.5">{secondaryTitle}</p>
-            )}
-
-            <p className={cn(
-              "text-sm text-muted-foreground truncate",
-              secondaryTitle ? "mt-1" : "mt-0.5",
-              !chat.lastMessageText && "italic"
-            )}>
-              {chat.lastMessageSenderId === currentUserId ? `${HEBREW_TEXT.chat.you}: ` : ''}
-              {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
-            </p>
-            {formattedTimestamp && (
-              <p className="text-xs text-muted-foreground/90 whitespace-nowrap mt-1.5 self-start">{formattedTimestamp}</p>
-            )}
-          </div>
-
-          {/* Container for Avatar and NEWLY MOVED Badge (Visually to the left of Text content in RTL) */}
+          {/* Container for Avatar and Status Badge (Visually on the right in RTL) */}
           <div className="flex flex-col items-center space-y-1 flex-shrink-0">
             <div
               onClick={avatarLink ? handleAvatarClick : undefined}
@@ -161,9 +133,36 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                 </Badge>
             </div>
           </div>
+          
+          {/* Container for Text content (Visually to the left of Avatar/Badge in RTL) */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="flex justify-between items-start">
+              <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
+              {unreadMessages > 0 && (
+                <Badge variant="destructive" className="text-xs px-1.5 py-0.5 leading-none h-5 shrink-0">
+                  {unreadMessages}
+                </Badge>
+              )}
+            </div>
+
+            {secondaryTitle && (
+              <p className="text-xs text-muted-foreground truncate mt-0.5">{secondaryTitle}</p>
+            )}
+
+            <p className={cn(
+              "text-sm text-muted-foreground truncate",
+              secondaryTitle ? "mt-1" : "mt-0.5",
+              !chat.lastMessageText && "italic"
+            )}>
+              {chat.lastMessageSenderId === currentUserId ? `${HEBREW_TEXT.chat.you}: ` : ''}
+              {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
+            </p>
+            {formattedTimestamp && (
+              <p className="text-xs text-muted-foreground/90 whitespace-nowrap mt-1.5 self-start">{formattedTimestamp}</p>
+            )}
+          </div>
         </CardContent>
       </Card>
     </Link>
   );
 }
-
