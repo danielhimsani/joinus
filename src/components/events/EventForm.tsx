@@ -833,7 +833,9 @@ export function EventForm({
                       <FormControl>
                          <Slider value={field.value || [18, 80]} onValueChange={field.onChange} min={18} max={80} step={1} className={cn("py-3")} />
                       </FormControl>
-                      <FormDescription className="text-center pt-1">טווח גילאים נבחר: {field.value && field.value.length === 2 ? `${field.value[0]} - ${field.value[1]}` : '18 - 80'}</FormDescription>
+                      <FormDescription className="text-center pt-1">
+                        {HEBREW_TEXT.event.ageRange}: <span dir="ltr" style={{ unicodeBidi: 'embed' }}>{field.value && field.value.length === 2 ? `${field.value[0]} - ${field.value[1]}` : '18 - 80'}</span>
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -929,3 +931,4 @@ export function EventForm({
   );
 }
 
+    
