@@ -98,10 +98,9 @@ export default function EventsPage() {
       const eventsCollectionRef = collection(db, "events");
       const q = query(
         eventsCollectionRef,
-        where("numberOfGuests", ">", 0), // Fetch events that have capacity > 0
-        orderBy("numberOfGuests", "asc")
-        // Removed: orderBy("dateTime", "asc") // To simplify and avoid needing a specific composite index for now.
-                                          // For original sorting (by spots then date), create the index suggested by Firebase.
+        where("numberOfGuests", ">", 0), // Filter events with capacity > 0
+        orderBy("numberOfGuests", "asc"), // Sort by capacity (total spots)
+        orderBy("dateTime", "asc") // Then sort by date
       );
       const querySnapshot = await getDocs(q);
       const fetchedEvents = querySnapshot.docs.map(doc => {
@@ -130,7 +129,7 @@ export default function EventsPage() {
       await fetchApprovedCountsForEvents(fetchedEvents); // Fetch counts after events are fetched
     } catch (error) {
       console.error("Error fetching events from Firestore:", error);
-      setFetchError(HEBREW_TEXT.general.error + " " + HEBREW_TEXT.general.tryAgainLater);
+      setFetchError(HEBREW_TEXT.general.error + " " + HEBREW_TEXT.general.tryAgainLater + (error instanceof Error && (error as any).code === 'failed-precondition' ? " (ייתכן שחסר אינדקס ב-Firestore. בדוק את הודעת השגיאה המלאה בקונסולה.)" : ""));
       setAllEvents([]);
       setApprovedCountsMap(new Map());
       setIsLoadingApprovedCounts(false); // Ensure this is false on error too
@@ -326,7 +325,7 @@ export default function EventsPage() {
       id: e.id,
       lat: e.latitude!,
       lng: e.longitude!,
-      eventName: e.name || "",
+      eventName: e.name || HEBREW_TEXT.event.eventNameGenericPlaceholder,
       locationDisplayName: e.locationDisplayName || e.location,
       dateTime: e.dateTime,
       numberOfGuests: e.numberOfGuests - (approvedCountsMap.get(e.id) || 0), // Available spots
@@ -480,3 +479,5 @@ export default function EventsPage() {
     </div>
   );
 }
+
+    
