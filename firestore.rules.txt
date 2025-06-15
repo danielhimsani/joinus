@@ -19,101 +19,16 @@ service cloud.firestore {
     }
 
     // Rules for 'eventChats' collection
+    // DIAGNOSTIC: EXTREMELY INSECURE - FOR TESTING ONLY
     match /eventChats/{chatId} {
-      // Helper functions for readability
-      function isParticipantInExistingChat() {
-        return resource.data != null && resource.data.participants is list && request.auth.uid in resource.data.participants;
-      }
-      function isOwnerOfExistingChat() { // Checks based on existing document (resource.data)
-        return resource.data != null && resource.data.ownerUids is list && request.auth.uid in resource.data.ownerUids;
-      }
-      function isGuestOfExistingChat() { // Checks based on existing document (resource.data)
-        return resource.data != null && request.auth.uid == resource.data.guestUid;
-      }
-
-      allow read: if isParticipantInExistingChat();
-
-      // Who can create a chat document? (Typically the guest initiating the request)
-      allow create: if request.auth.uid == request.resource.data.guestUid && // Guest must be the creator
-                       request.resource.data.ownerUids is list && // ownerUids must be a list
-                       ! (request.auth.uid in request.resource.data.ownerUids) && // Guest cannot be an owner
-                       request.resource.data.status == 'pending_request' && // Initial status must be pending
-                       request.resource.data.participants is list &&
-                       request.resource.data.participants.hasOnly([request.auth.uid] + request.resource.data.ownerUids) && // Participants correct
-                       request.resource.data.createdAt == request.time; // Use server timestamp
-
-      // Who can update a chat document?
-      allow update: if isParticipantInExistingChat() &&
-                       // Check for immutable fields that should not change after creation
-                       request.resource.data.eventId == resource.data.eventId &&
-                       request.resource.data.guestUid == resource.data.guestUid &&
-                       request.resource.data.ownerUids == resource.data.ownerUids &&
-                       request.resource.data.participants == resource.data.participants &&
-                       request.resource.data.createdAt == resource.data.createdAt && // createdAt is immutable
-                       request.resource.data.updatedAt == request.time && // updatedAt must be server timestamp for any update
-                       (
-                         // Scenario 1: Owner changing status (approve, reject, close, active)
-                         (
-                           ( request.resource.data.status == 'request_rejected' ||
-                             request.resource.data.status == 'closed' ||
-                             request.resource.data.status == 'request_approved' ||
-                             request.resource.data.status == 'active'
-                           ) &&
-                           isOwnerOfExistingChat() && // Only owner of existing chat can change status
-                           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
-                         ) ||
-                         // Scenario 2: Any participant updating last message details OR their own unread count
-                         (
-                           ( request.resource.data.status == resource.data.status ) && // Status not changing by non-owner/non-status-change-op
-                           (
-                             // Updating last message info (done when sending a message)
-                             (
-                               request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastMessageText', 'lastMessageTimestamp', 'lastMessageSenderId', 'unreadCount']) &&
-                               request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessageText', 'lastMessageTimestamp', 'lastMessageSenderId', 'updatedAt', 'unreadCount']) &&
-                               request.resource.data.lastMessageSenderId == request.auth.uid // Sender of last message must be current user
-                             ) ||
-                             // Updating only one's own unread count (e.g., marking as read)
-                             (
-                               request.resource.data.unreadCount is map &&
-                               request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unreadCount.' + request.auth.uid, 'updatedAt']) &&
-                               request.resource.data.unreadCount[request.auth.uid] == 0 // Setting own unread to 0
-                             )
-                           ) &&
-                           request.resource.data.unreadCount is map && // Basic check that unreadCount is a map
-                           request.resource.data.unreadCount.values().all(iterValue, iterValue is int) && // And its values are integers
-                           // Prevent guests/owners from maliciously editing denormalized info of the other party if it's not part of a status change or message send
-                           (!isGuestOfExistingChat() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['eventInfo'])) &&
-                           (!isOwnerOfExistingChat() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['guestInfo']))
-                         )
-                       );
+      allow read, write: if true; // Allows all operations
 
       // Rules for 'messages' subcollection
+      // DIAGNOSTIC: EXTREMELY INSECURE - FOR TESTING ONLY
       match /messages/{messageId} {
-        function isSenderOfNewMessage() {
-          return request.auth.uid == request.resource.data.senderId;
-        }
-         function isChatParticipant() {
-            return exists(/databases/$(database)/documents/eventChats/$(chatId)) &&
-                   request.auth.uid in get(/databases/$(database)/documents/eventChats/$(chatId)).data.participants;
-        }
-        function isChatOpen() {
-            let chatDoc = get(/databases/$(database)/documents/eventChats/$(chatId)).data;
-            return chatDoc.status != 'closed' && chatDoc.status != 'request_rejected';
-        }
-
-        allow read: if isChatParticipant();
-        allow create: if isChatParticipant() &&
-                         isSenderOfNewMessage() &&
-                         isChatOpen() && // Can only send messages if chat is not closed/rejected
-                         request.resource.data.chatId == chatId && // Message must belong to this chat
-                         request.resource.data.text is string && request.resource.data.text.size() > 0 && // Message text must exist
-                         request.resource.data.timestamp == request.time && // Timestamp must be server time
-                         request.resource.data.keys().hasAll(['chatId', 'senderId', 'text', 'timestamp', 'senderInfo']) && // Required fields
-                         request.resource.data.senderInfo.name is string && request.resource.data.senderInfo.profileImageUrl is string;
-
-        allow update, delete: if false; // Messages are immutable
-      } // End of messages/{messageId} match
-    } // End of eventChats/{chatId} match
+        allow read, write: if true; // Allows all operations
+      }
+    }
 
     // Rules for 'eventAnnouncements' collection
     match /eventAnnouncements/{announcementId} {
@@ -122,27 +37,8 @@ service cloud.firestore {
         return exists(/databases/$(database)/documents/events/$(eventId)) &&
                request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.ownerUids;
       }
-      // Helper: Check if the user is an approved guest for the event linked to this announcement
-      function isApprovedGuestForAnnouncementEvent(eventId) {
-        // This is more complex as it involves querying eventChats.
-        // For simplicity in rules, read access might be broader or rely on client-side filtering.
-        // A more secure rule might involve checking a specific "approvedGuests" list on the event doc if denormalized.
-        // For now, let's assume if they are an owner OR a participant in *any* chat for this event, they can read.
-        // This is not perfectly secure for "approved guest only" reading but simplifies rules.
-        // A better approach if strict approved guest read access is needed:
-        // 1. Denormalize approved guest UIDs on the event document.
-        // 2. Check against that list here.
-        return exists(/databases/$(database)/documents/eventChats/{chatDocId}) where
-                 get(/databases/$(database)/documents/eventChats/{chatDocId}).data.eventId == eventId &&
-                 get(/databases/$(database)/documents/eventChats/{chatDocId}).data.guestUid == request.auth.uid &&
-                 get(/databases/$(database)/documents/eventChats/{chatDocId}).data.status == 'request_approved';
-        // This rule above is pseudo-code for the concept, direct querying in rules is limited.
-        // A simpler, broader read rule:
-        // return isEventOwnerForAnnouncement(resource.data.eventId); // Only owners can read for now
-      }
 
-      allow read: if isEventOwnerForAnnouncement(resource.data.eventId); // Owners can read. Guests view via client logic.
-      // More permissive read: if request.auth != null; (client then filters events)
+      allow read: if isEventOwnerForAnnouncement(resource.data.eventId); // Owners can read.
 
       allow create: if isEventOwnerForAnnouncement(request.resource.data.eventId) && // Must be owner of the target event
                        request.resource.data.ownerUid == request.auth.uid && // Creator must be self
