@@ -95,16 +95,17 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
         <CardContent className="p-4 flex items-start space-x-4 rtl:space-x-reverse">
           {avatarLink ? (
-            <div // Changed from Link to div
+            <div 
               onClick={handleAvatarClick}
-              onKeyDown={(e) => { // For keyboard accessibility
+              onKeyDown={(e) => { 
                 if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault(); // Prevent scrolling or link activation if it were a real link
                   handleAvatarClick(e);
                 }
               }}
               className="cursor-pointer"
-              role="link" // For accessibility, indicate it behaves like a link
-              tabIndex={0} // Make it focusable
+              role="link" 
+              tabIndex={0} 
             >
               <AvatarContent />
             </div>
@@ -155,3 +156,4 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     </Link>
   );
 }
+

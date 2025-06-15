@@ -79,7 +79,7 @@ export default function EditEventPage() {
               dateTime: safeToDate(data.dateTime),
               createdAt: safeToDate(data.createdAt),
               updatedAt: safeToDate(data.updatedAt),
-              name: data.name || "", // Set to empty string if name is not present
+              name: data.name || "", 
               numberOfGuests: data.numberOfGuests || 0,
               paymentOption: data.paymentOption || "free",
               pricePerGuest: data.pricePerGuest,
@@ -173,3 +173,4 @@ export default function EditEventPage() {
     </div>
   );
 }
+

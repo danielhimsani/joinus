@@ -66,7 +66,7 @@ const paymentOptions: { value: PaymentOption; label: string }[] = [
 ];
 
 const formSchema = z.object({
-  name: z.string(),
+  name: z.string().optional(), // Name is now optional
   ownerUids: z.array(z.string()).min(1, { message: "חייב להיות לפחות בעלים אחד לאירוע." }),
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
   paymentOption: z.enum(["fixed", "payWhatYouWant", "free"], { errorMap: () => ({ message: "יש לבחור אפשרות תשלום."}) }),
@@ -288,11 +288,13 @@ export function EventForm({
   const paymentOptionValue = form.watch("paymentOption");
   const eventNameValue = form.watch("name");
   const eventDateTimeValue = form.watch("dateTime");
-  const pageTitle = propPageTitle || (isEditMode ? `${HEBREW_TEXT.event.editEvent}: ${initialEventData?.name || HEBREW_TEXT.event.eventNameDisplayPlaceholder}` : HEBREW_TEXT.event.createEventTitle);
-  const submitButtonText = propSubmitButtonText || (isEditMode ? HEBREW_TEXT.profile.saveChanges : HEBREW_TEXT.event.createEventButton);
+  
+  const pageTitleToDisplay = propPageTitle || (isEditMode ? `${HEBREW_TEXT.event.editEvent}${initialEventData?.name ? `: ${initialEventData.name}` : ''}` : HEBREW_TEXT.event.createEventTitle);
+  const submitButtonTextToDisplay = propSubmitButtonText || (isEditMode ? HEBREW_TEXT.profile.saveChanges : HEBREW_TEXT.event.createEventButton);
+
 
   useEffect(() => {
-    if (!isEditMode) setIsEditingName(false);
+    if (!isEditMode) setIsEditingName(false); // Start with title not in edit mode for new events
     if (isEditingName && nameInputRef.current) {
       nameInputRef.current.focus();
       nameInputRef.current.select();
@@ -340,8 +342,6 @@ export function EventForm({
         setLatitude(place.geometry.location.lat());
         setLongitude(place.geometry.location.lng());
         
-        // If the user hasn't selected a file for upload in the current session,
-        // and the new Google Place has photos, update the image.
         if (!imageFile && place.photos && place.photos.length > 0) {
             const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
             if (photoUrl) {
@@ -382,7 +382,7 @@ export function EventForm({
         return;
     }
 
-    let finalImageUrl: string;
+    let finalImageUrl: string | undefined;
 
     if (imageFile) {
       setIsUploadingImage(true);
@@ -420,12 +420,15 @@ export function EventForm({
     } else if (values.imageUrl && values.imageUrl.startsWith('http')) {
       finalImageUrl = values.imageUrl;
     } else {
-      finalImageUrl = `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name || HEBREW_TEXT.event.eventNameGenericPlaceholder )}`;
+      // If no image file and no existing http URL, use placeholder.
+      // If event name is empty, placehold.co will generate a generic image without text.
+      finalImageUrl = `https://placehold.co/800x400.png${values.name ? `?text=${encodeURIComponent(values.name)}` : ''}`;
     }
 
 
     const eventDataPayload = {
         ...values,
+        name: values.name || "", // Ensure name is at least an empty string
         ownerUids: values.ownerUids,
         pricePerGuest: values.paymentOption === 'fixed' ? (values.pricePerGuest ?? 0) : null,
         location: trueFormattedAddress || values.location,
@@ -497,7 +500,7 @@ export function EventForm({
       );
     }
   };
-
+  
   const handleCancelEdit = () => {
     if (isEditMode && initialEventData?.id) {
         router.push(`/events/${initialEventData.id}`);
@@ -518,9 +521,9 @@ export function EventForm({
     );
   }
   if (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return <Card className="w-full max-w-3xl mx-auto p-6 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary mb-2" /><p>{HEBREW_TEXT.general.loading} רכיב המיקום...</p></Card>;
-
-  const currentImageToDisplay = imagePreviewUrl || (isEditMode && initialEventData?.imageUrl && !initialEventData.imageUrl.startsWith("https://placehold.co") ? initialEventData.imageUrl : `https://placehold.co/800x400.png?text=${encodeURIComponent(eventNameValue || HEBREW_TEXT.event.eventNameGenericPlaceholder)}`);
-  const headerTitle = eventNameValue || (isEditMode && initialEventData?.name) || HEBREW_TEXT.event.eventNameDisplayPlaceholder;
+  
+  const currentImageToDisplay = imagePreviewUrl || (isEditMode && initialEventData?.imageUrl && !initialEventData.imageUrl.startsWith("https://placehold.co") ? initialEventData.imageUrl : `https://placehold.co/800x400.png${eventNameValue ? `?text=${encodeURIComponent(eventNameValue)}` : ''}`);
+  const headerTitleText = eventNameValue || (isEditingName ? "" : HEBREW_TEXT.event.eventNameDisplayPlaceholder);
 
 
   return (
@@ -531,7 +534,7 @@ export function EventForm({
           <div className="relative w-full h-64 md:h-80 bg-muted group">
             <Image
               src={currentImageToDisplay}
-              alt={headerTitle}
+              alt={eventNameValue || HEBREW_TEXT.event.eventNameGenericPlaceholder}
               layout="fill"
               objectFit="cover"
               className="transition-opacity duration-300 ease-in-out"
@@ -590,7 +593,7 @@ export function EventForm({
                         onClick={() => setIsEditingName(true)}
                         title="לחץ לעריכת שם האירוע"
                     >
-                    {headerTitle}
+                    {headerTitleText}
                     </h1>
                     <Button
                         type="button"
@@ -952,7 +955,7 @@ export function EventForm({
                 >
                     {(isSubmitting || isUploadingImage) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                     {(!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && !isSubmitting && !isUploadingImage) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-                    {submitButtonText}
+                    {submitButtonTextToDisplay}
                 </Button>
                 {isEditMode && (
                     <Button

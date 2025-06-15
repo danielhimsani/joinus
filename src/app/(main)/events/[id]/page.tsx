@@ -280,13 +280,15 @@ export default function EventDetailPage() {
       </div>
     );
   }
+  
+  const placeholderImageSrc = `https://placehold.co/800x400.png${event.name ? `?text=${encodeURIComponent(event.name)}` : ''}`;
 
   return (
     <div className="container mx-auto px-4 py-12">
       <Card className="overflow-hidden shadow-lg">
         <div className="relative w-full h-64 md:h-96">
           <Image
-            src={event.imageUrl || "https://placehold.co/800x400.png"}
+            src={event.imageUrl || placeholderImageSrc}
             alt={event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}
             layout="fill"
             objectFit="cover"
@@ -296,7 +298,7 @@ export default function EventDetailPage() {
            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
         </div>
         <CardHeader className="relative z-10 -mt-16 md:-mt-20 p-6 bg-background/80 backdrop-blur-sm rounded-t-lg md:mx-4">
-          <CardTitle className="font-headline text-3xl md:text-4xl text-foreground">{event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}</CardTitle>
+          <CardTitle className="font-headline text-3xl md:text-4xl text-foreground">{event.name || ""}</CardTitle>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-muted-foreground mt-2">
             <span className="flex items-center"><CalendarDays className="ml-1.5 h-5 w-5 text-primary" /> {format(new Date(event.dateTime), 'PPPPp', { locale: he })}</span>
             <span className="flex items-center"><MapPin className="ml-1.5 h-5 w-5 text-primary" /> {event.locationDisplayName || event.location}</span>
@@ -433,4 +435,3 @@ export default function EventDetailPage() {
   );
 }
 
-    

@@ -37,11 +37,13 @@ const getPriceDisplay = (event: Event) => {
 }
 
 export function EventCard({ event, availableSpots }: EventCardProps) {
+  const placeholderImageSrc = `https://placehold.co/600x400.png${event.name ? `?text=${encodeURIComponent(event.name)}` : ''}`;
+  
   return (
     <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg h-full">
       <div className="relative w-full h-48">
         <Image
-          src={event.imageUrl || "https://placehold.co/600x400.png"}
+          src={event.imageUrl || placeholderImageSrc}
           alt={event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}
           layout="fill"
           objectFit="cover"
@@ -49,7 +51,7 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
         />
       </div>
       <CardHeader className="flex-grow">
-        <CardTitle className="font-headline text-xl mb-1">{event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}</CardTitle>
+        <CardTitle className="font-headline text-xl mb-1">{event.name || ""}</CardTitle>
         <CardDescription className="flex items-center text-sm text-muted-foreground mb-1">
           <CalendarDays className="ml-1.5 h-4 w-4" />
           {format(new Date(event.dateTime), 'eeee, d MMMM yyyy', { locale: he })}
@@ -122,4 +124,3 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
   );
 }
 
-    
