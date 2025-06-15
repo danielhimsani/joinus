@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle as ShadAlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle, Filter as FilterIcon, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash } from "lucide-react";
+import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle, Filter, ListFilter, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash } from "lucide-react"; // Added ListFilter
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -28,9 +28,11 @@ import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { ChatListItem } from "@/components/chat/ChatListItem";
 import { safeToDate } from '@/lib/dateUtils';
+import { cn } from "@/lib/utils";
 
 
 type ChatStatusFilter = 'all' | EventChat['status'];
+type ChatTimeFilter = 'all' | 'future' | 'past';
 
 const statusFilterOptions: { value: ChatStatusFilter; label: string; icon?: React.ElementType }[] = [
     { value: 'all', label: HEBREW_TEXT.chat.allStatuses },
@@ -40,6 +42,16 @@ const statusFilterOptions: { value: ChatStatusFilter; label: string; icon?: Reac
     { value: 'request_rejected', label: HEBREW_TEXT.chat.rejectedRequests, icon: XCircle },
     { value: 'closed', label: HEBREW_TEXT.chat.closedChats, icon: CircleSlash },
 ];
+
+const defaultChatTimeFilter: ChatTimeFilter = 'future';
+const defaultChatStatusFilter: ChatStatusFilter = 'all';
+
+const areMessagesFiltersActive = (
+  timeFilter: ChatTimeFilter,
+  statusFilter: ChatStatusFilter
+): boolean => {
+  return timeFilter !== defaultChatTimeFilter || statusFilter !== defaultChatStatusFilter;
+};
 
 
 export default function MessagesPage() {
@@ -51,8 +63,8 @@ export default function MessagesPage() {
   const [activeTab, setActiveTab] = useState<string>("requested");
   
   // Filter states
-  const [chatTimeFilter, setChatTimeFilter] = useState<'all' | 'future' | 'past'>('future');
-  const [chatStatusFilter, setChatStatusFilter] = useState<ChatStatusFilter>('all');
+  const [chatTimeFilter, setChatTimeFilter] = useState<ChatTimeFilter>(defaultChatTimeFilter);
+  const [chatStatusFilter, setChatStatusFilter] = useState<ChatStatusFilter>(defaultChatStatusFilter);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
 
 
@@ -223,8 +235,8 @@ export default function MessagesPage() {
   );
 
   const handleClearFilters = () => {
-    setChatTimeFilter('future');
-    setChatStatusFilter('all');
+    setChatTimeFilter(defaultChatTimeFilter);
+    setChatStatusFilter(defaultChatStatusFilter);
   };
 
   if (isLoading && !currentUser && !allFetchedChats.length) { 
@@ -235,15 +247,19 @@ export default function MessagesPage() {
     );
   }
 
+  const filtersApplied = areMessagesFiltersActive(chatTimeFilter, chatStatusFilter);
+  const FilterButtonIcon = filtersApplied ? ListFilter : Filter;
+
+
   return (
     <div className="container mx-auto px-2 sm:px-4 py-8 md:py-12">
       <Card className="max-w-3xl mx-auto shadow-lg">
         <CardHeader className="border-b p-3 md:p-4">
-          <div className="flex justify-end"> {/* Aligns button to the end (left in LTR, right in RTL) */}
+          <div className="flex justify-end"> 
             <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <FilterIcon className="ml-1.5 h-4 w-4" />
+                <Button variant={filtersApplied ? "secondary" : "outline"} size="sm">
+                  <FilterButtonIcon className="ml-1.5 h-4 w-4" />
                   סינון
                 </Button>
               </DialogTrigger>
@@ -258,7 +274,7 @@ export default function MessagesPage() {
                         </Label>
                         <Select 
                             value={chatTimeFilter} 
-                            onValueChange={(value) => setChatTimeFilter(value as 'all' | 'future' | 'past')}
+                            onValueChange={(value) => setChatTimeFilter(value as ChatTimeFilter)}
                             disabled={isLoading}
                         >
                             <SelectTrigger id="chat-time-filter" className="w-full">
@@ -296,12 +312,12 @@ export default function MessagesPage() {
                         </Select>
                     </div>
                 </div>
-                <DialogFooter className="sm:justify-between">
-                    <Button type="button" variant="ghost" onClick={handleClearFilters}>
+                <DialogFooter className="sm:justify-between pt-4 border-t">
+                    <Button type="button" variant="ghost" onClick={handleClearFilters} disabled={isLoading}>
                         {HEBREW_TEXT.general.clearFilters}
                     </Button>
                     <DialogClose asChild>
-                        <Button type="button" variant="default">
+                        <Button type="button" variant="default" disabled={isLoading}>
                             {HEBREW_TEXT.general.close}
                         </Button>
                     </DialogClose>
@@ -348,4 +364,5 @@ export default function MessagesPage() {
     </div>
   );
 }
+
 

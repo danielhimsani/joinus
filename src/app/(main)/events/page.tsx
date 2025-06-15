@@ -9,7 +9,7 @@ import type { Event, EventOwnerInfo } from "@/types";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { MapPin, SearchX, Loader2, Search, Filter as FilterIcon, ChevronDown, ChevronUp, AlertCircle, ArrowDown, RefreshCw } from "lucide-react";
+import { MapPin, SearchX, Loader2, Search, Filter, ListFilter, ChevronDown, ChevronUp, AlertCircle, ArrowDown, RefreshCw } from "lucide-react";
 import { GoogleMapComponent, type MapLocation } from "@/components/maps/GoogleMapComponent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,10 +24,31 @@ import { Separator } from "@/components/ui/separator";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, Timestamp, where, getCountFromServer, doc } from "firebase/firestore";
 import { safeToDate } from '@/lib/dateUtils';
+import { cn } from "@/lib/utils";
 
 
 const PULL_TO_REFRESH_THRESHOLD = 70; // Pixels to pull to trigger refresh
 const PULL_INDICATOR_TRAVEL = 60; // Max pixels the indicator travels down
+
+const defaultAdvancedFilters: Filters = {
+  searchTerm: undefined,
+  location: undefined,
+  date: undefined,
+  priceRange: "any",
+  foodType: "any",
+  minAvailableSpots: 1,
+};
+
+const checkAreEventsFiltersActive = (currentFilters: Filters): boolean => {
+  const isSearchActive = !!currentFilters.searchTerm && currentFilters.searchTerm !== (defaultAdvancedFilters.searchTerm || "");
+  const isLocationActive = !!currentFilters.location && currentFilters.location !== (defaultAdvancedFilters.location || "");
+  const isDateActive = !!currentFilters.date; 
+  const isPriceRangeActive = currentFilters.priceRange !== defaultAdvancedFilters.priceRange && currentFilters.priceRange !== undefined;
+  const isFoodTypeActive = currentFilters.foodType !== defaultAdvancedFilters.foodType && currentFilters.foodType !== undefined;
+  const isSpotsActive = currentFilters.minAvailableSpots !== defaultAdvancedFilters.minAvailableSpots && currentFilters.minAvailableSpots !== undefined;
+  return isSearchActive || isLocationActive || isDateActive || isPriceRangeActive || isFoodTypeActive || isSpotsActive;
+};
+
 
 export default function EventsPage() {
   const [allEvents, setAllEvents] = useState<Event[]>([]);
@@ -36,7 +57,7 @@ export default function EventsPage() {
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [isLoadingApprovedCounts, setIsLoadingApprovedCounts] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [advancedFilters, setAdvancedFilters] = useState<Filters>({minAvailableSpots: 1}); // Default min spots
+  const [advancedFilters, setAdvancedFilters] = useState<Filters>({...defaultAdvancedFilters}); 
   const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [isMapSectionOpen, setIsMapSectionOpen] = useState(false);
@@ -108,7 +129,7 @@ export default function EventsPage() {
           dateTime: safeToDate(data.dateTime),
           createdAt: safeToDate(data.createdAt),
           updatedAt: safeToDate(data.updatedAt),
-          name: data.name || "",
+          name: data.name || HEBREW_TEXT.event.eventNameGenericPlaceholder,
           numberOfGuests: data.numberOfGuests || 0, 
           paymentOption: data.paymentOption || "free",
           location: data.location || "No location specified",
@@ -374,6 +395,8 @@ export default function EventsPage() {
   const indicatorY = isRefreshingViaPull ? 20 : Math.min(pullDistance, PULL_INDICATOR_TRAVEL) * 0.5; 
   const indicatorOpacity = isRefreshingViaPull ? 1 : Math.min(1, pullDistance / PULL_TO_REFRESH_THRESHOLD);
 
+  const areFiltersApplied = checkAreEventsFiltersActive(advancedFilters);
+  const FilterButtonIcon = areFiltersApplied ? ListFilter : Filter;
 
   return (
     <div ref={bodyRef} className="relative min-h-screen">
@@ -412,8 +435,8 @@ export default function EventsPage() {
           <div className="flex flex-row-reverse sm:flex-row items-center gap-2 flex-grow">
             <Dialog open={showFiltersModal} onOpenChange={setShowFiltersModal}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="shrink-0">
-                  <FilterIcon className="ml-2 h-4 w-4" />
+                <Button variant={areFiltersApplied ? "secondary" : "outline"} className="shrink-0">
+                  <FilterButtonIcon className="ml-2 h-4 w-4" />
                   {HEBREW_TEXT.event.filters}
                 </Button>
               </DialogTrigger>
