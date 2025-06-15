@@ -13,6 +13,7 @@ import type { User as FirebaseUser } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -224,8 +225,6 @@ export default function ChatPage() {
         updatedAt: serverTimestamp(),
       });
 
-      // No longer decrementing event.numberOfGuests here
-
       toast({ title: HEBREW_TEXT.general.success, description: successMessage });
       if (newStatus === 'request_rejected') setShowDeclineDialog(false);
       if (newStatus === 'closed') setShowCloseDialog(false);
@@ -405,8 +404,8 @@ export default function ChatPage() {
 
 
         {/* Messages Area */}
-        <ScrollArea ref={scrollAreaRef} className="flex-1 p-3 md:p-4 bg-background/70">
-          <div className="flex flex-col space-y-1">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 bg-background/70">
+          <div className="p-3 md:p-4 flex flex-col space-y-1 pb-36 md:pb-4"> {/* Adjusted padding */}
             {showOwnerActionBlock && (
                 <div className="my-3 p-3 bg-muted/60 dark:bg-muted/40 rounded-lg shadow-sm w-full self-center max-w-md mx-auto">
                   <div className="flex gap-3 justify-center">
@@ -464,39 +463,59 @@ export default function ChatPage() {
 
         {/* Message Input Area */}
         {canSendMessage ? (
-            <CardFooter className="p-3 md:p-4 border-t bg-background sticky bottom-0">
-            <div className="flex w-full items-center space-x-2 rtl:space-x-reverse">
+            <CardFooter 
+              className={cn(
+                "border-t bg-background z-40", // Common classes
+                "fixed bottom-16 left-0 right-0 p-0", // Mobile: fixed, above main nav, no padding on CardFooter
+                "md:sticky md:bottom-0 md:p-4 md:z-auto" // Desktop: sticky, standard padding
+              )}
+            >
+              <div className={cn(
+                "w-full flex items-center space-x-2 rtl:space-x-reverse", // Common classes for inner div
+                "max-w-3xl mx-auto p-3 bg-background", // Mobile: constrained width & padding
+                "md:max-w-none md:mx-0 md:p-0" // Desktop: full width of CardFooter, no extra padding
+              )}>
                 <Textarea
-                placeholder={HEBREW_TEXT.chat.typeYourMessage}
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                    }
-                }}
-                rows={1}
-                className="min-h-[40px] max-h-[100px] resize-none"
-                disabled={isSendingMessage}
+                  placeholder={HEBREW_TEXT.chat.typeYourMessage}
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                      }
+                  }}
+                  rows={1}
+                  className="min-h-[40px] max-h-[100px] resize-none"
+                  disabled={isSendingMessage}
                 />
                 <Button type="button" size="icon" onClick={handleSendMessage} disabled={isSendingMessage || !newMessage.trim()}>
-                {isSendingMessage ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-                <span className="sr-only">{HEBREW_TEXT.chat.sendMessage}</span>
+                  {isSendingMessage ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                  <span className="sr-only">{HEBREW_TEXT.chat.sendMessage}</span>
                 </Button>
-            </div>
+              </div>
             </CardFooter>
         ) : (
-            <CardFooter className="p-3 md:p-4 border-t bg-muted sticky bottom-0">
-                <p className="text-sm text-muted-foreground text-center w-full">
-                    <Info className="inline-block ml-1 h-4 w-4" />
-                    {chatDetails.status === 'closed' ? HEBREW_TEXT.chat.chatClosedInfo : HEBREW_TEXT.chat.requestRejectedInfo}
-                </p>
+            <CardFooter 
+              className={cn(
+                "border-t bg-muted z-40", // Common classes
+                "fixed bottom-16 left-0 right-0 p-0", // Mobile: fixed, above main nav
+                "md:sticky md:bottom-0 md:p-3 md:z-auto" // Desktop: sticky
+              )}
+            >
+                <div className={cn(
+                  "w-full text-center",
+                  "max-w-3xl mx-auto p-3", // Mobile: constrained width & padding
+                  "md:max-w-none md:mx-0 md:p-0" // Desktop
+                )}>
+                    <p className="text-sm text-muted-foreground">
+                        <Info className="inline-block ml-1 h-4 w-4" />
+                        {chatDetails.status === 'closed' ? HEBREW_TEXT.chat.chatClosedInfo : HEBREW_TEXT.chat.requestRejectedInfo}
+                    </p>
+                </div>
             </CardFooter>
         )}
       </Card>
     </div>
   );
 }
-
-    
