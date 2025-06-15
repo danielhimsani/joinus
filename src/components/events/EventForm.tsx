@@ -874,7 +874,7 @@ export function EventForm({
                     <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="בחר סגנון" /></SelectTrigger></FormControl>
                         <SelectContent>
-                        {religionStyles.map(style => (<SelectItem key={style.value} value={type.value}>{style.label}</SelectItem>))}
+                        {religionStyles.map(style => (<SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>))}
                         </SelectContent>
                     </Select>
                     <FormMessage />
