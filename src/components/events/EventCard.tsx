@@ -3,9 +3,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { Event } from "@/types";
+import type { Event, FoodType, KashrutType } from "@/types";
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
-import { CalendarDays, MapPin, Users, Tag, Utensils, XCircle } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Tag, Utensils, XCircle, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -17,15 +17,27 @@ interface EventCardProps {
   availableSpots: number;
 }
 
-const getFoodTypeLabel = (foodType: Event['foodType']) => {
+const getFoodTypeLabel = (foodType: FoodType | undefined) => {
+    if (!foodType) return '';
     switch (foodType) {
-        case 'kosherMeat': return HEBREW_TEXT.event.kosherMeat;
-        case 'kosherDairy': return HEBREW_TEXT.event.kosherDairy;
-        case 'kosherParve': return HEBREW_TEXT.event.kosherParve;
-        case 'notKosher': return HEBREW_TEXT.event.notKosher;
-        default: return '';
+        case 'meat': return HEBREW_TEXT.event.meat;
+        case 'dairy': return HEBREW_TEXT.event.dairy;
+        case 'meatAndDairy': return HEBREW_TEXT.event.meatAndDairy;
+        case 'vegetarian': return HEBREW_TEXT.event.vegetarian;
+        case 'vegan': return HEBREW_TEXT.event.vegan;
+        default: return foodType;
     }
 }
+
+const getKashrutLabel = (kashrut: KashrutType | undefined) => {
+    if (!kashrut) return '';
+    switch (kashrut) {
+        case 'kosher': return HEBREW_TEXT.event.kosher;
+        case 'notKosher': return HEBREW_TEXT.event.notKosher;
+        default: return kashrut;
+    }
+}
+
 
 const getPriceDisplay = (event: Event) => {
     switch (event.paymentOption) {
@@ -73,6 +85,10 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
         <div className="flex items-center text-muted-foreground">
             <Utensils className="ml-1.5 h-4 w-4 text-primary" />
             <span>{HEBREW_TEXT.event.foodType}: {getFoodTypeLabel(event.foodType)}</span>
+        </div>
+        <div className="flex items-center text-muted-foreground">
+            <ShieldCheck className="ml-1.5 h-4 w-4 text-primary" />
+            <span>{HEBREW_TEXT.event.kashrut}: {getKashrutLabel(event.kashrut)}</span>
         </div>
       </CardContent>
       <CardFooter>

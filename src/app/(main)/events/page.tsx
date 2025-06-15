@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Image from 'next/image';
 import { EventCard } from "@/components/events/EventCard";
 import { EventFilters, type Filters } from "@/components/events/EventFilters";
-import type { Event, EventOwnerInfo } from "@/types";
+import type { Event, EventOwnerInfo, FoodType, KashrutType, WeddingType } from "@/types";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -36,17 +36,9 @@ const defaultAdvancedFilters: Filters = {
   date: undefined,
   priceRange: "any",
   foodType: "any",
+  kashrut: "any",
+  weddingType: "any",
   minAvailableSpots: 1,
-};
-
-const checkAreEventsFiltersActive = (currentFilters: Filters): boolean => {
-  const isSearchActive = !!currentFilters.searchTerm && currentFilters.searchTerm !== (defaultAdvancedFilters.searchTerm || "");
-  const isLocationActive = !!currentFilters.location && currentFilters.location !== (defaultAdvancedFilters.location || "");
-  const isDateActive = !!currentFilters.date; 
-  const isPriceRangeActive = currentFilters.priceRange !== defaultAdvancedFilters.priceRange && currentFilters.priceRange !== undefined;
-  const isFoodTypeActive = currentFilters.foodType !== defaultAdvancedFilters.foodType && currentFilters.foodType !== undefined;
-  const isSpotsActive = currentFilters.minAvailableSpots !== defaultAdvancedFilters.minAvailableSpots && currentFilters.minAvailableSpots !== undefined;
-  return isSearchActive || isLocationActive || isDateActive || isPriceRangeActive || isFoodTypeActive || isSpotsActive;
 };
 
 const countActiveEventFilters = (currentFilters: Filters): number => {
@@ -54,10 +46,16 @@ const countActiveEventFilters = (currentFilters: Filters): number => {
   if (currentFilters.searchTerm && currentFilters.searchTerm !== (defaultAdvancedFilters.searchTerm || "")) count++;
   if (currentFilters.location && currentFilters.location !== (defaultAdvancedFilters.location || "")) count++;
   if (currentFilters.date) count++;
-  if (currentFilters.priceRange && currentFilters.priceRange !== defaultAdvancedFilters.priceRange && currentFilters.priceRange !== undefined) count++;
-  if (currentFilters.foodType && currentFilters.foodType !== defaultAdvancedFilters.foodType && currentFilters.foodType !== undefined) count++;
-  if (currentFilters.minAvailableSpots !== undefined && currentFilters.minAvailableSpots !== defaultAdvancedFilters.minAvailableSpots && currentFilters.minAvailableSpots !== 1) count++; // Count only if not default (1)
+  if (currentFilters.priceRange && currentFilters.priceRange !== defaultAdvancedFilters.priceRange) count++;
+  if (currentFilters.foodType && currentFilters.foodType !== defaultAdvancedFilters.foodType) count++;
+  if (currentFilters.kashrut && currentFilters.kashrut !== defaultAdvancedFilters.kashrut) count++;
+  if (currentFilters.weddingType && currentFilters.weddingType !== defaultAdvancedFilters.weddingType) count++;
+  if (currentFilters.minAvailableSpots !== undefined && currentFilters.minAvailableSpots !== defaultAdvancedFilters.minAvailableSpots && currentFilters.minAvailableSpots !== 1) count++;
   return count;
+};
+
+const checkAreEventsFiltersActive = (currentFilters: Filters): boolean => {
+  return countActiveEventFilters(currentFilters) > 0;
 };
 
 
@@ -136,7 +134,7 @@ export default function EventsPage() {
         return {
           id: docSnap.id,
           ...data,
-          ownerUids: data.ownerUids || [], // Ensure ownerUids is always an array
+          ownerUids: data.ownerUids || [], 
           dateTime: safeToDate(data.dateTime),
           createdAt: safeToDate(data.createdAt),
           updatedAt: safeToDate(data.updatedAt),
@@ -149,13 +147,13 @@ export default function EventsPage() {
           longitude: data.longitude || null,
           description: data.description || "",
           ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
-          foodType: data.foodType || "notKosher",
-          religionStyle: data.religionStyle || "mixed",
+          foodType: data.foodType as FoodType || "meat", // Default if missing
+          kashrut: data.kashrut as KashrutType || "kosher", // Default if missing
+          weddingType: data.weddingType as WeddingType || (data as any).religionStyle as WeddingType || "traditional", // Map old religionStyle, default if missing
           imageUrl: data.imageUrl,
-        } as Omit<Event, 'owners'> & { ownerUids: string[] }; // Type assertion for intermediate step
+        } as Omit<Event, 'owners'> & { ownerUids: string[] }; 
       });
 
-      // Fetch owner profiles
       const allOwnerUids = [...new Set(fetchedEventsData.flatMap(event => event.ownerUids || []))];
       const ownerProfilesMap = new Map<string, EventOwnerInfo>();
 
@@ -213,14 +211,12 @@ export default function EventsPage() {
 
     let eventsToFilter = [...allEvents];
 
-    // Primary filter: Calculate available spots and filter out full events
     eventsToFilter = eventsToFilter.filter(event => {
         const approvedCount = approvedCountsMap.get(event.id) || 0;
         const availableSpots = event.numberOfGuests - approvedCount;
-        return availableSpots > 0; // Keep only events with at least 1 spot
+        return availableSpots > 0; 
     });
 
-    // Apply advanced filter: minimum available spots
     if (advancedFilters.minAvailableSpots !== undefined && advancedFilters.minAvailableSpots > 0) {
         eventsToFilter = eventsToFilter.filter(event => {
             const approvedCount = approvedCountsMap.get(event.id) || 0;
@@ -229,7 +225,6 @@ export default function EventsPage() {
         });
     }
 
-    // Simple search query (applied after available spots filtering)
     if (simpleSearchQuery.trim()) {
       const queryText = simpleSearchQuery.toLowerCase().trim();
       eventsToFilter = eventsToFilter.filter(event =>
@@ -240,7 +235,6 @@ export default function EventsPage() {
       );
     }
 
-    // Advanced filters (text search, location, date, price, food type)
     if (advancedFilters.searchTerm && advancedFilters.searchTerm.trim()) {
       const advancedQueryText = advancedFilters.searchTerm.toLowerCase().trim();
        eventsToFilter = eventsToFilter.filter(event =>
@@ -282,6 +276,13 @@ export default function EventsPage() {
      if (advancedFilters.foodType && advancedFilters.foodType !== "any") {
       eventsToFilter = eventsToFilter.filter(event => event.foodType === advancedFilters.foodType);
     }
+    if (advancedFilters.kashrut && advancedFilters.kashrut !== "any") {
+      eventsToFilter = eventsToFilter.filter(event => event.kashrut === advancedFilters.kashrut);
+    }
+    if (advancedFilters.weddingType && advancedFilters.weddingType !== "any") {
+      eventsToFilter = eventsToFilter.filter(event => event.weddingType === advancedFilters.weddingType);
+    }
+
 
     setFilteredEvents(eventsToFilter);
 
@@ -556,5 +557,4 @@ export default function EventsPage() {
     </div>
   );
 }
-
     

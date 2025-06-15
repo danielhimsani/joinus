@@ -5,13 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
-import type { Event, EventOwnerInfo, EventChat } from '@/types';
+import type { Event, EventOwnerInfo, EventChat, FoodType, KashrutType, WeddingType } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2, MessageCircleMore, ListChecks, Share2, FileText } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2, MessageCircleMore, ListChecks, Share2, FileText, ShieldCheck, Heart } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -43,13 +43,34 @@ import { onAuthStateChanged } from "firebase/auth";
 import { safeToDate } from '@/lib/dateUtils';
 
 
-const getFoodTypeLabel = (foodType: Event['foodType']) => {
+const getFoodTypeLabel = (foodType: FoodType | undefined) => {
+    if (!foodType) return '';
     switch (foodType) {
-        case 'kosherMeat': return HEBREW_TEXT.event.kosherMeat;
-        case 'kosherDairy': return HEBREW_TEXT.event.kosherDairy;
-        case 'kosherParve': return HEBREW_TEXT.event.kosherParve;
+        case 'meat': return HEBREW_TEXT.event.meat;
+        case 'dairy': return HEBREW_TEXT.event.dairy;
+        case 'meatAndDairy': return HEBREW_TEXT.event.meatAndDairy;
+        case 'vegetarian': return HEBREW_TEXT.event.vegetarian;
+        case 'vegan': return HEBREW_TEXT.event.vegan;
+        default: return foodType; // Fallback for any unmapped old values, though ideally migration handles this
+    }
+}
+
+const getKashrutLabel = (kashrut: KashrutType | undefined) => {
+    if (!kashrut) return '';
+    switch (kashrut) {
+        case 'kosher': return HEBREW_TEXT.event.kosher;
         case 'notKosher': return HEBREW_TEXT.event.notKosher;
-        default: return '';
+        default: return kashrut;
+    }
+}
+
+const getWeddingTypeLabel = (weddingType: WeddingType | undefined) => {
+    if (!weddingType) return '';
+    switch (weddingType) {
+        case 'traditional': return HEBREW_TEXT.event.traditional;
+        case 'civil': return HEBREW_TEXT.event.civil;
+        case 'harediWithSeparation': return HEBREW_TEXT.event.harediWithSeparation;
+        default: return weddingType; // Fallback for any unmapped old values
     }
 }
 
@@ -152,8 +173,9 @@ export default function EventDetailPage() {
           longitude: data.longitude || null,
           description: data.description || "",
           ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
-          foodType: data.foodType || "notKosher",
-          religionStyle: data.religionStyle || "mixed",
+          foodType: data.foodType || "meat", // Default if missing
+          kashrut: data.kashrut || "kosher", // Default if missing
+          weddingType: data.weddingType || (data as any).religionStyle || "traditional", // Map old religionStyle, default if missing
           imageUrl: data.imageUrl,
         } as Event;
         setEvent(fetchedEvent);
@@ -341,7 +363,7 @@ export default function EventDetailPage() {
                     <div>
                         <Skeleton className="h-6 w-1/3 mb-3" />
                         <div className="grid sm:grid-cols-2 gap-4">
-                            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}
+                            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}
                         </div>
                     </div>
                 </div>
@@ -457,7 +479,8 @@ export default function EventDetailPage() {
                 <div className="flex items-start"><Users className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.availableSpots}:</strong> {availableSpots > 0 ? availableSpots : HEBREW_TEXT.event.noSpotsAvailableShort}</span></div>
                 <div className="flex items-start"><Tag className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.paymentOptions}:</strong> {getPriceDisplay(event)}</span></div>
                 <div className="flex items-start"><Utensils className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.foodType}:</strong> {getFoodTypeLabel(event.foodType)}</span></div>
-                <div className="flex items-start"><Info className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.religionStyle}:</strong> {event.religionStyle}</span></div>
+                <div className="flex items-start"><ShieldCheck className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.kashrut}:</strong> {getKashrutLabel(event.kashrut)}</span></div>
+                <div className="flex items-start"><Heart className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.weddingType}:</strong> {getWeddingTypeLabel(event.weddingType)}</span></div>
                 <div className="flex items-start"><Clock className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.ageRange}:</strong> {event.ageRange[0]} - {event.ageRange[1]}</span></div>
               </div>
 

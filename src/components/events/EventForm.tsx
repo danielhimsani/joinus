@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller, type FieldErrors } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, Loader2, ImagePlus, Info, Edit2, PlusCircle, UserX, Users, XCircle } from "lucide-react";
+import { CalendarIcon, Loader2, ImagePlus, Info, Edit2, PlusCircle, UserX, Users, XCircle, Utensils, ShieldCheck, Heart } from "lucide-react"; // Added new icons
 import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -35,7 +35,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle as ShadCardTitle } from "@/components/ui/card"; // Renamed to avoid conflict
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import type { PaymentOption, FoodType, ReligionStyle, Event as EventType, UserProfile } from "@/types";
+import type { PaymentOption, FoodType, KashrutType, WeddingType, Event as EventType, UserProfile } from "@/types";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
@@ -45,18 +45,23 @@ import { AddOwnerModal } from "./AddOwnerModal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 
-const foodTypes: { value: FoodType; label: string }[] = [
-  { value: "kosherMeat", label: HEBREW_TEXT.event.kosherMeat },
-  { value: "kosherDairy", label: HEBREW_TEXT.event.kosherDairy },
-  { value: "kosherParve", label: HEBREW_TEXT.event.kosherParve },
+const foodTypeOptions: { value: FoodType; label: string }[] = [
+  { value: "meat", label: HEBREW_TEXT.event.meat },
+  { value: "dairy", label: HEBREW_TEXT.event.dairy },
+  { value: "meatAndDairy", label: HEBREW_TEXT.event.meatAndDairy },
+  { value: "vegetarian", label: HEBREW_TEXT.event.vegetarian },
+  { value: "vegan", label: HEBREW_TEXT.event.vegan },
+];
+
+const kashrutOptions: { value: KashrutType; label: string }[] = [
+  { value: "kosher", label: HEBREW_TEXT.event.kosher },
   { value: "notKosher", label: HEBREW_TEXT.event.notKosher },
 ];
 
-const religionStyles: { value: ReligionStyle; label: string }[] = [
-  { value: "secular", label: "חילוני" },
-  { value: "traditional", label: "מסורתי" },
-  { value: "religious", label: "דתי" },
-  { value: "mixed", label: "מעורב" },
+const weddingTypeOptions: { value: WeddingType; label: string }[] = [
+  { value: "traditional", label: HEBREW_TEXT.event.traditional },
+  { value: "civil", label: HEBREW_TEXT.event.civil },
+  { value: "harediWithSeparation", label: HEBREW_TEXT.event.harediWithSeparation },
 ];
 
 const paymentOptions: { value: PaymentOption; label: string }[] = [
@@ -80,8 +85,9 @@ const formSchema = z.object({
     }, { message: HEBREW_TEXT.event.dateTimeInFutureError }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
   ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([18, 55]),
-  foodType: z.enum(["kosherMeat", "kosherDairy", "kosherParve", "notKosher"], { errorMap: () => ({ message: "יש לבחור סוג אוכל."}) }),
-  religionStyle: z.enum(["secular", "traditional", "religious", "mixed"], { errorMap: () => ({ message: "יש לבחור סגנון דתי."}) }),
+  foodType: z.enum(["meat", "dairy", "meatAndDairy", "vegetarian", "vegan"], { errorMap: () => ({ message: "יש לבחור סוג כיבוד."}) }),
+  kashrut: z.enum(["kosher", "notKosher"], { errorMap: () => ({ message: "יש לבחור רמת כשרות."}) }),
+  weddingType: z.enum(["traditional", "civil", "harediWithSeparation"], { errorMap: () => ({ message: "יש לבחור סוג חתונה."}) }),
   imageUrl: z.string().optional(),
 }).refine(data => {
     if (data.paymentOption === 'fixed') {
@@ -135,8 +141,9 @@ export function EventForm({
       locationDisplayName: "",
       description: "",
       ageRange: [18, 55],
-      foodType: "kosherMeat" as FoodType,
-      religionStyle: "mixed" as ReligionStyle,
+      foodType: "meat", // Default as per user request
+      kashrut: "kosher", // Default as per user request
+      weddingType: "traditional", // Default as per user request
       imageUrl: "",
       dateTime: undefined,
     },
@@ -152,7 +159,7 @@ export function EventForm({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
-  const [isEditingName, setIsEditingName] = useState(!isEditMode); 
+  const [isEditingName, setIsEditingName] = useState(!isEditMode);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -188,6 +195,39 @@ export function EventForm({
 
   useEffect(() => {
     if (isEditMode && initialEventData) {
+      // Data migration for old foodType values
+      let migratedFoodType: FoodType = initialEventData.foodType;
+      let migratedKashrut: KashrutType = initialEventData.kashrut; // Assume new field might exist
+
+      const oldFoodType = (initialEventData as any).foodType_old || initialEventData.foodType; // Check for a temporary old field or use current
+
+      if (!initialEventData.kashrut) { // If kashrut isn't set, infer from old foodType
+          switch(oldFoodType) {
+              case 'kosherMeat':
+                  migratedFoodType = 'meat';
+                  migratedKashrut = 'kosher';
+                  break;
+              case 'kosherDairy':
+                  migratedFoodType = 'dairy';
+                  migratedKashrut = 'kosher';
+                  break;
+              case 'kosherParve':
+                  migratedFoodType = 'vegetarian'; // Or 'vegan'
+                  migratedKashrut = 'kosher';
+                  break;
+              case 'notKosher':
+                  migratedFoodType = 'meatAndDairy'; // Default if not kosher
+                  migratedKashrut = 'notKosher';
+                  break;
+              default:
+                  // If it's already one of the new FoodType values, keep it
+                  // and assume kashrut was set or default to 'kosher'
+                  migratedFoodType = initialEventData.foodType as FoodType;
+                  migratedKashrut = initialEventData.kashrut || 'kosher';
+          }
+      }
+
+
       form.reset({
         name: initialEventData.name,
         ownerUids: initialEventData.ownerUids || (currentUser ? [currentUser.uid] : []),
@@ -199,8 +239,9 @@ export function EventForm({
         dateTime: new Date(initialEventData.dateTime),
         description: initialEventData.description,
         ageRange: initialEventData.ageRange,
-        foodType: initialEventData.foodType,
-        religionStyle: initialEventData.religionStyle,
+        foodType: migratedFoodType,
+        kashrut: migratedKashrut,
+        weddingType: initialEventData.weddingType || (initialEventData as any).religionStyle || 'traditional', // Map old religionStyle
         imageUrl: initialEventData.imageUrl || "",
       });
       if (initialEventData.imageUrl && !initialEventData.imageUrl.startsWith("https://placehold.co")) {
@@ -433,8 +474,14 @@ export function EventForm({
         longitude: longitude,
         dateTime: Timestamp.fromDate(values.dateTime),
         imageUrl: finalImageUrl,
+        foodType: values.foodType,
+        kashrut: values.kashrut,
+        weddingType: values.weddingType,
         updatedAt: serverTimestamp(),
     };
+    // Remove religionStyle if it exists from old schema, weddingType is used now
+    delete (eventDataPayload as any).religionStyle;
+
 
     try {
       await currentUser.getIdToken(true);
@@ -470,11 +517,9 @@ export function EventForm({
     if (Object.keys(errors).length > 0) {
       let detailedErrors = "No detailed messages found.";
       try {
-        // Basic circular reference handler for JSON.stringify
-        // react-hook-form's 'ref' property can point to DOM elements causing circular issues.
         detailedErrors = JSON.stringify(errors, (key, value) => {
           if (key === 'ref' && value instanceof HTMLElement) return '[DOM Element]';
-          if (value instanceof Function) return '[Function]'; // Functions are not serializable
+          if (value instanceof Function) return '[Function]'; 
           return value;
         }, 2);
       } catch (e) {
@@ -918,7 +963,7 @@ export function EventForm({
               )}
             />
 
-            <div className="grid md:grid-cols-3 gap-8 items-start">
+            <div className="grid md:grid-cols-2 gap-8 items-start">
                 <FormField
                   control={form.control}
                   name="ageRange"
@@ -936,34 +981,51 @@ export function EventForm({
                   )}
                 />
                 <FormField
-                control={form.control}
-                name="foodType"
-                render={({ field }) => (
-                    <FormItem data-fieldname="foodType">
-                    <FormLabel>{HEBREW_TEXT.event.foodType}</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="בחר סוג אוכל" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                        {foodTypes.map(type => (<SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>))}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
+                    control={form.control}
+                    name="foodType"
+                    render={({ field }) => (
+                        <FormItem data-fieldname="foodType">
+                        <FormLabel>{HEBREW_TEXT.event.foodType}</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="בחר סוג כיבוד" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                            {foodTypeOptions.map(type => (<SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                )} />
+            </div>
+            <div className="grid md:grid-cols-2 gap-8 items-start">
+                 <FormField
+                    control={form.control}
+                    name="kashrut"
+                    render={({ field }) => (
+                        <FormItem data-fieldname="kashrut">
+                        <FormLabel>{HEBREW_TEXT.event.kashrut}</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="בחר רמת כשרות" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                            {kashrutOptions.map(option => (<SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
                 )} />
                 <FormField
-                control={form.control}
-                name="religionStyle"
-                render={({ field }) => (
-                    <FormItem data-fieldname="religionStyle">
-                    <FormLabel>{HEBREW_TEXT.event.religionStyle}</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="בחר סגנון" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                        {religionStyles.map(style => (<SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>))}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
+                    control={form.control}
+                    name="weddingType"
+                    render={({ field }) => (
+                        <FormItem data-fieldname="weddingType">
+                        <FormLabel>{HEBREW_TEXT.event.weddingType}</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="בחר סוג חתונה" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                            {weddingTypeOptions.map(style => (<SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
                 )} />
             </div>
             <div className="flex flex-col sm:flex-row gap-3">

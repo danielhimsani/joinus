@@ -13,8 +13,9 @@ export interface UserProfile {
 }
 
 export type PaymentOption = 'fixed' | 'payWhatYouWant' | 'free';
-export type FoodType = 'kosherMeat' | 'kosherDairy' | 'kosherParve' | 'notKosher';
-export type ReligionStyle = 'secular' | 'traditional' | 'religious' | 'mixed'; // Example styles
+export type FoodType = 'meat' | 'dairy' | 'meatAndDairy' | 'vegetarian' | 'vegan';
+export type KashrutType = 'kosher' | 'notKosher';
+export type WeddingType = 'traditional' | 'civil' | 'harediWithSeparation';
 
 export interface EventOwnerInfo {
   uid: string;
@@ -38,7 +39,8 @@ export interface Event {
   description: string;
   ageRange: [number, number];
   foodType: FoodType;
-  religionStyle: ReligionStyle;
+  kashrut: KashrutType;
+  weddingType: WeddingType;
   imageUrl?: string;
   createdAt: Date;
   updatedAt: Date;

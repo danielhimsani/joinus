@@ -27,7 +27,7 @@ export const HEBREW_TEXT = {
     profile: "פרופיל",
     leaderboard: "טבלת מובילים",
     mobileMenuTitle: "תפריט",
-    messages: "בקשות", 
+    messages: "בקשות",
   },
   event: {
     createEventTitle: "יצירת אירוע חדש",
@@ -47,12 +47,20 @@ export const HEBREW_TEXT = {
     selectDate: "בחר תאריך",
     description: "תיאור",
     ageRange: "טווח גילאים",
-    foodType: "סוג אוכל",
-    kosherMeat: "כשר בשרי",
-    kosherDairy: "כשר חלבי",
-    kosherParve: "כשר פרווה",
-    notKosher: "לא כשר",
-    religionStyle: "סגנון דתי",
+    foodType: "סוג כיבוד", // Changed from "סוג אוכל"
+    meat: "בשרי",
+    dairy: "חלבי",
+    meatAndDairy: "בשרי + חלבי",
+    vegetarian: "צמחוני",
+    vegan: "טבעוני",
+    kashrut: "כשרות",
+    kosher: "כשר",
+    notKosher: "ללא כשרות", // Changed from "לא כשר" to be more explicit
+    weddingType: "סוג חתונה", // Changed from "סגנון דתי"
+    traditional: "מסורתית",
+    civil: "אזרחית",
+    harediWithSeparation: "חרדית עם הפרדה",
+    religionStyle: "סגנון דתי", // Kept for backward compatibility if referenced somewhere, but new usage should be weddingType
     uploadImage: "העלאת תמונה",
     createEventButton: "צור אירוע",
     discoverEvents: "גלה אירועים",
@@ -294,7 +302,7 @@ export const HEBREW_TEXT = {
     yesterday: "אתמול",
   },
   foodIcons: {
-    kosherMeat: "בשרי",
+    kosherMeat: "בשרי", // This structure might be for old icon mapping, review if needed
     kosherDairy: "חלבי",
     kosherParve: "פרווה",
     notKosher: "לא כשר",

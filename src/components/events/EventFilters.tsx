@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import { ListFilter, Search, Users } from "lucide-react"; // Added Users icon
+import { ListFilter, Search, Users, ShieldCheck, Heart } from "lucide-react"; // Added Users icon
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
@@ -15,14 +15,17 @@ import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { DialogFooter, DialogClose } from "@/components/ui/dialog";
+import type { FoodType, KashrutType, WeddingType } from "@/types";
 
 export interface Filters {
   location?: string;
   date?: Date;
   priceRange?: string;
-  foodType?: string;
+  foodType?: FoodType | "any";
+  kashrut?: KashrutType | "any";
+  weddingType?: WeddingType | "any";
   searchTerm?: string;
-  minAvailableSpots?: number; // New filter
+  minAvailableSpots?: number;
 }
 
 interface EventFiltersProps {
@@ -38,12 +41,26 @@ const priceRanges = [
     { value: "200+", label: "₪200+" },
 ];
 
-const foodTypes = [
-    { value: "any", label: "כל סוגי האוכל" },
-    { value: "kosherMeat", label: HEBREW_TEXT.event.kosherMeat },
-    { value: "kosherDairy", label: HEBREW_TEXT.event.kosherDairy },
-    { value: "kosherParve", label: HEBREW_TEXT.event.kosherParve },
+const foodTypeOptions: { value: FoodType | "any"; label: string }[] = [
+    { value: "any", label: "כל סוגי הכיבוד" },
+    { value: "meat", label: HEBREW_TEXT.event.meat },
+    { value: "dairy", label: HEBREW_TEXT.event.dairy },
+    { value: "meatAndDairy", label: HEBREW_TEXT.event.meatAndDairy },
+    { value: "vegetarian", label: HEBREW_TEXT.event.vegetarian },
+    { value: "vegan", label: HEBREW_TEXT.event.vegan },
+];
+
+const kashrutOptions: { value: KashrutType | "any"; label: string }[] = [
+    { value: "any", label: "כל רמות הכשרות" },
+    { value: "kosher", label: HEBREW_TEXT.event.kosher },
     { value: "notKosher", label: HEBREW_TEXT.event.notKosher },
+];
+
+const weddingTypeOptions: { value: WeddingType | "any"; label: string }[] = [
+    { value: "any", label: "כל סוגי החתונות" },
+    { value: "traditional", label: HEBREW_TEXT.event.traditional },
+    { value: "civil", label: HEBREW_TEXT.event.civil },
+    { value: "harediWithSeparation", label: HEBREW_TEXT.event.harediWithSeparation },
 ];
 
 
@@ -54,17 +71,20 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
     date: initialFilters.date || undefined,
     priceRange: initialFilters.priceRange || "any",
     foodType: initialFilters.foodType || "any",
+    kashrut: initialFilters.kashrut || "any",
+    weddingType: initialFilters.weddingType || "any",
     minAvailableSpots: initialFilters.minAvailableSpots === undefined ? 1 : initialFilters.minAvailableSpots,
   }));
 
   useEffect(() => {
-    // Sync with initialFilters if they change, e.g. when filters are cleared from parent
     setFilters(prev => ({
       searchTerm: initialFilters.searchTerm || undefined,
       location: initialFilters.location || undefined,
       date: initialFilters.date || undefined,
       priceRange: initialFilters.priceRange || "any",
       foodType: initialFilters.foodType || "any",
+      kashrut: initialFilters.kashrut || "any",
+      weddingType: initialFilters.weddingType || "any",
       minAvailableSpots: initialFilters.minAvailableSpots === undefined ? 1 : initialFilters.minAvailableSpots,
     }));
   }, [initialFilters]);
@@ -76,6 +96,8 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
         setFilters(prev => ({ ...prev, [name]: isNaN(numValue) || numValue < 1 ? 1 : numValue }));
     } else if (name === "minAvailableSpots" && typeof value === 'number') {
         setFilters(prev => ({ ...prev, [name]: value < 1 ? 1 : value }));
+    } else if ( (name === "foodType" || name === "kashrut" || name === "weddingType") && value === "any") {
+        setFilters(prev => ({ ...prev, [name]: "any" }));
     }
     else {
         setFilters(prev => ({ ...prev, [name]: value }));
@@ -84,7 +106,6 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Ensure minAvailableSpots is a number or undefined
     const filtersToSubmit = {
         ...filters,
         minAvailableSpots: typeof filters.minAvailableSpots === 'number' ? filters.minAvailableSpots : 1,
@@ -99,7 +120,9 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
         date: undefined,
         priceRange: "any",
         foodType: "any",
-        minAvailableSpots: 1, // Reset to default
+        kashrut: "any",
+        weddingType: "any",
+        minAvailableSpots: 1, 
     };
     setFilters(clearedFilters);
     onFilterChange(clearedFilters); 
@@ -157,7 +180,7 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
             </div>
              <div>
                 <Label htmlFor="priceRange">{HEBREW_TEXT.event.filterByPrice}</Label>
-                <Select value={filters.priceRange || "any"} onValueChange={(value) => handleInputChange("priceRange", value === "any" ? undefined : value)}>
+                <Select value={filters.priceRange || "any"} onValueChange={(value) => handleInputChange("priceRange", value === "any" ? "any" : value)}>
                     <SelectTrigger id="priceRange" className="w-full mt-1">
                         <SelectValue placeholder="בחר טווח מחירים" />
                     </SelectTrigger>
@@ -170,12 +193,38 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
             </div>
              <div>
                 <Label htmlFor="foodType">{HEBREW_TEXT.event.foodType}</Label>
-                <Select value={filters.foodType || "any"} onValueChange={(value) => handleInputChange("foodType", value === "any" ? undefined : value)}>
+                <Select value={filters.foodType || "any"} onValueChange={(value) => handleInputChange("foodType", value === "any" ? "any" : value as FoodType)}>
                     <SelectTrigger id="foodType" className="w-full mt-1">
-                        <SelectValue placeholder="בחר סוג אוכל" />
+                        <SelectValue placeholder="בחר סוג כיבוד" />
                     </SelectTrigger>
                     <SelectContent>
-                        {foodTypes.map(type => (
+                        {foodTypeOptions.map(type => (
+                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+             <div>
+                <Label htmlFor="kashrut">{HEBREW_TEXT.event.kashrut}</Label>
+                <Select value={filters.kashrut || "any"} onValueChange={(value) => handleInputChange("kashrut", value === "any" ? "any" : value as KashrutType)}>
+                    <SelectTrigger id="kashrut" className="w-full mt-1">
+                        <SelectValue placeholder="בחר רמת כשרות" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {kashrutOptions.map(type => (
+                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div>
+                <Label htmlFor="weddingType">{HEBREW_TEXT.event.weddingType}</Label>
+                <Select value={filters.weddingType || "any"} onValueChange={(value) => handleInputChange("weddingType", value === "any" ? "any" : value as WeddingType)}>
+                    <SelectTrigger id="weddingType" className="w-full mt-1">
+                        <SelectValue placeholder="בחר סוג חתונה" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {weddingTypeOptions.map(type => (
                             <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                         ))}
                     </SelectContent>
@@ -194,7 +243,7 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
                         placeholder="1"
                         value={filters.minAvailableSpots === undefined ? '' : filters.minAvailableSpots}
                         onChange={(e) => handleInputChange("minAvailableSpots", e.target.value)}
-                        className="w-full pl-10 pr-3" // Added padding for icon
+                        className="w-full pl-10 pr-3" 
                     />
                 </div>
             </div>
@@ -213,5 +262,4 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
     </form>
   );
 }
-
     

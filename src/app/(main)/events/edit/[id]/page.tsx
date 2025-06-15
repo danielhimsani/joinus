@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db, auth as firebaseAuthInstance } from '@/lib/firebase';
-import type { Event } from '@/types';
+import type { Event, FoodType, KashrutType, WeddingType } from '@/types';
 import { EventForm } from '@/components/events/EventForm';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -50,9 +50,6 @@ export default function EditEventPage() {
     }
 
     if (!currentUser) {
-        // Auth check is done (isLoading is false), but still no user.
-        // The other useEffect should have handled redirection.
-        // This state implies user is not logged in.
         setFetchError("עליך להיות מחובר כדי לערוך אירוע.");
         setEventToEdit(null);
         return;
@@ -70,8 +67,30 @@ export default function EditEventPage() {
           if (!data.ownerUids || !data.ownerUids.includes(currentUser.uid)) {
             setFetchError("אינך מורשה לערוך אירוע זה.");
             setEventToEdit(null);
-            // Optionally, router.push('/events');
           } else {
+            // Basic data migration for old foodType and religionStyle if they exist
+            let foodType: FoodType = data.foodType as FoodType || 'meat';
+            let kashrut: KashrutType = data.kashrut as KashrutType || 'kosher';
+            const weddingType: WeddingType = data.weddingType as WeddingType || (data as any).religionStyle as WeddingType || 'traditional';
+
+            // If kashrut field is missing, try to infer from old foodType schema
+            if (!data.kashrut && data.foodType) {
+                switch(data.foodType) {
+                    case 'kosherMeat':
+                        foodType = 'meat'; kashrut = 'kosher'; break;
+                    case 'kosherDairy':
+                        foodType = 'dairy'; kashrut = 'kosher'; break;
+                    case 'kosherParve':
+                        foodType = 'vegetarian'; kashrut = 'kosher'; break; // Or vegan
+                    case 'notKosher':
+                        foodType = 'meatAndDairy'; kashrut = 'notKosher'; break; // A sensible default
+                    default: // It's already one of the new food types, or unmapped old one
+                        foodType = data.foodType as FoodType;
+                        kashrut = 'kosher'; // Default if unmappable
+                }
+            }
+
+
             setEventToEdit({
               id: docSnap.id,
               ...data,
@@ -89,8 +108,9 @@ export default function EditEventPage() {
               longitude: data.longitude || null,
               description: data.description || "",
               ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
-              foodType: data.foodType || "notKosher",
-              religionStyle: data.religionStyle || "mixed",
+              foodType: foodType,
+              kashrut: kashrut,
+              weddingType: weddingType,
               imageUrl: data.imageUrl,
             } as Event);
           }
@@ -110,9 +130,9 @@ export default function EditEventPage() {
     if (eventId && currentUser) {
         fetchEventData();
     }
-  }, [eventId, currentUser, isLoading, router]); // Add isLoading here to re-evaluate when auth check finishes
+  }, [eventId, currentUser, isLoading, router]);
 
-  if (isLoading || isFetchingEvent) { // Show skeletons if either initial auth is loading OR event data is being fetched
+  if (isLoading || isFetchingEvent) { 
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto space-y-6">
@@ -143,8 +163,6 @@ export default function EditEventPage() {
   }
 
   if (!eventToEdit) {
-    // This case means loading is done, no fetch error reported, but eventToEdit is still null.
-    // This could be because the event wasn't found, or ownership check failed without explicitly setting a detailed fetchError.
     return (
       <div className="container mx-auto px-4 py-12 text-center">
         <Alert variant="default" className="max-w-lg mx-auto">
