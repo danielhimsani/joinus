@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation'; // Import usePathname
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import { Settings as SettingsIcon, Moon, Sun } from 'lucide-react';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 
 export function GlobalSettingsDialog() {
+  const pathname = usePathname(); // Get current path
   const [isOpen, setIsOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -58,6 +60,11 @@ export function GlobalSettingsDialog() {
       document.documentElement.classList.remove("dark");
     }
   };
+
+  // Conditionally render nothing if on the onboarding page (root path)
+  if (pathname === '/') {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
