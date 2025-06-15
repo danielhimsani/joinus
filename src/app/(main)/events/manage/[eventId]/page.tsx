@@ -422,7 +422,7 @@ export default function ManageEventGuestsPage() {
                     <div className="space-y-4">
                       {announcements.map(ann => (
                         <Card key={ann.id} className="p-3 shadow-sm">
-                          <p className="text-sm text-foreground whitespace-pre-line">{ann.messageText}</p>
+                          <p className="text-sm text-foreground whitespace-pre-line" dir="rtl">{ann.messageText}</p>
                           <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
                             <div className='flex items-center text-xs text-muted-foreground'>
                                 <Avatar className="h-6 w-6 ml-1.5 border">
