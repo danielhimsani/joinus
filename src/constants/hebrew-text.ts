@@ -134,6 +134,13 @@ export const HEBREW_TEXT = {
     fullName: "שם מלא",
     phone: "טלפון",
     age: "גיל",
+    revokeApproval: "בטל אישור הגעה",
+    confirmRevokeApprovalTitle: "אישור ביטול הגעה",
+    confirmRevokeApprovalMessage: "האם אתה בטוח שברצונך לבטל את אישור ההגעה של {guestName}?",
+    revokeConsequenceMessage: "פעולה זו תסגור את הצ'אט ותסמן את בקשתם כנדחית.",
+    confirmRevoke: "אשר ביטול",
+    guestApprovalRevoked: "אישור ההגעה של {guestName} בוטל.",
+    errorRevokingApproval: "שגיאה בביטול אישור ההגעה.",
   },
   profile: {
     userProfile: "פרופיל משתמש",

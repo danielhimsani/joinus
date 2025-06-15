@@ -15,7 +15,7 @@ import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertTitle, AlertDescription as ShadAlertDescription } from '@/components/ui/alert'; // Renamed to avoid conflict
 import {
   Tooltip,
   TooltipContent,
@@ -24,16 +24,33 @@ import {
 } from "@/components/ui/tooltip";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, serverTimestamp, Timestamp, updateDoc } from "firebase/firestore";
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
-import { Edit3, Users, FileText, Send, Loader2, AlertCircle, ChevronLeft, ChevronRight, Contact as UserPlaceholderIcon, MessageSquare, CalendarDays } from 'lucide-react';
+import { Edit3, Users, FileText, Send, Loader2, AlertCircle, ChevronLeft, ChevronRight, Contact as UserPlaceholderIcon, MessageSquare, CalendarDays, MoreVertical, UserX } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle as ShadAlertDialogTitle, // Using alias for Shadcn's title
+} from "@/components/ui/alert-dialog";
+
 
 const GUESTS_PER_PAGE = 10;
 
 interface ApprovedGuestWithProfile extends UserProfile {
-  chatId: string; // Keep track of original chat ID if needed
+  chatId: string;
 }
 
 interface DisplayAnnouncement extends EventAnnouncement {
@@ -63,6 +80,11 @@ export default function ManageEventGuestsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const totalGuestPages = Math.ceil(approvedGuests.length / GUESTS_PER_PAGE);
   const paginatedGuests = approvedGuests.slice((currentPage - 1) * GUESTS_PER_PAGE, currentPage * GUESTS_PER_PAGE);
+
+  const [showRevokeDialog, setShowRevokeDialog] = useState(false);
+  const [guestToRevoke, setGuestToRevoke] = useState<ApprovedGuestWithProfile | null>(null);
+  const [isRevoking, setIsRevoking] = useState(false);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
@@ -153,13 +175,13 @@ export default function ManageEventGuestsPage() {
 
     } catch (error: any) {
       console.error("Error fetching management page data:", error);
-      if (!fetchError) { // Only set if not already set by specific condition
+      if (!fetchError) { 
          setFetchError(HEBREW_TEXT.general.error + ": " + error.message);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser, eventId, router, fetchError]); // Added fetchError to dependencies
+  }, [currentUser, eventId, router, fetchError]);
 
   useEffect(() => {
     if (currentUser && eventId) {
@@ -224,12 +246,33 @@ export default function ManageEventGuestsPage() {
       });
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.event.announcementSentSuccessfully });
       setNewAnnouncement("");
-      fetchPageData(); // Refresh announcements
+      fetchPageData(); 
     } catch (error: any) {
       console.error("Error sending announcement:", error);
       toast({ title: HEBREW_TEXT.general.error, description: HEBREW_TEXT.event.errorSendingAnnouncement + `: ${error.message}`, variant: "destructive" });
     } finally {
       setIsSendingAnnouncement(false);
+    }
+  };
+
+  const handleRevokeApproval = async () => {
+    if (!guestToRevoke || !event) return;
+    setIsRevoking(true);
+    try {
+      const chatDocRef = doc(db, "eventChats", guestToRevoke.chatId);
+      await updateDoc(chatDocRef, {
+        status: 'request_rejected',
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.event.guestApprovalRevoked.replace('{guestName}', guestToRevoke.name || HEBREW_TEXT.chat.guest) });
+      fetchPageData(); // Refresh the guest list
+    } catch (error: any) {
+      console.error("Error revoking guest approval:", error);
+      toast({ title: HEBREW_TEXT.general.error, description: HEBREW_TEXT.event.errorRevokingApproval + (error.message ? `: ${error.message}` : ''), variant: "destructive" });
+    } finally {
+      setIsRevoking(false);
+      setShowRevokeDialog(false);
+      setGuestToRevoke(null);
     }
   };
 
@@ -269,8 +312,8 @@ export default function ManageEventGuestsPage() {
       <div className="container mx-auto px-4 py-12 text-center">
         <Alert variant="destructive" className="max-w-lg mx-auto">
             <AlertCircle className="h-5 w-5" />
-            <AlertTitle className="font-headline">{HEBREW_TEXT.general.error}</AlertTitle>
-            <AlertDescription>{fetchError}</AlertDescription>
+            <AlertTitle>{HEBREW_TEXT.general.error}</AlertTitle>
+            <ShadAlertDescription>{fetchError}</ShadAlertDescription>
         </Alert>
          <Button onClick={() => router.push('/events')} className="mt-6">
             <ChevronLeft className="ml-1 h-4 w-4"/>
@@ -285,7 +328,7 @@ export default function ManageEventGuestsPage() {
       <div className="container mx-auto px-4 py-12 text-center">
         <Alert variant="default" className="max-w-lg mx-auto">
             <Users className="h-5 w-5" />
-            <AlertTitle className="font-headline">{HEBREW_TEXT.event.noEventsFound}</AlertTitle>
+            <AlertTitle>{HEBREW_TEXT.event.noEventsFound}</AlertTitle>
         </Alert>
       </div>
     );
@@ -350,12 +393,30 @@ export default function ManageEventGuestsPage() {
                             {guest.email && <p className="text-xs text-muted-foreground truncate">{guest.email}</p>}
                           </Link>
                         </div>
-                        <Button asChild variant="ghost" size="sm" className="text-xs">
-                            <Link href={`/chat/${guest.chatId}`}>
-                                <MessageSquare className="ml-1.5 h-3 w-3"/>
-                                {HEBREW_TEXT.chat.title}
-                            </Link>
-                        </Button>
+                        <div className="flex items-center space-x-1 rtl:space-x-reverse">
+                            <Button asChild variant="ghost" size="sm" className="text-xs">
+                                <Link href={`/chat/${guest.chatId}`}>
+                                    <MessageSquare className="ml-1.5 h-3 w-3"/>
+                                    {HEBREW_TEXT.chat.title}
+                                </Link>
+                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem 
+                                        onSelect={() => { setGuestToRevoke(guest); setShowRevokeDialog(true); }}
+                                        className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                                    >
+                                        <UserX className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                                        {HEBREW_TEXT.event.revokeApproval}
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                       </div>
                     </Card>
                   ))}
@@ -452,6 +513,31 @@ export default function ManageEventGuestsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Revoke Approval Confirmation Dialog */}
+      <AlertDialog open={showRevokeDialog} onOpenChange={setShowRevokeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <ShadAlertDialogTitle>{HEBREW_TEXT.event.confirmRevokeApprovalTitle}</ShadAlertDialogTitle>
+            <AlertDialogDescription>
+              {HEBREW_TEXT.event.confirmRevokeApprovalMessage.replace('{guestName}', guestToRevoke?.name || HEBREW_TEXT.chat.guest)}
+              <br />
+              {HEBREW_TEXT.event.revokeConsequenceMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse">
+            <AlertDialogCancel disabled={isRevoking} onClick={() => setGuestToRevoke(null)}>{HEBREW_TEXT.general.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRevokeApproval}
+              disabled={isRevoking}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isRevoking && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              {HEBREW_TEXT.event.confirmRevoke}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   );
 }
