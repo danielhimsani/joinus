@@ -75,7 +75,7 @@ const formSchema = z.object({
   locationDisplayName: z.string().optional(),
   dateTime: z.date({ required_error: HEBREW_TEXT.event.dateTimeRequiredError })
     .refine(date => {
-      if (!date) return true; 
+      if (!date) return true;
       return date > new Date();
     }, { message: HEBREW_TEXT.event.dateTimeInFutureError }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
@@ -152,7 +152,7 @@ export function EventForm({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
-  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(!isEditMode); // True for create, false for edit initially
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -169,7 +169,7 @@ export function EventForm({
 
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script', 
+    id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries,
     language: 'iw',
@@ -209,13 +209,13 @@ export function EventForm({
       setLatitude(initialEventData.latitude || null);
       setLongitude(initialEventData.longitude || null);
       setTrueFormattedAddress(initialEventData.location || null);
-      setIsEditingName(false); 
+      setIsEditingName(false);
     } else if (!isEditMode) {
         if (currentUser && form.getValues("ownerUids").length === 0) {
             form.setValue("ownerUids", [currentUser.uid]);
         }
-        setIsEditingName(false); 
-        setImagePreviewUrl(null); // Reset preview for new forms
+        setIsEditingName(true); // For create mode, name field should be editable by default
+        setImagePreviewUrl(null);
     }
   }, [isEditMode, initialEventData, form, currentUser]);
 
@@ -294,12 +294,11 @@ export function EventForm({
 
 
   useEffect(() => {
-    if (!isEditMode) setIsEditingName(false); 
     if (isEditingName && nameInputRef.current) {
       nameInputRef.current.focus();
-      nameInputRef.current.select();
+      // nameInputRef.current.select(); // Optionally select text, can be too aggressive
     }
-  }, [isEditingName, isEditMode]);
+  }, [isEditingName]);
 
   const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -317,7 +316,7 @@ export function EventForm({
         setImageFile(compressedFile);
         const previewUrl = URL.createObjectURL(compressedFile);
         setImagePreviewUrl(previewUrl);
-        form.setValue("imageUrl", "file-selected-for-upload", { shouldValidate: true }); 
+        form.setValue("imageUrl", "file-selected-for-upload", { shouldValidate: true });
       } catch (error) {
         console.error("Error compressing image:", error);
         toast({ title: "שגיאה בדחיסת תמונה", description: (error instanceof Error) ? error.message : String(error), variant: "destructive" });
@@ -413,7 +412,7 @@ export function EventForm({
         setIsUploadingImage(false);
         setIsSubmitting(false);
         setImageUploadProgress(null);
-        return; 
+        return;
       }
       setIsUploadingImage(false);
       setImageUploadProgress(100);
@@ -443,7 +442,7 @@ export function EventForm({
 
       if (isEditMode && initialEventData?.id) {
         const eventDocRef = doc(db, "events", initialEventData.id);
-        const { createdAt, ...updatePayload } = eventDataPayload; 
+        const { createdAt, ...updatePayload } = eventDataPayload;
         await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
         toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" עודכן בהצלחה!` });
         router.push(`/events/${initialEventData.id}`);
@@ -521,7 +520,7 @@ export function EventForm({
   if (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return <Card className="w-full max-w-3xl mx-auto p-6 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary mb-2" /><p>{HEBREW_TEXT.general.loading} רכיב המיקום...</p></Card>;
   
   const currentImageToDisplay = imagePreviewUrl || (isEditMode && initialEventData?.imageUrl && !initialEventData.imageUrl.startsWith("https://placehold.co") ? initialEventData.imageUrl : `https://placehold.co/800x400.png${eventNameValue ? `?text=${encodeURIComponent(eventNameValue)}` : ''}`);
-  const headerTitleText = eventNameValue || (isEditingName ? "" : HEBREW_TEXT.event.eventNameDisplayPlaceholder);
+  const headerTitleText = eventNameValue || (isEditingName || !isEditMode ? "" : HEBREW_TEXT.event.eventNameDisplayPlaceholder);
 
 
   return (
@@ -537,7 +536,7 @@ export function EventForm({
               objectFit="cover"
               className="transition-opacity duration-300 ease-in-out"
               data-ai-hint="event cover wedding"
-              key={currentImageToDisplay} 
+              key={currentImageToDisplay}
               priority={!isEditMode && !imagePreviewUrl}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
@@ -561,7 +560,7 @@ export function EventForm({
             />
 
             <div className="absolute bottom-4 left-4 right-4 z-10 p-4 text-white">
-              {isEditingName ? (
+              {isEditingName || !isEditMode ? (
                  <FormField
                     control={form.control}
                     name="name"
@@ -570,10 +569,23 @@ export function EventForm({
                         <Input
                           ref={(e) => { field.ref(e); nameInputRef.current = e; }}
                           {...field}
-                          onBlur={(e) => { field.onBlur(); setIsEditingName(false); }}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            if (isEditMode) {
+                                setIsEditingName(false);
+                            }
+                          }}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') { e.preventDefault(); setIsEditingName(false); }
-                            else if (e.key === 'Escape') { setIsEditingName(false); }
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (isEditMode) {
+                                    setIsEditingName(false);
+                                }
+                            } else if (e.key === 'Escape') {
+                                if (isEditMode) {
+                                    setIsEditingName(false);
+                                }
+                            }
                           }}
                           className="text-3xl md:text-4xl font-bold bg-transparent border-0 border-b-2 border-white/50 focus:border-white focus:ring-0 p-0 h-auto text-white placeholder-white/70 flex-grow"
                           placeholder={HEBREW_TEXT.event.eventNameDisplayPlaceholder}
@@ -581,12 +593,12 @@ export function EventForm({
                       </div>
                     )}
                   />
-              ) : (
+              ) : ( // Only in Edit mode and when not editing name
                 <div className="flex items-center group/titleedit">
                     <h1
                         className={cn(
                             "text-3xl md:text-4xl font-bold cursor-pointer hover:opacity-80 transition-opacity flex-grow",
-                            !eventNameValue && "text-white/70" 
+                            !eventNameValue && "text-white/70"
                         )}
                         onClick={() => setIsEditingName(true)}
                         title="לחץ לעריכת שם האירוע"
@@ -651,7 +663,7 @@ export function EventForm({
                                 if (currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime())) {
                                     return format(currentFieldValue, 'HH:mm');
                                 }
-                                return "19:30"; 
+                                return "19:30";
                             };
 
                             return (
@@ -1007,4 +1019,3 @@ export function EventForm({
     </>
   );
 }
-
