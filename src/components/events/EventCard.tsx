@@ -51,7 +51,7 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
         />
       </div>
       <CardHeader className="flex-grow">
-        <CardTitle className="font-headline text-xl mb-1">{event.name || ""}</CardTitle>
+        <CardTitle className="font-headline text-xl mb-1">{event.name}</CardTitle>
         <CardDescription className="flex items-center text-sm text-muted-foreground mb-1">
           <CalendarDays className="ml-1.5 h-4 w-4" />
           {format(new Date(event.dateTime), 'eeee, d MMMM yyyy', { locale: he })}

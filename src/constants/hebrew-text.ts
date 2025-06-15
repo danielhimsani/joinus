@@ -35,6 +35,7 @@ export const HEBREW_TEXT = {
     eventName: "שם האירוע",
     eventNameDisplayPlaceholder: "שם האירוע שלכם",
     eventNameGenericPlaceholder: "אירוע",
+    eventNameMinLengthError: "שם האירוע חייב להכיל לפחות 2 תווים.",
     numberOfGuests: "סה\"כ מקומות", 
     availableSpots: "מקומות פנויים",
     pricePerGuest: "מחיר לאורח",

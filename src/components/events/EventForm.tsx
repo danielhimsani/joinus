@@ -66,7 +66,7 @@ const paymentOptions: { value: PaymentOption; label: string }[] = [
 ];
 
 const formSchema = z.object({
-  name: z.string().optional(), // Name is now optional
+  name: z.string().min(2, { message: HEBREW_TEXT.event.eventNameMinLengthError }),
   ownerUids: z.array(z.string()).min(1, { message: "חייב להיות לפחות בעלים אחד לאירוע." }),
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
   paymentOption: z.enum(["fixed", "payWhatYouWant", "free"], { errorMap: () => ({ message: "יש לבחור אפשרות תשלום."}) }),
@@ -189,7 +189,7 @@ export function EventForm({
   useEffect(() => {
     if (isEditMode && initialEventData) {
       form.reset({
-        name: initialEventData.name || "",
+        name: initialEventData.name,
         ownerUids: initialEventData.ownerUids || (currentUser ? [currentUser.uid] : []),
         numberOfGuests: initialEventData.numberOfGuests,
         paymentOption: initialEventData.paymentOption,
@@ -294,7 +294,7 @@ export function EventForm({
 
 
   useEffect(() => {
-    if (!isEditMode) setIsEditingName(false); // Start with title not in edit mode for new events
+    if (!isEditMode) setIsEditingName(false); 
     if (isEditingName && nameInputRef.current) {
       nameInputRef.current.focus();
       nameInputRef.current.select();
@@ -420,15 +420,13 @@ export function EventForm({
     } else if (values.imageUrl && values.imageUrl.startsWith('http')) {
       finalImageUrl = values.imageUrl;
     } else {
-      // If no image file and no existing http URL, use placeholder.
-      // If event name is empty, placehold.co will generate a generic image without text.
       finalImageUrl = `https://placehold.co/800x400.png${values.name ? `?text=${encodeURIComponent(values.name)}` : ''}`;
     }
 
 
     const eventDataPayload = {
         ...values,
-        name: values.name || "", // Ensure name is at least an empty string
+        name: values.name,
         ownerUids: values.ownerUids,
         pricePerGuest: values.paymentOption === 'fixed' ? (values.pricePerGuest ?? 0) : null,
         location: trueFormattedAddress || values.location,
@@ -447,12 +445,12 @@ export function EventForm({
         const eventDocRef = doc(db, "events", initialEventData.id);
         const { createdAt, ...updatePayload } = eventDataPayload; 
         await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
-        toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}" עודכן בהצלחה!` });
+        toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" עודכן בהצלחה!` });
         router.push(`/events/${initialEventData.id}`);
       } else {
         const payloadWithCreate = {...eventDataPayload, createdAt: serverTimestamp()};
         const newEventDoc = await promiseWithTimeout(addDoc(collection(db, "events"), payloadWithCreate), 15000);
-        toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}" נוצר בהצלחה!` });
+        toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" נוצר בהצלחה!` });
         router.push(`/events/${newEventDoc.id}`);
       }
     } catch (error) {
@@ -605,6 +603,9 @@ export function EventForm({
                         <Edit2 className="h-5 w-5"/>
                     </Button>
                 </div>
+              )}
+               {form.formState.errors.name && (
+                  <p className="text-destructive text-xs mt-1 bg-black/50 p-1 rounded">{form.formState.errors.name.message}</p>
               )}
               <Popover open={isDateTimePopoverOpen} onOpenChange={setIsDateTimePopoverOpen}>
                 <PopoverTrigger asChild>
