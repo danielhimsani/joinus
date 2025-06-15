@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import type { EventChat } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { format as formatDateFns, isToday, isYesterday } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -20,7 +20,7 @@ interface ChatListItemProps {
   currentUserId: string;
 }
 
-const getChatStatusDisplay = (status: EventChat['status'], isOwner: boolean, guestName?: string): { text: string; variant: "default" | "destructive" | "outline" | "secondary" | "warning" | "success" } => {
+const getChatStatusDisplay = (status: EventChat['status'], isOwner: boolean, guestName?: string): { text: string; variant: BadgeProps['variant'] } => {
   switch (status) {
     case 'pending_request':
       return { text: isOwner ? HEBREW_TEXT.chat.statusPendingDisplayOwner : HEBREW_TEXT.chat.statusPendingDisplayGuest, variant: 'warning' };
@@ -93,7 +93,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   );
 
   const handleAvatarClick = (e: React.MouseEvent | React.KeyboardEvent) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent the Link's navigation if clicking specifically on avatar link
     if (avatarLink) {
       router.push(avatarLink);
     }
@@ -102,20 +102,21 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   return (
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
-        <CardContent className="p-3 sm:p-4 flex items-start justify-between space-x-3 rtl:space-x-reverse">
-          {/* Left Part (Avatar and Timestamp) - Visually on the right for RTL */}
+        <CardContent className="p-3 sm:p-4 flex items-start justify-start space-x-3 rtl:space-x-reverse">
+          {/* Container for Avatar and Timestamp (Visually on the right for RTL) */}
           <div className="flex flex-col items-center space-y-1 flex-shrink-0">
-            <div 
+            <div
               onClick={avatarLink ? handleAvatarClick : undefined}
-              onKeyDown={(e) => { 
+              onKeyDown={(e) => {
                 if (avatarLink && (e.key === 'Enter' || e.key === ' ')) {
-                  e.preventDefault();
+                  e.preventDefault(); // Prevent default action for space/enter if it's a link
                   handleAvatarClick(e);
                 }
               }}
               className={cn(avatarLink && "cursor-pointer")}
-              role={avatarLink ? "link" : undefined} 
-              tabIndex={avatarLink ? 0 : undefined} 
+              role={avatarLink ? "link" : undefined}
+              tabIndex={avatarLink ? 0 : undefined}
+              aria-label={avatarLink ? `View profile of ${avatarAltText}` : undefined}
             >
               <AvatarContent />
             </div>
@@ -124,7 +125,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             )}
           </div>
 
-          {/* Right Part (Text content) - Visually on the left for RTL */}
+          {/* Container for Text content (Visually to the left of Avatar/Timestamp in RTL) */}
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="flex justify-between items-start">
               <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
@@ -148,9 +149,9 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
             </p>
 
-            <div className="mt-1.5 self-start"> {/* self-start places it on the right in RTL */}
+            <div className="mt-1.5 self-start"> {/* self-start places it on the right in RTL within this flex column */}
               <Badge
-                variant={statusDisplay.variant as any}
+                variant={statusDisplay.variant}
                 className={cn(
                   "text-xs px-2 py-0.5 leading-tight",
                   statusDisplay.variant === 'warning' && "bg-amber-500/20 text-amber-700 border-amber-500/50 dark:text-amber-400",
