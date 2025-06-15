@@ -27,7 +27,7 @@ export const HEBREW_TEXT = {
     profile: "פרופיל",
     leaderboard: "טבלת מובילים",
     mobileMenuTitle: "תפריט",
-    messages: "הודעות",
+    messages: "בקשות", // Changed from "הודעות" to "בקשות"
   },
   event: {
     createEventTitle: "יצירת אירוע חדש",

@@ -11,11 +11,12 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { auth as firebaseAuthInstance } from "@/lib/firebase";
 
+// Updated order: Events, Requests (Messages), Create Event, Profile
 const navItemsConfig = [
-  { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: UserCircle, isProfile: true },
-  { href: '/messages', label: HEBREW_TEXT.navigation.messages, icon: MessageSquare },
-  { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: PlusSquare },
   { href: '/events', label: HEBREW_TEXT.navigation.events, icon: Search },
+  { href: '/messages', label: HEBREW_TEXT.navigation.messages, icon: MessageSquare }, // Label will be "בקשות" from HEBREW_TEXT
+  { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: PlusSquare },
+  { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: UserCircle, isProfile: true },
 ];
 
 export default function BottomNavigationBar() {
