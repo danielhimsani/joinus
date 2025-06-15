@@ -22,9 +22,9 @@ export function AnnouncementBubble({ announcement }: AnnouncementBubbleProps) {
   const ownerName = announcement.ownerName || "בעל אירוע";
 
   return (
-    <div className="my-3 w-full flex justify-center px-2">
+    <div className="my-4 w-full flex justify-center px-2">
       <Card className="w-full max-w-xl shadow-md bg-muted/30 dark:bg-card border-2 border-primary">
-        <CardHeader className="p-3">
+        <CardHeader className="p-3 flex justify-start items-center">
           <div className="flex items-center space-x-2 rtl:space-x-reverse">
             <div className="p-2 bg-primary/10 rounded-full">
                 <Megaphone className="h-5 w-5 text-primary" />
@@ -36,7 +36,7 @@ export function AnnouncementBubble({ announcement }: AnnouncementBubbleProps) {
           <p className="text-sm text-foreground whitespace-pre-line" dir="rtl">{announcement.messageText}</p>
           <div className="flex items-center justify-between mt-2 pt-2 border-t border-primary/40">
             <div className='flex items-center text-xs text-muted-foreground'>
-                <Avatar className="h-6 w-6 ml-1.5 border border-primary/50">
+                <Avatar className="h-6 w-6 ml-2 border border-primary/50">
                     {announcement.ownerProfileImageUrl ? (
                         <AvatarImage src={announcement.ownerProfileImageUrl} alt={ownerName} data-ai-hint="owner avatar"/>
                     ) : (
@@ -54,3 +54,4 @@ export function AnnouncementBubble({ announcement }: AnnouncementBubbleProps) {
     </div>
   );
 }
+
