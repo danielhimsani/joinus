@@ -75,7 +75,7 @@ const formSchema = z.object({
   locationDisplayName: z.string().optional(),
   dateTime: z.date({ required_error: HEBREW_TEXT.event.dateTimeRequiredError })
     .refine(date => {
-      if (!date) return true;
+      if (!date) return true; // Let required_error handle undefined
       return date > new Date();
     }, { message: HEBREW_TEXT.event.dateTimeInFutureError }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
@@ -126,7 +126,7 @@ export function EventForm({
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "", // Default name is an empty string
+      name: "",
       ownerUids: [],
       numberOfGuests: 10,
       paymentOption: "payWhatYouWant" as PaymentOption,
@@ -152,7 +152,7 @@ export function EventForm({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
-  const [isEditingName, setIsEditingName] = useState(false); // Initialize to false
+  const [isEditingName, setIsEditingName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -160,6 +160,7 @@ export function EventForm({
   const [isLoadingOwnerDetails, setIsLoadingOwnerDetails] = useState(false);
   const [showAddOwnerModal, setShowAddOwnerModal] = useState(false);
   const [ownerToRemove, setOwnerToRemove] = useState<UserProfile | null>(null);
+  
   const [isDateTimePopoverOpen, setIsDateTimePopoverOpen] = useState(false);
 
 
@@ -168,7 +169,7 @@ export function EventForm({
 
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script', // Standardized ID
+    id: 'google-map-script', 
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries,
     language: 'iw',
@@ -188,7 +189,7 @@ export function EventForm({
   useEffect(() => {
     if (isEditMode && initialEventData) {
       form.reset({
-        name: initialEventData.name || "", // Ensure name defaults to "" if null/undefined from data
+        name: initialEventData.name || "",
         ownerUids: initialEventData.ownerUids || (currentUser ? [currentUser.uid] : []),
         numberOfGuests: initialEventData.numberOfGuests,
         paymentOption: initialEventData.paymentOption,
@@ -200,20 +201,21 @@ export function EventForm({
         ageRange: initialEventData.ageRange,
         foodType: initialEventData.foodType,
         religionStyle: initialEventData.religionStyle,
-        imageUrl: initialEventData.imageUrl,
+        imageUrl: initialEventData.imageUrl || "",
       });
-      if (initialEventData.imageUrl && initialEventData.imageUrl !== "https://placehold.co/800x400.png?text=Event+Cover") {
+      if (initialEventData.imageUrl && !initialEventData.imageUrl.startsWith("https://placehold.co")) {
         setImagePreviewUrl(initialEventData.imageUrl);
       }
       setLatitude(initialEventData.latitude || null);
       setLongitude(initialEventData.longitude || null);
       setTrueFormattedAddress(initialEventData.location || null);
-      setIsEditingName(false); // Keep H1 displayed initially for edit mode
-    } else if (!isEditMode && currentUser) {
-        if (form.getValues("ownerUids").length === 0) {
+      setIsEditingName(false); 
+    } else if (!isEditMode) {
+        if (currentUser && form.getValues("ownerUids").length === 0) {
             form.setValue("ownerUids", [currentUser.uid]);
         }
-        setIsEditingName(false); // Ensure H1 placeholder is shown for new events initially
+        setIsEditingName(false); 
+        setImagePreviewUrl(null); // Reset preview for new forms
     }
   }, [isEditMode, initialEventData, form, currentUser]);
 
@@ -286,7 +288,7 @@ export function EventForm({
   const paymentOptionValue = form.watch("paymentOption");
   const eventNameValue = form.watch("name");
   const eventDateTimeValue = form.watch("dateTime");
-  const pageTitle = propPageTitle || (isEditMode ? HEBREW_TEXT.event.editEvent : HEBREW_TEXT.event.createEventTitle);
+  const pageTitle = propPageTitle || (isEditMode ? `${HEBREW_TEXT.event.editEvent}: ${initialEventData?.name || HEBREW_TEXT.event.eventNameDisplayPlaceholder}` : HEBREW_TEXT.event.createEventTitle);
   const submitButtonText = propSubmitButtonText || (isEditMode ? HEBREW_TEXT.profile.saveChanges : HEBREW_TEXT.event.createEventButton);
 
   useEffect(() => {
@@ -312,13 +314,13 @@ export function EventForm({
         setImageFile(compressedFile);
         const previewUrl = URL.createObjectURL(compressedFile);
         setImagePreviewUrl(previewUrl);
-        form.setValue("imageUrl", "file-selected-for-upload", { shouldValidate: true });
+        form.setValue("imageUrl", "file-selected-for-upload", { shouldValidate: true }); // Temporary value to indicate a file is selected
       } catch (error) {
         console.error("Error compressing image:", error);
         toast({ title: "שגיאה בדחיסת תמונה", description: (error instanceof Error) ? error.message : String(error), variant: "destructive" });
         setImageFile(null);
         setImagePreviewUrl(isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : null);
-        form.setValue("imageUrl", isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : undefined, { shouldValidate: true });
+        form.setValue("imageUrl", isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : "", { shouldValidate: true });
       }
     }
   };
@@ -336,6 +338,18 @@ export function EventForm({
 
         setLatitude(place.geometry.location.lat());
         setLongitude(place.geometry.location.lng());
+
+        const currentFormImageUrl = form.getValues("imageUrl");
+        const isDefaultPlaceholder = !currentFormImageUrl || currentFormImageUrl.startsWith("https://placehold.co");
+
+        if (!imageFile && isDefaultPlaceholder && place.photos && place.photos.length > 0) {
+            const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
+            if (photoUrl) {
+                setImagePreviewUrl(photoUrl);
+                form.setValue("imageUrl", photoUrl, { shouldValidate: true });
+            }
+        }
+
       } else {
         setTrueFormattedAddress(null);
         const currentLocationValue = form.getValues("location");
@@ -368,8 +382,7 @@ export function EventForm({
         return;
     }
 
-
-    let finalImageUrl = isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name || HEBREW_TEXT.event.eventNameGenericPlaceholder )}`;
+    let finalImageUrl: string;
 
     if (imageFile) {
       setIsUploadingImage(true);
@@ -400,11 +413,16 @@ export function EventForm({
         setIsUploadingImage(false);
         setIsSubmitting(false);
         setImageUploadProgress(null);
-        return;
+        return; // Stop submission if image upload fails
       }
       setIsUploadingImage(false);
       setImageUploadProgress(100);
+    } else if (values.imageUrl && values.imageUrl.startsWith('http')) {
+      finalImageUrl = values.imageUrl;
+    } else {
+      finalImageUrl = `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name || HEBREW_TEXT.event.eventNameGenericPlaceholder )}`;
     }
+
 
     const eventDataPayload = {
         ...values,
@@ -424,7 +442,7 @@ export function EventForm({
 
       if (isEditMode && initialEventData?.id) {
         const eventDocRef = doc(db, "events", initialEventData.id);
-        const { createdAt, ...updatePayload } = eventDataPayload;
+        const { createdAt, ...updatePayload } = eventDataPayload; // Ensure createdAt is not passed on update
         await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
         toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}" עודכן בהצלחה!` });
         router.push(`/events/${initialEventData.id}`);
@@ -495,7 +513,7 @@ export function EventForm({
   }
   if (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return <Card className="w-full max-w-3xl mx-auto p-6 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary mb-2" /><p>{HEBREW_TEXT.general.loading} רכיב המיקום...</p></Card>;
 
-  const currentImageToDisplay = imagePreviewUrl || (isEditMode && initialEventData?.imageUrl) || "https://placehold.co/800x400.png?text=Event+Cover";
+  const currentImageToDisplay = imagePreviewUrl || (isEditMode && initialEventData?.imageUrl && !initialEventData.imageUrl.startsWith("https://placehold.co") ? initialEventData.imageUrl : `https://placehold.co/800x400.png?text=${encodeURIComponent(eventNameValue || HEBREW_TEXT.event.eventNameDisplayPlaceholder)}`);
   const headerTitle = eventNameValue || (isEditMode && initialEventData?.name) || HEBREW_TEXT.event.eventNameDisplayPlaceholder;
 
 
@@ -512,8 +530,8 @@ export function EventForm({
               objectFit="cover"
               className="transition-opacity duration-300 ease-in-out"
               data-ai-hint="event cover wedding"
-              key={currentImageToDisplay}
-              priority={!isEditMode}
+              key={currentImageToDisplay} 
+              priority={!isEditMode && !imagePreviewUrl}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
 
@@ -551,6 +569,7 @@ export function EventForm({
                             else if (e.key === 'Escape') { setIsEditingName(false); }
                           }}
                           className="text-3xl md:text-4xl font-bold bg-transparent border-0 border-b-2 border-white/50 focus:border-white focus:ring-0 p-0 h-auto text-white placeholder-white/70 flex-grow"
+                          placeholder={HEBREW_TEXT.event.eventNameDisplayPlaceholder}
                         />
                       </div>
                     )}
@@ -558,7 +577,10 @@ export function EventForm({
               ) : (
                 <div className="flex items-center group/titleedit">
                     <h1
-                        className="text-3xl md:text-4xl font-bold cursor-pointer hover:opacity-80 transition-opacity flex-grow"
+                        className={cn(
+                            "text-3xl md:text-4xl font-bold cursor-pointer hover:opacity-80 transition-opacity flex-grow",
+                            !eventNameValue && "text-white/70" // Style placeholder differently
+                        )}
                         onClick={() => setIsEditingName(true)}
                         title="לחץ לעריכת שם האירוע"
                     >
@@ -580,7 +602,6 @@ export function EventForm({
                     <p
                         className="mt-2 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center"
                         title="לחץ לעריכת תאריך ושעה"
-                        onClick={() => setIsDateTimePopoverOpen(true)}
                     >
                         <CalendarIcon className="ml-1.5 h-4 w-4" />
                         {eventDateTimeValue ? format(eventDateTimeValue, "EEEE, d MMMM yyyy, HH:mm", { locale: he }) : HEBREW_TEXT.event.selectDateTimePlaceholder}
@@ -608,7 +629,7 @@ export function EventForm({
                             const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                                 const [newHours, newMinutes] = e.target.value.split(':').map(Number);
                                 const currentFieldValue = field.value;
-                                const currentDatePart = currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime()) ? currentFieldValue : new Date();
+                                const currentDatePart = currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime()) ? currentFieldValue : new Date(); // Default to today if no date part
 
                                 const newDateTime = new Date(currentDatePart);
                                 newDateTime.setHours(newHours, newMinutes, 0, 0);
@@ -620,7 +641,7 @@ export function EventForm({
                                 if (currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime())) {
                                     return format(currentFieldValue, 'HH:mm');
                                 }
-                                return "19:30";
+                                return "19:30"; // Default time display
                             };
 
                             return (
@@ -642,7 +663,7 @@ export function EventForm({
                                     />
                                     </div>
                                     {form.formState.errors.dateTime && (
-                                        <FormMessage className="p-2 text-sm">
+                                        <FormMessage className="p-2 text-sm text-destructive">
                                             {form.formState.errors.dateTime.message}
                                         </FormMessage>
                                     )}
@@ -827,7 +848,7 @@ export function EventForm({
                       <Autocomplete
                         onLoad={onAutocompleteLoad}
                         onPlaceChanged={handlePlaceChanged}
-                        options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location"] }}
+                        options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location", "photos"] }}
                       >
                         <Input
                             placeholder="התחל להקליד כתובת או שם מקום..."
@@ -976,3 +997,4 @@ export function EventForm({
     </>
   );
 }
+
