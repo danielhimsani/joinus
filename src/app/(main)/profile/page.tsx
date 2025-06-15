@@ -171,6 +171,7 @@ export default function ProfilePage() {
                 dateTime: safeToDate(data.dateTime),
                 createdAt: safeToDate(data.createdAt),
                 updatedAt: safeToDate(data.updatedAt),
+                imageUrl: data.imageUrl || undefined, // Ensure imageUrl is part of EventType
             } as EventType;
           });
           setOwnedEvents(fetchedEvents);
@@ -471,7 +472,7 @@ export default function ProfilePage() {
                         {HEBREW_TEXT.profile.birthday}
                     </h3>
                     <p className="text-foreground/90">
-                        {user.birthday ? formatDate(new Date(user.birthday), 'dd/MM/yyyy', { locale: he }) : HEBREW_TEXT.profile.infoNotProvided}
+                        {user.birthday ? formatDate(new Date(user.birthday + "T00:00:00"), 'dd/MM/yyyy', { locale: he }) : HEBREW_TEXT.profile.infoNotProvided}
                     </p>
                   </div>
                 </div>
@@ -498,20 +499,43 @@ export default function ProfilePage() {
                     <h3 className="font-headline text-xl font-semibold mb-2">{HEBREW_TEXT.event.myEvents}</h3>
                     {isLoadingOwnedEvents ? (
                         <div className="space-y-3">
-                            <Skeleton className="h-20 w-full rounded-lg" />
-                            <Skeleton className="h-20 w-full rounded-lg" />
+                            {[...Array(2)].map((_, i) => (
+                                <Card key={i} className="p-3 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                                        <Skeleton className="h-16 w-20 rounded-md" />
+                                        <div className="flex-1 space-y-1.5">
+                                            <Skeleton className="h-5 w-3/4" />
+                                            <Skeleton className="h-4 w-1/2" />
+                                            <Skeleton className="h-4 w-1/3" />
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))}
                         </div>
                     ) : ownedEvents.length > 0 ? (
                         <div className="space-y-3">
                         {ownedEvents.map(event => (
                             <Link href={`/events/${event.id}`} key={event.id} className="block">
-                                <Card className="hover:shadow-md transition-shadow p-4">
-                                    <CardTitle className="text-lg font-body mb-1">{event.name}</CardTitle>
-                                    <div className="text-sm text-muted-foreground flex items-center mb-0.5">
-                                        <CalendarDays className="ml-1.5 h-4 w-4" /> {formatDate(event.dateTime, 'dd/MM/yy, HH:mm', { locale: he })}
-                                    </div>
-                                    <div className="text-sm text-muted-foreground flex items-center">
-                                        <MapPin className="ml-1.5 h-4 w-4" /> {event.locationDisplayName || event.location}
+                                <Card className="hover:shadow-md transition-shadow p-3">
+                                    <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                                        <div className="relative w-20 h-16 rounded-md overflow-hidden shrink-0">
+                                            <Image
+                                                src={event.imageUrl || `https://placehold.co/100x75.png${event.name ? `?text=${encodeURIComponent(event.name)}` : ''}`}
+                                                alt={event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}
+                                                layout="fill"
+                                                objectFit="cover"
+                                                data-ai-hint="event mini image"
+                                            />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <CardTitle className="text-md font-body mb-1 truncate">{event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}</CardTitle>
+                                            <div className="text-xs text-muted-foreground flex items-center mb-0.5">
+                                                <CalendarDays className="ml-1.5 h-3 w-3" /> {formatDate(event.dateTime, 'dd/MM/yy, HH:mm', { locale: he })}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex items-center truncate">
+                                                <MapPin className="ml-1.5 h-3 w-3" /> {event.locationDisplayName || event.location}
+                                            </div>
+                                        </div>
                                     </div>
                                 </Card>
                             </Link>
@@ -571,4 +595,3 @@ export default function ProfilePage() {
   );
 }
 
-    
