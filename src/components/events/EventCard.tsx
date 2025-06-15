@@ -74,39 +74,6 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
             <Utensils className="ml-1.5 h-4 w-4 text-primary" />
             <span>{HEBREW_TEXT.event.foodType}: {getFoodTypeLabel(event.foodType)}</span>
         </div>
-
-        {event.owners && event.owners.length > 0 && (
-          <>
-            <Separator className="my-3" />
-            <div>
-              <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">{HEBREW_TEXT.event.owners}:</h4>
-              <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                {event.owners.slice(0, 3).map(owner => (
-                  <TooltipProvider key={owner.uid}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Link href={`/profile/${owner.uid}`} passHref>
-                          <Avatar className="h-7 w-7 border cursor-pointer hover:ring-2 hover:ring-primary transition-all">
-                            <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="organizer avatar" />
-                            <AvatarFallback className="text-xs">{owner.name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
-                          </Avatar>
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{owner.name}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ))}
-                {event.owners.length > 3 && (
-                  <div className="flex items-center justify-center h-7 w-7 rounded-full bg-muted text-xs text-muted-foreground border">
-                    +{event.owners.length - 3}
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
       </CardContent>
       <CardFooter>
         {availableSpots > 0 ? (
@@ -123,4 +90,3 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
     </Card>
   );
 }
-
