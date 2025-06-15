@@ -33,6 +33,8 @@ export const HEBREW_TEXT = {
     createEventTitle: "יצירת אירוע חדש",
     editEvent: "ערוך אירוע",
     eventName: "שם האירוע",
+    eventNameRequiredError: "שם האירוע הוא שדה חובה.",
+    eventNameMinLengthError: "שם אירוע חייב להכיל לפחות 3 תווים.",
     numberOfGuests: "מספר אורחים",
     pricePerGuest: "מחיר לאורח",
     paymentOptions: "אפשרויות תשלום",
@@ -248,6 +250,3 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
-
-
-    

@@ -66,7 +66,7 @@ const paymentOptions: { value: PaymentOption; label: string }[] = [
 ];
 
 const formSchema = z.object({
-  name: z.string().min(3, { message: "שם אירוע חייב להכיל לפחות 3 תווים." }),
+  name: z.string().nonempty({ message: HEBREW_TEXT.event.eventNameRequiredError }).min(3, { message: HEBREW_TEXT.event.eventNameMinLengthError }),
   ownerUids: z.array(z.string()).min(1, { message: "חייב להיות לפחות בעלים אחד לאירוע." }),
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
   paymentOption: z.enum(["fixed", "payWhatYouWant", "free"], { errorMap: () => ({ message: "יש לבחור אפשרות תשלום."}) }),
@@ -624,6 +624,9 @@ export function EventForm({
                {form.formState.errors.dateTime && !eventDateTimeValue && (
                   <p className="text-destructive text-xs mt-1">{form.formState.errors.dateTime.message}</p>
               )}
+              {form.formState.errors.name && (
+                  <p className="text-destructive text-xs mt-1">{form.formState.errors.name.message}</p>
+              )}
             </div>
           </div>
 
@@ -940,7 +943,3 @@ export function EventForm({
     </>
   );
 }
-
-    
-
-    
