@@ -166,8 +166,6 @@ export default function EventDetailPage() {
         setIsLoadingApprovedCount(false);
 
         // Fetch Approved Guests Detailed Data (only if current user is an owner)
-        // This check needs to happen after event data is fetched and `isOwner` can be determined more reliably
-        // However, we need `currentUser` to be set. We'll re-evaluate `isOwner` inside this block based on `fetchedEvent`.
         const currentIsOwner = fetchedEvent && currentUser && fetchedEvent.ownerUids.includes(currentUser.uid);
 
         if (currentIsOwner) {
@@ -176,7 +174,7 @@ export default function EventDetailPage() {
           const approvedSnapshot = await getDocs(qApprovedData);
           const guests: ApprovedGuestData[] = [];
           approvedSnapshot.forEach(doc => {
-            const chatData = doc.data() as EventChat; // Assuming EventChat type from types/index.ts
+            const chatData = doc.data() as EventChat;
             if (chatData.guestInfo && chatData.guestUid) {
               guests.push({
                 guestUid: chatData.guestUid,
@@ -188,7 +186,7 @@ export default function EventDetailPage() {
           setApprovedGuestsData(guests);
           setIsLoadingApprovedGuestsData(false);
         } else {
-          setApprovedGuestsData([]); // Clear if not owner or no event
+          setApprovedGuestsData([]);
           setIsLoadingApprovedGuestsData(false);
         }
 
@@ -207,7 +205,7 @@ export default function EventDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [eventId, currentUser, isOwner]); // Added isOwner to dependency array to re-fetch guest data if ownership changes
+  }, [eventId, currentUser, isOwner]);
 
   useEffect(() => {
     fetchEventAndRelatedData();
@@ -352,23 +350,8 @@ export default function EventDetailPage() {
         <CardContent className="p-6">
           <div className="grid md:grid-cols-3 gap-8">
             <div className="md:col-span-2">
-              <h3 className="font-headline text-xl font-semibold mb-3">{HEBREW_TEXT.event.description}</h3>
-              <p className="text-foreground/80 leading-relaxed whitespace-pre-line">{event.description || "לא סופק תיאור."}</p>
-
-              <Separator className="my-6" />
-
-              <h3 className="font-headline text-xl font-semibold mb-4">פרטים נוספים</h3>
-              <div className="grid sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                <div className="flex items-start"><Users className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.availableSpots}:</strong> {availableSpots > 0 ? availableSpots : HEBREW_TEXT.event.noSpotsAvailableShort}</span></div>
-                <div className="flex items-start"><Tag className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.paymentOptions}:</strong> {getPriceDisplay(event)}</span></div>
-                <div className="flex items-start"><Utensils className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.foodType}:</strong> {getFoodTypeLabel(event.foodType)}</span></div>
-                <div className="flex items-start"><Info className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.religionStyle}:</strong> {event.religionStyle}</span></div>
-                <div className="flex items-start"><Clock className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.ageRange}:</strong> {event.ageRange[0]} - {event.ageRange[1]}</span></div>
-              </div>
-              
               {event.owners && event.owners.length > 0 && (
                 <>
-                  <Separator className="my-6" />
                   <div>
                     <h3 className="font-headline text-xl font-semibold mb-3">{HEBREW_TEXT.event.owners}</h3>
                     <div className="flex items-center space-x-3 rtl:space-x-reverse">
@@ -391,9 +374,24 @@ export default function EventDetailPage() {
                       </TooltipProvider>
                     </div>
                   </div>
+                  <Separator className="my-6" />
                 </>
               )}
 
+              <h3 className="font-headline text-xl font-semibold mb-3">{HEBREW_TEXT.event.description}</h3>
+              <p className="text-foreground/80 leading-relaxed whitespace-pre-line">{event.description || "לא סופק תיאור."}</p>
+
+              <Separator className="my-6" />
+
+              <h3 className="font-headline text-xl font-semibold mb-4">פרטים נוספים</h3>
+              <div className="grid sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div className="flex items-start"><Users className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.availableSpots}:</strong> {availableSpots > 0 ? availableSpots : HEBREW_TEXT.event.noSpotsAvailableShort}</span></div>
+                <div className="flex items-start"><Tag className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.paymentOptions}:</strong> {getPriceDisplay(event)}</span></div>
+                <div className="flex items-start"><Utensils className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.foodType}:</strong> {getFoodTypeLabel(event.foodType)}</span></div>
+                <div className="flex items-start"><Info className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.religionStyle}:</strong> {event.religionStyle}</span></div>
+                <div className="flex items-start"><Clock className="ml-2 h-5 w-5 text-primary flex-shrink-0 mt-0.5" /> <span><strong>{HEBREW_TEXT.event.ageRange}:</strong> {event.ageRange[0]} - {event.ageRange[1]}</span></div>
+              </div>
+              
              {isOwner && (
                 <>
                   <Separator className="my-8" />
