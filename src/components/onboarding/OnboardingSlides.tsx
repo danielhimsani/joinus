@@ -95,8 +95,8 @@ export function OnboardingSlides() {
         </Link>
       </Button>
 
-      {isFinalSlide && !isFinalSlide && ( // This condition was contradictory, fixed to show back button if NOT final slide AND not first slide
-        <Button variant="ghost" size="icon" onClick={handlePrev} className="absolute top-6 right-6 z-20">
+      {currentSlide > 0 && (
+        <Button variant="ghost" size="icon" onClick={handlePrev} className="absolute top-4 right-4 md:top-6 md:right-6 z-20">
           <ArrowRight className="h-5 w-5" /> {/* Visually points left in RTL for "back" */}
         </Button>
       )}
@@ -138,22 +138,29 @@ export function OnboardingSlides() {
       </div>
 
       <div className="w-full pb-6 pt-2 z-10">
-        {isFinalSlide ? (
-          <Button onClick={() => router.push('/signin')} className="font-body text-lg py-3 w-full max-w-xs mx-auto block">
-            {HEBREW_TEXT.auth.signInButton}
+        <div className="flex w-full justify-between items-center max-w-md mx-auto">
+          <Button 
+            variant="outline" 
+            onClick={handlePrev} 
+            disabled={currentSlide === 0} 
+            className={cn("font-body", currentSlide === 0 && "opacity-0 pointer-events-none")}
+          >
+            <ArrowRight className="ml-2 h-4 w-4" /> {/* Points left in RTL */}
+            {HEBREW_TEXT.general.previous}
           </Button>
-        ) : (
-          <div className="flex w-full justify-between items-center max-w-md mx-auto">
-            <Button variant="outline" onClick={handlePrev} disabled={currentSlide === 0} className={cn(currentSlide === 0 && "opacity-0 pointer-events-none")}>
-              <ArrowRight className="ml-2 h-4 w-4" /> {/* Points left in RTL */}
-              {HEBREW_TEXT.general.previous}
+          
+          {isFinalSlide ? (
+            <Button onClick={() => router.push('/signin')} className="font-body">
+              {HEBREW_TEXT.auth.signInButton} 
+              <ArrowLeft className="mr-2 h-4 w-4" /> 
             </Button>
+          ) : (
             <Button onClick={handleNext} className="font-body">
               {HEBREW_TEXT.general.next}
               <ArrowLeft className="mr-2 h-4 w-4" /> {/* Points right in RTL */}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
