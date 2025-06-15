@@ -27,7 +27,7 @@ export const HEBREW_TEXT = {
     profile: "פרופיל",
     leaderboard: "טבלת מובילים",
     mobileMenuTitle: "תפריט",
-    messages: "בקשות", // Changed from "הודעות" to "בקשות"
+    messages: "בקשות", 
   },
   event: {
     createEventTitle: "יצירת אירוע חדש",
@@ -57,6 +57,7 @@ export const HEBREW_TEXT = {
     createEventButton: "צור אירוע",
     discoverEvents: "גלה אירועים",
     filters: "סנן",
+    filterButtonAppliedText: "סינון",
     applyFilters: "החל סננים",
     filterByLocation: "סינון לפי מיקום",
     filterByTime: "סינון לפי זמן",

@@ -49,6 +49,17 @@ const checkAreEventsFiltersActive = (currentFilters: Filters): boolean => {
   return isSearchActive || isLocationActive || isDateActive || isPriceRangeActive || isFoodTypeActive || isSpotsActive;
 };
 
+const countActiveEventFilters = (currentFilters: Filters): number => {
+  let count = 0;
+  if (currentFilters.searchTerm && currentFilters.searchTerm !== (defaultAdvancedFilters.searchTerm || "")) count++;
+  if (currentFilters.location && currentFilters.location !== (defaultAdvancedFilters.location || "")) count++;
+  if (currentFilters.date) count++;
+  if (currentFilters.priceRange && currentFilters.priceRange !== defaultAdvancedFilters.priceRange && currentFilters.priceRange !== undefined) count++;
+  if (currentFilters.foodType && currentFilters.foodType !== defaultAdvancedFilters.foodType && currentFilters.foodType !== undefined) count++;
+  if (currentFilters.minAvailableSpots !== undefined && currentFilters.minAvailableSpots !== defaultAdvancedFilters.minAvailableSpots && currentFilters.minAvailableSpots !== 1) count++; // Count only if not default (1)
+  return count;
+};
+
 
 export default function EventsPage() {
   const [allEvents, setAllEvents] = useState<Event[]>([]);
@@ -396,6 +407,7 @@ export default function EventsPage() {
   const indicatorOpacity = isRefreshingViaPull ? 1 : Math.min(1, pullDistance / PULL_TO_REFRESH_THRESHOLD);
 
   const areFiltersApplied = checkAreEventsFiltersActive(advancedFilters);
+  const activeEventFilterCount = countActiveEventFilters(advancedFilters);
   const FilterButtonIcon = areFiltersApplied ? ListFilter : Filter;
 
   return (
@@ -435,9 +447,13 @@ export default function EventsPage() {
           <div className="flex flex-row-reverse sm:flex-row items-center gap-2 flex-grow">
             <Dialog open={showFiltersModal} onOpenChange={setShowFiltersModal}>
               <DialogTrigger asChild>
-                <Button variant={areFiltersApplied ? "secondary" : "outline"} className="shrink-0">
-                  <FilterButtonIcon className="ml-2 h-4 w-4" />
-                  {HEBREW_TEXT.event.filters}
+                <Button
+                  variant={areFiltersApplied ? "secondary" : "outline"}
+                  className="shrink-0"
+                  aria-label={HEBREW_TEXT.event.filters}
+                >
+                  <FilterButtonIcon className={areFiltersApplied ? "ml-2 h-4 w-4" : "h-4 w-4"} />
+                  {areFiltersApplied ? `${HEBREW_TEXT.event.filterButtonAppliedText} (${activeEventFilterCount})` : null}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[650px]">
