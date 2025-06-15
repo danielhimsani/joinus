@@ -102,6 +102,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   return (
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
+        {/* Main flex container for the card content */}
         <CardContent className="p-3 sm:p-4 flex items-start justify-start space-x-3 rtl:space-x-reverse">
           {/* Block 1: Text content (name, message, timestamp, unread) - Will appear on the VISUAL RIGHT in RTL */}
           <div className="flex-1 min-w-0 flex flex-col">
@@ -141,7 +142,10 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                   handleAvatarClick(e);
                 }
               }}
-              className={cn(avatarLink && "cursor-pointer")}
+              className={cn(
+                avatarLink && "cursor-pointer",
+                "w-full flex justify-center" // Ensures avatar itself is centered in this div
+              )}
               role={avatarLink ? "link" : undefined}
               tabIndex={avatarLink ? 0 : undefined}
               aria-label={avatarLink ? `View profile of ${avatarAltText}` : undefined}
