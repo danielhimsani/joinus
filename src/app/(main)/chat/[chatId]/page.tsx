@@ -2,10 +2,10 @@
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { doc, getDoc, collection, query, orderBy, onSnapshot, addDoc, updateDoc, serverTimestamp, writeBatch, Timestamp, where, increment } from 'firebase/firestore';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { doc, getDoc, collection, query, orderBy, onSnapshot, addDoc, updateDoc, serverTimestamp, writeBatch, Timestamp, where, increment, getDocs } from 'firebase/firestore';
 import { db, auth as firebaseAuthInstance } from '@/lib/firebase';
-import type { EventChat, EventChatMessage } from '@/types';
+import type { EventChat, EventChatMessage, EventAnnouncement } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { useToast } from '@/hooks/use-toast';
 import { safeToDate } from '@/lib/dateUtils';
@@ -31,7 +31,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle as ShadAlertDialogTitle, // Renamed
+  AlertDialogTitle as ShadAlertDialogTitle, 
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
@@ -42,7 +42,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Loader2, Send, UserX, CheckCircle, XCircle, Info, ShieldAlert, MessageSquareDashed, ChevronLeft, Ban, Contact as UserPlaceholderIcon, MoreVertical } from 'lucide-react';
 import { MessageBubble } from '@/components/chat/MessageBubble';
+import { AnnouncementBubble } from '@/components/chat/AnnouncementBubble';
 import Link from 'next/link';
+
+type ChatItem = (EventChatMessage & { itemType: 'message' }) | (EventAnnouncement & { itemType: 'announcement' });
 
 
 export default function ChatPage() {
@@ -56,6 +59,7 @@ export default function ChatPage() {
 
   const [chatDetails, setChatDetails] = useState<EventChat | null>(null);
   const [messages, setMessages] = useState<EventChatMessage[]>([]);
+  const [announcements, setAnnouncements] = useState<EventAnnouncement[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoadingChat, setIsLoadingChat] = useState(true);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
@@ -153,6 +157,49 @@ export default function ChatPage() {
       unsubscribeMessages();
     };
   }, [chatId, currentUser?.uid, handleUpdateUnreadCount]);
+
+  // Fetch announcements
+  useEffect(() => {
+    if (!chatDetails?.eventId) return;
+
+    const announcementsColRef = collection(db, "eventAnnouncements");
+    const announcementsQuery = query(
+      announcementsColRef,
+      where("eventId", "==", chatDetails.eventId),
+      orderBy("timestamp", "asc")
+    );
+
+    const unsubscribeAnnouncements = onSnapshot(announcementsQuery, (querySnapshot) => {
+      const fetchedAnnouncements: EventAnnouncement[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as Omit<EventAnnouncement, 'id' | 'timestamp'> & { timestamp: Timestamp };
+        fetchedAnnouncements.push({
+          id: doc.id,
+          ...data,
+          timestamp: safeToDate(data.timestamp),
+        } as EventAnnouncement);
+      });
+      setAnnouncements(fetchedAnnouncements);
+    }, (err) => {
+      console.error("Error fetching announcements:", err);
+      // Optionally, set an error state for announcements
+    });
+
+    return () => unsubscribeAnnouncements();
+  }, [chatDetails?.eventId]);
+
+  const sortedChatItems = useMemo((): ChatItem[] => {
+    const typedMessages: ChatItem[] = messages.map(msg => ({ ...msg, itemType: 'message' as const }));
+    const typedAnnouncements: ChatItem[] = announcements.map(ann => ({ ...ann, itemType: 'announcement' as const }));
+    
+    const combined = [...typedMessages, ...typedAnnouncements];
+    
+    return combined.sort((a, b) => {
+      const dateA = a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
+      const dateB = b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
+      return dateA - dateB;
+    });
+  }, [messages, announcements]);
 
 
   const handleSendMessage = async () => {
@@ -454,8 +501,10 @@ export default function ChatPage() {
                   </div>
                 </div>
               )}
-            {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} currentUser={currentUser} />
+            {sortedChatItems.map((item) => (
+              item.itemType === 'message' 
+                ? <MessageBubble key={item.id} message={item} currentUser={currentUser} />
+                : <AnnouncementBubble key={item.id} announcement={item} />
             ))}
           </div>
           <div ref={messagesEndRef} />
@@ -519,4 +568,5 @@ export default function ChatPage() {
     </div>
   );
 }
+
 

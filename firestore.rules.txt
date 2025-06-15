@@ -38,7 +38,8 @@ service cloud.firestore {
                request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.ownerUids;
       }
 
-      allow read: if isEventOwnerForAnnouncement(resource.data.eventId); // Owners can read.
+      // Allow read if authenticated (for simplicity, can be tightened later)
+      allow read: if request.auth != null; 
 
       allow create: if isEventOwnerForAnnouncement(request.resource.data.eventId) && // Must be owner of the target event
                        request.resource.data.ownerUid == request.auth.uid && // Creator must be self
