@@ -3,7 +3,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { doc, getDoc, collection, query, orderBy, onSnapshot, addDoc, updateDoc, serverTimestamp, writeBatch, Timestamp, where } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, onSnapshot, addDoc, updateDoc, serverTimestamp, writeBatch, Timestamp, where, increment } from 'firebase/firestore';
 import { db, auth as firebaseAuthInstance } from '@/lib/firebase';
 import type { EventChat, EventChatMessage } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
@@ -217,17 +217,33 @@ export default function ChatPage() {
 
     setIsUpdatingStatus(true);
     const chatDocRef = doc(db, "eventChats", chatId);
+    const eventDocRef = doc(db, "events", chatDetails.eventId);
+
     try {
-      await updateDoc(chatDocRef, {
+      const batch = writeBatch(db);
+
+      batch.update(chatDocRef, {
         status: newStatus,
         updatedAt: serverTimestamp(),
       });
+
+      if (newStatus === 'request_approved') {
+        // Atomically decrement the numberOfGuests for the event
+        batch.update(eventDocRef, {
+          numberOfGuests: increment(-1)
+        });
+      }
+      // Future consideration: if newStatus is 'request_rejected' or 'closed' AFTER being 'request_approved',
+      // you might want to increment numberOfGuests back. This is not part of the current request.
+
+      await batch.commit();
+
       toast({ title: HEBREW_TEXT.general.success, description: successMessage });
       if (newStatus === 'request_rejected') setShowDeclineDialog(false);
       if (newStatus === 'closed') setShowCloseDialog(false);
     } catch (e) {
-      console.error("Error updating chat status:", e);
-      toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בעדכון סטטוס השיחה.", variant: "destructive" });
+      console.error("Error updating chat status or event guest count:", e);
+      toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בעדכון סטטוס השיחה ו/או ספירת האורחים באירוע.", variant: "destructive" });
     } finally {
       setIsUpdatingStatus(false);
     }

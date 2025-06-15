@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy, Timestamp } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, Timestamp, where } from "firebase/firestore";
 import { safeToDate } from '@/lib/dateUtils';
 
 
@@ -67,7 +67,13 @@ export default function EventsPage() {
     setFetchError(null);
     try {
       const eventsCollectionRef = collection(db, "events");
-      const q = query(eventsCollectionRef, orderBy("dateTime", "asc")); 
+      // Fetch only events with numberOfGuests > 0 and order by dateTime
+      const q = query(
+        eventsCollectionRef, 
+        where("numberOfGuests", ">", 0), 
+        orderBy("numberOfGuests", "asc"), // Optional: if you also want to sort by spots, but dateTime is primary
+        orderBy("dateTime", "asc")
+      ); 
       const querySnapshot = await getDocs(q);
       const fetchedEvents = querySnapshot.docs.map(doc => {
         const data = doc.data();
@@ -77,7 +83,7 @@ export default function EventsPage() {
           dateTime: safeToDate(data.dateTime),
           createdAt: safeToDate(data.createdAt),
           updatedAt: safeToDate(data.updatedAt),
-          name: data.name || "", // Set to empty string if name is not present
+          name: data.name || "",
           numberOfGuests: data.numberOfGuests || 0,
           paymentOption: data.paymentOption || "free",
           location: data.location || "No location specified",
@@ -107,7 +113,7 @@ export default function EventsPage() {
 
 
   useEffect(() => {
-    let eventsToFilter = [...allEvents];
+    let eventsToFilter = [...allEvents]; // allEvents is already pre-filtered by numberOfGuests > 0 from Firestore
 
     if (simpleSearchQuery.trim()) {
       const queryText = simpleSearchQuery.toLowerCase().trim();
