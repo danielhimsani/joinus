@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-// Removed usePathname as it's no longer needed for conditional rendering here
 import {
   Dialog,
   DialogContent,
@@ -57,8 +56,6 @@ export function GlobalSettingsDialog() {
     }
   };
 
-  // The button is now always rendered, no longer checking pathname.
-  // The position is changed from left-4 to right-4.
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -101,4 +98,3 @@ export function GlobalSettingsDialog() {
     </Dialog>
   );
 }
-
