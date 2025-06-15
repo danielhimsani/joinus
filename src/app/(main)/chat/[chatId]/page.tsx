@@ -75,10 +75,10 @@ export default function ChatPage() {
     return () => unsubscribeAuth();
   }, [router]);
 
-  const updateUnreadCount = useCallback(async () => {
-    if (chatId && currentUser && chatDetails) {
+  const handleUpdateUnreadCount = useCallback(async (currentChatDoc: EventChat) => {
+    if (chatId && currentUser && currentChatDoc) {
       const chatDocRef = doc(db, "eventChats", chatId);
-      const currentUnread = chatDetails.unreadCount?.[currentUser.uid] || 0;
+      const currentUnread = currentChatDoc.unreadCount?.[currentUser.uid] || 0;
       if (currentUnread > 0) {
         try {
           await updateDoc(chatDocRef, {
@@ -90,11 +90,11 @@ export default function ChatPage() {
         }
       }
     }
-  }, [chatId, currentUser, chatDetails]);
+  }, [chatId, currentUser]);
 
 
   useEffect(() => {
-    if (!chatId || !currentUser) return;
+    if (!chatId || !currentUser?.uid) return;
 
     setIsLoadingChat(true);
     setError(null);
@@ -118,7 +118,7 @@ export default function ChatPage() {
             return;
         }
         setChatDetails(formattedChat);
-        updateUnreadCount();
+        handleUpdateUnreadCount(formattedChat);
       } else {
         setError(HEBREW_TEXT.chat.errorFetchingChat + ": " + "השיחה לא נמצאה.");
         setChatDetails(null);
@@ -152,7 +152,7 @@ export default function ChatPage() {
       unsubscribeChat();
       unsubscribeMessages();
     };
-  }, [chatId, currentUser, updateUnreadCount]);
+  }, [chatId, currentUser?.uid, handleUpdateUnreadCount]);
 
 
   const handleSendMessage = async () => {
@@ -519,3 +519,4 @@ export default function ChatPage() {
     </div>
   );
 }
+

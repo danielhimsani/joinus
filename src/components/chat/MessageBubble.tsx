@@ -9,13 +9,14 @@ import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { Contact as UserPlaceholderIcon } from 'lucide-react';
+import React from 'react'; // Import React
 
 interface MessageBubbleProps {
   message: EventChatMessage;
   currentUser: FirebaseUser | null;
 }
 
-export function MessageBubble({ message, currentUser }: MessageBubbleProps) {
+const MessageBubbleComponent = ({ message, currentUser }: MessageBubbleProps) => {
   const isCurrentUserSender = currentUser?.uid === message.senderId;
   const senderName = message.senderInfo?.name || "משתמש";
   const timestamp = message.timestamp
@@ -73,4 +74,5 @@ export function MessageBubble({ message, currentUser }: MessageBubbleProps) {
   );
 }
 
+export const MessageBubble = React.memo(MessageBubbleComponent);
     
