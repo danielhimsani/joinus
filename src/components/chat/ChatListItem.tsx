@@ -103,29 +103,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
         <CardContent className="p-3 sm:p-4 flex items-start justify-start space-x-3 rtl:space-x-reverse">
-          {/* Container for Avatar and Timestamp (Visually on the right for RTL) */}
-          <div className="flex flex-col items-center space-y-1 flex-shrink-0">
-            <div
-              onClick={avatarLink ? handleAvatarClick : undefined}
-              onKeyDown={(e) => {
-                if (avatarLink && (e.key === 'Enter' || e.key === ' ')) {
-                  e.preventDefault(); // Prevent default action for space/enter if it's a link
-                  handleAvatarClick(e);
-                }
-              }}
-              className={cn(avatarLink && "cursor-pointer")}
-              role={avatarLink ? "link" : undefined}
-              tabIndex={avatarLink ? 0 : undefined}
-              aria-label={avatarLink ? `View profile of ${avatarAltText}` : undefined}
-            >
-              <AvatarContent />
-            </div>
-            {formattedTimestamp && (
-              <p className="text-xs text-muted-foreground/90 whitespace-nowrap mt-0.5">{formattedTimestamp}</p>
-            )}
-          </div>
-
-          {/* Container for Text content (Visually to the left of Avatar/Timestamp in RTL) */}
+          {/* Container for Text content (Visually on the right in RTL) */}
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="flex justify-between items-start">
               <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
@@ -161,6 +139,28 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                 {statusDisplay.text}
               </Badge>
             </div>
+          </div>
+
+          {/* Container for Avatar and Timestamp (Visually to the left of Text content in RTL) */}
+          <div className="flex flex-col items-center space-y-1 flex-shrink-0">
+            <div
+              onClick={avatarLink ? handleAvatarClick : undefined}
+              onKeyDown={(e) => {
+                if (avatarLink && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault(); // Prevent default action for space/enter if it's a link
+                  handleAvatarClick(e);
+                }
+              }}
+              className={cn(avatarLink && "cursor-pointer")}
+              role={avatarLink ? "link" : undefined}
+              tabIndex={avatarLink ? 0 : undefined}
+              aria-label={avatarLink ? `View profile of ${avatarAltText}` : undefined}
+            >
+              <AvatarContent />
+            </div>
+            {formattedTimestamp && (
+              <p className="text-xs text-muted-foreground/90 whitespace-nowrap mt-0.5">{formattedTimestamp}</p>
+            )}
           </div>
         </CardContent>
       </Card>
