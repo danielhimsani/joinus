@@ -27,9 +27,10 @@ import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; // Import you
 import { useState } from "react";
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: "שם חייב להכיל לפחות 2 תווים." }),
-  email: z.string().email({ message: "אנא הכנס כתובת אימייל תקינה." }),
-  password: z.string().min(6, { message: "סיסמה חייבת להכיל לפחות 6 תווים." }),
+  name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
+  email: z.string().email({ message: HEBREW_TEXT.auth.emailInvalid }),
+  password: z.string().min(6, { message: HEBREW_TEXT.auth.passwordMinLengthError }),
+  birthday: z.string().min(1, { message: HEBREW_TEXT.profile.birthdayRequiredError }), // Date input returns string
 });
 
 export function SignUpForm() {
@@ -45,21 +46,23 @@ export function SignUpForm() {
       name: "",
       email: "",
       password: "",
+      birthday: "",
     },
   });
 
-  const createUserDocument = async (user: User, name?: string, profileImageUrl?: string) => {
+  const createUserDocument = async (user: User, name?: string, birthday?: string, profileImageUrl?: string) => {
     const userDocRef = doc(db, "users", user.uid);
-    const userData = {
+    const userData: any = { // Use any to allow conditional properties
       firebaseUid: user.uid,
       name: name || user.displayName || "משתמש חדש",
       email: user.email,
       profileImageUrl: profileImageUrl || user.photoURL || `https://placehold.co/150x150.png?text=${(name || user.displayName || "U").charAt(0)}`,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      // You can add other default fields for a new user profile here
-      // e.g., bio: "", phone: "", birthday: ""
     };
+    if (birthday) {
+      userData.birthday = birthday;
+    }
     try {
       await setDoc(userDocRef, userData);
       console.log("User document created/updated in Firestore for UID:", user.uid);
@@ -74,11 +77,11 @@ export function SignUpForm() {
   };
 
 
-  const handleSignUpSuccess = async (user: User, formValues?: { name: string }) => {
+  const handleSignUpSuccess = async (user: User, formValues?: { name: string, birthday: string }) => {
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userName', formValues?.name || user.displayName || user.email || 'משתמש חדש');
     
-    await createUserDocument(user, formValues?.name);
+    await createUserDocument(user, formValues?.name, formValues?.birthday);
 
     toast({
       title: HEBREW_TEXT.general.success,
@@ -93,13 +96,13 @@ export function SignUpForm() {
     if (error.code) {
       switch (error.code) {
         case 'auth/email-already-in-use':
-          description = "כתובת אימייל זו כבר רשומה.";
+          description = HEBREW_TEXT.auth.emailInUseError;
           break;
         case 'auth/invalid-email':
-          description = "כתובת האימייל אינה תקינה.";
+          description = HEBREW_TEXT.auth.emailInvalid;
           break;
         case 'auth/weak-password':
-          description = "הסיסמה חלשה מדי. נסה סיסמה חזקה יותר.";
+          description = HEBREW_TEXT.auth.weakPasswordError;
           break;
         case 'auth/popup-closed-by-user':
           description = "חלון ההרשמה נסגר לפני השלמת התהליך. אנא נסה שוב. אם הבעיה חוזרת, בדוק אם חוסם חלונות קופצים פעיל בדפדפן שלך.";
@@ -127,7 +130,7 @@ export function SignUpForm() {
       const userCredential = await createUserWithEmailAndPassword(firebaseAuthInstance, values.email, values.password);
       await updateProfile(userCredential.user, { displayName: values.name });
       console.log("Email/Password Sign Up Success:", userCredential.user);
-      await handleSignUpSuccess(userCredential.user, { name: values.name });
+      await handleSignUpSuccess(userCredential.user, { name: values.name, birthday: values.birthday });
     } catch (error: any) {
       handleAuthError(error, "Email/Password");
     } finally {
@@ -142,7 +145,9 @@ export function SignUpForm() {
     try {
       const result = await signInWithPopup(firebaseAuthInstance, provider);
       console.log("Google Sign Up/In Success:", result.user);
-      await handleSignUpSuccess(result.user);
+      // Google sign-up doesn't collect birthday, so we pass undefined for it.
+      // The UserProfile type has birthday as optional.
+      await handleSignUpSuccess(result.user, { name: result.user.displayName || "משתמש גוגל", birthday: "" });
     } catch (error: any) {
       handleAuthError(error, "Google");
     } finally {
@@ -163,7 +168,8 @@ export function SignUpForm() {
       photoURL: `https://placehold.co/150x150.png?text=A`,
     } as User; 
 
-    await handleSignUpSuccess(mockUser, { name: 'משתמש אפל' });
+    // Apple sign-up (mock) doesn't collect birthday.
+    await handleSignUpSuccess(mockUser, { name: 'משתמש אפל', birthday: "" });
     setIsSubmittingApple(false);
   };
 
@@ -212,6 +218,19 @@ export function SignUpForm() {
                   <FormLabel>{HEBREW_TEXT.auth.password}</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="********" {...field} disabled={isLoading} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="birthday"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{HEBREW_TEXT.profile.birthday}</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} disabled={isLoading} max={new Date().toISOString().split("T")[0]} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

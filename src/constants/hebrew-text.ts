@@ -14,6 +14,11 @@ export const HEBREW_TEXT = {
     forgotPassword: "שכחת סיסמה?",
     signInButton: "התחבר",
     signUpButton: "הירשם",
+    emailInvalid: "אנא הכנס כתובת אימייל תקינה.",
+    passwordMinLengthError: "סיסמה חייבת להכיל לפחות 6 תווים.",
+    emailInUseError: "כתובת אימייל זו כבר רשומה.",
+    weakPasswordError: "הסיסמה חלשה מדי. נסה סיסמה חזקה יותר.",
+
   },
   navigation: {
     home: "דף הבית",
@@ -109,6 +114,8 @@ export const HEBREW_TEXT = {
     settings: "הגדרות",
     darkMode: "מצב כהה",
     lightMode: "מצב בהיר",
+    nameMinLengthError: "שם חייב להכיל לפחות 2 תווים.",
+    birthdayRequiredError: "תאריך לידה הוא שדה חובה.",
   },
   notifications: {
     title: "התראות",
@@ -238,4 +245,3 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
-
