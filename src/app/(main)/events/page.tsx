@@ -36,7 +36,7 @@ export default function EventsPage() {
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [isLoadingApprovedCounts, setIsLoadingApprovedCounts] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [advancedFilters, setAdvancedFilters] = useState<Filters>({});
+  const [advancedFilters, setAdvancedFilters] = useState<Filters>({minAvailableSpots: 1}); // Default min spots
   const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [isMapSectionOpen, setIsMapSectionOpen] = useState(false);
@@ -83,8 +83,7 @@ export default function EventsPage() {
       setApprovedCountsMap(newApprovedCountsMap);
     } catch (error) {
       console.error("Error fetching approved counts:", error);
-      // Not setting fetchError here as it's for main event fetching
-      setApprovedCountsMap(new Map()); // Reset or keep stale data? Reset for now.
+      setApprovedCountsMap(new Map()); 
     } finally {
       setIsLoadingApprovedCounts(false);
     }
@@ -97,7 +96,7 @@ export default function EventsPage() {
     setFetchError(null);
     try {
       const eventsCollectionRef = collection(db, "events");
-      // Simplified query: Only order by dateTime. Filtering by numberOfGuests will happen client-side.
+      // Only order by dateTime. Filtering for available spots will happen client-side after fetching all.
       const q = query(eventsCollectionRef, orderBy("dateTime", "asc"));
       const querySnapshot = await getDocs(q);
       const fetchedEvents = querySnapshot.docs.map(doc => {
@@ -149,12 +148,23 @@ export default function EventsPage() {
 
     let eventsToFilter = [...allEvents];
 
-    // Primary filter: only show events with available spots
+    // Primary filter: Calculate available spots and filter out full events
     eventsToFilter = eventsToFilter.filter(event => {
         const approvedCount = approvedCountsMap.get(event.id) || 0;
-        return (event.numberOfGuests - approvedCount) > 0;
+        const availableSpots = event.numberOfGuests - approvedCount;
+        return availableSpots > 0; // Keep only events with at least 1 spot
     });
 
+    // Apply advanced filter: minimum available spots
+    if (advancedFilters.minAvailableSpots !== undefined && advancedFilters.minAvailableSpots > 0) {
+        eventsToFilter = eventsToFilter.filter(event => {
+            const approvedCount = approvedCountsMap.get(event.id) || 0;
+            const availableSpots = event.numberOfGuests - approvedCount;
+            return availableSpots >= advancedFilters.minAvailableSpots!;
+        });
+    }
+
+    // Simple search query (applied after available spots filtering)
     if (simpleSearchQuery.trim()) {
       const queryText = simpleSearchQuery.toLowerCase().trim();
       eventsToFilter = eventsToFilter.filter(event =>
@@ -165,6 +175,7 @@ export default function EventsPage() {
       );
     }
 
+    // Advanced filters (text search, location, date, price, food type)
     if (advancedFilters.searchTerm && advancedFilters.searchTerm.trim()) {
       const advancedQueryText = advancedFilters.searchTerm.toLowerCase().trim();
        eventsToFilter = eventsToFilter.filter(event =>
@@ -238,12 +249,11 @@ export default function EventsPage() {
     }
   }, [isMapSectionOpen, currentLocation, locationError, isFetchingLocation]);
 
-  // Pull to refresh event handlers
   const handleTouchStart = useCallback((e: TouchEvent) => {
     if (window.scrollY === 0 && !isRefreshingViaPull && !isLoadingEvents && !isLoadingApprovedCounts) {
       setPullStart(e.touches[0].clientY);
       setIsPulling(true);
-      setPullDistance(0); // Reset pull distance
+      setPullDistance(0); 
     }
   }, [isRefreshingViaPull, isLoadingEvents, isLoadingApprovedCounts]);
 
@@ -254,7 +264,6 @@ export default function EventsPage() {
     setPullDistance(distance);
 
     if (distance > 0 && window.scrollY === 0) {
-        // e.preventDefault(); // This requires { passive: false } on listener
     }
   }, [isPulling, pullStart]);
 
@@ -335,7 +344,6 @@ export default function EventsPage() {
 
   return (
     <div ref={bodyRef} className="relative min-h-screen">
-      {/* Pull to refresh indicator for mobile */}
       {isMobileView && (
         <div
           style={{
@@ -400,7 +408,6 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* Map Section */}
         <div className="mb-8 p-4 bg-muted rounded-lg">
           <div className="flex justify-between items-center mb-3 cursor-pointer" onClick={toggleMapSection}>
               <h2 className="font-headline text-xl font-semibold text-center sm:text-right">
@@ -445,7 +452,6 @@ export default function EventsPage() {
 
         <Separator className="my-8"/>
 
-        {/* Event List Section */}
         {fetchError && !(isLoadingEvents || isLoadingApprovedCounts) && (
           <Alert variant="destructive" className="my-8">
             <AlertCircle className="h-5 w-5" />

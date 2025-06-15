@@ -105,6 +105,7 @@ export const HEBREW_TEXT = {
     dateTimeRequiredError: "תאריך ושעת האירוע הם שדה חובה.",
     dateTimeInFutureError: "תאריך ושעת האירוע חייבים להיות בעתיד.",
     selectDateTimePlaceholder: "בחר תאריך ושעה",
+    minAvailableSpotsFilterLabel: "מינימום מקומות פנויים",
   },
   profile: {
     userProfile: "פרופיל משתמש",
@@ -277,3 +278,5 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
+
+    

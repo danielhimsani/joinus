@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import { ListFilter, Search } from "lucide-react";
+import { ListFilter, Search, Users } from "lucide-react"; // Added Users icon
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
@@ -13,15 +13,16 @@ import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
-import { DialogFooter, DialogClose } from "@/components/ui/dialog"; // Import DialogFooter
+import { useState, useEffect } from "react";
+import { DialogFooter, DialogClose } from "@/components/ui/dialog";
 
 export interface Filters {
   location?: string;
   date?: Date;
-  priceRange?: string; // e.g., "0-100", "100-200", "free"
+  priceRange?: string;
   foodType?: string;
-  searchTerm?: string; // This is for the advanced search term within filters
+  searchTerm?: string;
+  minAvailableSpots?: number; // New filter
 }
 
 interface EventFiltersProps {
@@ -47,35 +48,66 @@ const foodTypes = [
 
 
 export function EventFilters({ onFilterChange, initialFilters = {} }: EventFiltersProps) {
-  const [filters, setFilters] = useState<Filters>(initialFilters);
+  const [filters, setFilters] = useState<Filters>(() => ({
+    searchTerm: initialFilters.searchTerm || undefined,
+    location: initialFilters.location || undefined,
+    date: initialFilters.date || undefined,
+    priceRange: initialFilters.priceRange || "any",
+    foodType: initialFilters.foodType || "any",
+    minAvailableSpots: initialFilters.minAvailableSpots === undefined ? 1 : initialFilters.minAvailableSpots,
+  }));
 
-  const handleInputChange = (name: keyof Filters, value: string | Date | undefined) => {
-    setFilters(prev => ({ ...prev, [name]: value }));
+  useEffect(() => {
+    // Sync with initialFilters if they change, e.g. when filters are cleared from parent
+    setFilters(prev => ({
+      searchTerm: initialFilters.searchTerm || undefined,
+      location: initialFilters.location || undefined,
+      date: initialFilters.date || undefined,
+      priceRange: initialFilters.priceRange || "any",
+      foodType: initialFilters.foodType || "any",
+      minAvailableSpots: initialFilters.minAvailableSpots === undefined ? 1 : initialFilters.minAvailableSpots,
+    }));
+  }, [initialFilters]);
+
+
+  const handleInputChange = (name: keyof Filters, value: string | Date | number | undefined) => {
+    if (name === "minAvailableSpots" && typeof value === 'string') {
+        const numValue = parseInt(value, 10);
+        setFilters(prev => ({ ...prev, [name]: isNaN(numValue) || numValue < 1 ? 1 : numValue }));
+    } else if (name === "minAvailableSpots" && typeof value === 'number') {
+        setFilters(prev => ({ ...prev, [name]: value < 1 ? 1 : value }));
+    }
+    else {
+        setFilters(prev => ({ ...prev, [name]: value }));
+    }
   };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onFilterChange(filters);
+    // Ensure minAvailableSpots is a number or undefined
+    const filtersToSubmit = {
+        ...filters,
+        minAvailableSpots: typeof filters.minAvailableSpots === 'number' ? filters.minAvailableSpots : 1,
+    };
+    onFilterChange(filtersToSubmit);
   };
 
   const handleClearFilters = () => {
-    const clearedFilters = {
+    const clearedFilters: Filters = {
         searchTerm: undefined,
         location: undefined,
         date: undefined,
         priceRange: "any",
         foodType: "any",
+        minAvailableSpots: 1, // Reset to default
     };
     setFilters(clearedFilters);
-    onFilterChange(clearedFilters); // Optionally apply cleared filters immediately or wait for "Apply"
+    onFilterChange(clearedFilters); 
   }
 
   return (
-    // Removed className="p-4 mb-8 bg-card border rounded-lg shadow"
-    // The form tag is kept as it handles the submit logic naturally
     <form onSubmit={handleSubmit}> 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end py-4">
-            {/* This search term is for within the advanced filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6 items-end py-4">
             <div>
                 <Label htmlFor="advancedSearchTerm">{HEBREW_TEXT.general.search}</Label>
                 <Input 
@@ -149,9 +181,25 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
                     </SelectContent>
                 </Select>
             </div>
-            {/* The submit button is moved to DialogFooter in EventsPage */}
+            <div>
+                <Label htmlFor="minAvailableSpots">
+                   {HEBREW_TEXT.event.minAvailableSpotsFilterLabel}
+                </Label>
+                <div className="relative mt-1">
+                     <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input 
+                        id="minAvailableSpots"
+                        type="number"
+                        min="1"
+                        placeholder="1"
+                        value={filters.minAvailableSpots === undefined ? '' : filters.minAvailableSpots}
+                        onChange={(e) => handleInputChange("minAvailableSpots", e.target.value)}
+                        className="w-full pl-10 pr-3" // Added padding for icon
+                    />
+                </div>
+            </div>
         </div>
-        <DialogFooter className="pt-4">
+        <DialogFooter className="pt-6 border-t mt-2">
             <Button type="button" variant="ghost" onClick={handleClearFilters}>
                 {HEBREW_TEXT.general.clearFilters}
             </Button>
@@ -165,3 +213,5 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
     </form>
   );
 }
+
+    
