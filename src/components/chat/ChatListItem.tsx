@@ -102,7 +102,6 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   return (
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
-        {/* Main flex container for the card content */}
         <CardContent className="p-3 sm:p-4 flex items-start justify-start space-x-3 rtl:space-x-reverse">
           {/* Block 1: Text content (name, message, timestamp, unread) - Will appear on the VISUAL RIGHT in RTL */}
           <div className="flex-1 min-w-0 flex flex-col">
@@ -133,7 +132,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
           </div>
 
           {/* Block 2: Avatar and Status Badge - Will appear on the VISUAL LEFT in RTL */}
-          <div className="flex flex-col items-center space-y-1 flex-shrink-0">
+          <div className="flex items-end justify-center flex-shrink-0">
             <div
               onClick={avatarLink ? handleAvatarClick : undefined}
               onKeyDown={(e) => {
@@ -144,7 +143,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               }}
               className={cn(
                 avatarLink && "cursor-pointer",
-                "w-full flex justify-center" // Ensures avatar itself is centered in this div
+                "w-full flex justify-center" 
               )}
               role={avatarLink ? "link" : undefined}
               tabIndex={avatarLink ? 0 : undefined}
@@ -152,7 +151,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             >
               <AvatarContent />
             </div>
-            <div className="mt-0.5">
+            <div className="mt-0.5"> 
                 <Badge
                     variant={statusDisplay.variant}
                     className={cn(
