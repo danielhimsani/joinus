@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation'; // Import usePathname
+// Removed usePathname as it's no longer needed for conditional rendering here
 import {
   Dialog,
   DialogContent,
@@ -18,16 +18,13 @@ import { Settings as SettingsIcon, Moon, Sun } from 'lucide-react';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 
 export function GlobalSettingsDialog() {
-  const pathname = usePathname(); // Get current path
   const [isOpen, setIsOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    // Initialize theme from localStorage
     const currentTheme = localStorage.getItem("theme");
     if (currentTheme === "dark") {
       setIsDarkMode(true);
-      // Ensure class is on html element if not already set by ThemeInitializer
       if (!document.documentElement.classList.contains('dark')) {
         document.documentElement.classList.add("dark");
       }
@@ -37,9 +34,8 @@ export function GlobalSettingsDialog() {
          document.documentElement.classList.remove("dark");
       }
     }
-  }, []); // Runs once on mount
+  }, []);
 
-  // Update state if localStorage changes from another tab (optional, but good practice)
   useEffect(() => {
     const handleStorageChange = () => {
       const currentTheme = localStorage.getItem("theme");
@@ -61,18 +57,15 @@ export function GlobalSettingsDialog() {
     }
   };
 
-  // Conditionally render nothing if on the onboarding page (root path)
-  if (pathname === '/') {
-    return null;
-  }
-
+  // The button is now always rendered, no longer checking pathname.
+  // The position is changed from left-4 to right-4.
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
           variant="outline"
           size="icon"
-          className="fixed top-4 left-4 z-50 bg-background/80 hover:bg-background text-foreground shadow-md rounded-full"
+          className="fixed top-4 right-4 z-50 bg-background/80 hover:bg-background text-foreground shadow-md rounded-full"
           aria-label={HEBREW_TEXT.profile.settings}
           title={HEBREW_TEXT.profile.settings}
         >
@@ -108,3 +101,4 @@ export function GlobalSettingsDialog() {
     </Dialog>
   );
 }
+
