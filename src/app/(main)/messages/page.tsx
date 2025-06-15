@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle, Filter } from "lucide-react";
+import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle, Filter, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
@@ -20,6 +20,18 @@ import { ChatListItem } from "@/components/chat/ChatListItem";
 import { safeToDate } from '@/lib/dateUtils';
 
 
+type ChatStatusFilter = 'all' | EventChat['status'];
+
+const statusFilterOptions: { value: ChatStatusFilter; label: string; icon?: React.ElementType }[] = [
+    { value: 'all', label: HEBREW_TEXT.chat.allStatuses },
+    { value: 'pending_request', label: HEBREW_TEXT.chat.pendingRequests, icon: AlertTriangle },
+    { value: 'request_approved', label: HEBREW_TEXT.chat.approvedRequests, icon: CheckCircle },
+    { value: 'active', label: HEBREW_TEXT.chat.activeChats, icon: Radio },
+    { value: 'request_rejected', label: HEBREW_TEXT.chat.rejectedRequests, icon: XCircle },
+    { value: 'closed', label: HEBREW_TEXT.chat.closedChats, icon: CircleSlash },
+];
+
+
 export default function MessagesPage() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [allFetchedChats, setAllFetchedChats] = useState<EventChat[]>([]);
@@ -28,13 +40,14 @@ export default function MessagesPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("requested");
   const [chatTimeFilter, setChatTimeFilter] = useState<'all' | 'future' | 'past'>('future');
+  const [chatStatusFilter, setChatStatusFilter] = useState<ChatStatusFilter>('all');
 
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
       setCurrentUser(user);
       if (!user) {
-        setIsLoading(false); // No user, stop loading
+        setIsLoading(false); 
       }
     });
     return () => unsubscribe();
@@ -51,7 +64,6 @@ export default function MessagesPage() {
     setError(null);
 
     try {
-      // Fetch all chats the user is a participant in
       const chatsQuery = query(
         collection(db, "eventChats"),
         where("participants", "array-contains", currentUser.uid),
@@ -74,12 +86,10 @@ export default function MessagesPage() {
       });
       setAllFetchedChats(fetchedChatsForUser);
 
-      // Fetch details for events associated with these chats
       const eventIds = [...new Set(fetchedChatsForUser.map(chat => chat.eventId))];
       const tempEventDetailsMap = new Map<string, { dateTime: Date }>();
 
       if (eventIds.length > 0) {
-        // Firestore 'in' query limit is 30. If more eventIds, chunk the queries.
         const MAX_IDS_PER_QUERY = 30;
         for (let i = 0; i < eventIds.length; i += MAX_IDS_PER_QUERY) {
             const chunkEventIds = eventIds.slice(i, i + MAX_IDS_PER_QUERY);
@@ -97,7 +107,6 @@ export default function MessagesPage() {
       }
       setEventDetailsMap(tempEventDetailsMap);
       
-      // Determine default tab based on future owned chats
       let hasFutureOwnedChats = false;
       for (const chat of fetchedChatsForUser) {
           if (chat.ownerUids.includes(currentUser.uid)) {
@@ -126,22 +135,28 @@ export default function MessagesPage() {
     if (!currentUser) return { displayOwnedChats: [], displayRequestedChats: [] };
 
     const now = new Date();
-    const timeFilteredChats = allFetchedChats.filter(chat => {
-      const eventDateTime = eventDetailsMap.get(chat.eventId)?.dateTime;
-      
-      // If event details (and thus dateTime) are missing for a chat,
-      // include it only if the filter is 'all'.
-      if (!eventDateTime) return chatTimeFilter === 'all';
+    let filteredChats = allFetchedChats;
 
-      if (chatTimeFilter === 'future') return eventDateTime >= now;
-      if (chatTimeFilter === 'past') return eventDateTime < now;
-      return true; // 'all'
-    });
+    // Filter by time
+    if (chatTimeFilter !== 'all') {
+        filteredChats = filteredChats.filter(chat => {
+            const eventDateTime = eventDetailsMap.get(chat.eventId)?.dateTime;
+            if (!eventDateTime) return chatTimeFilter === 'all'; // Include if filter is 'all' and no date
+            if (chatTimeFilter === 'future') return eventDateTime >= now;
+            if (chatTimeFilter === 'past') return eventDateTime < now;
+            return true;
+        });
+    }
 
+    // Filter by status
+    if (chatStatusFilter !== 'all') {
+        filteredChats = filteredChats.filter(chat => chat.status === chatStatusFilter);
+    }
+    
     const owned: EventChat[] = [];
     const requested: EventChat[] = [];
 
-    timeFilteredChats.forEach(chat => {
+    filteredChats.forEach(chat => {
       if (chat.ownerUids.includes(currentUser.uid)) {
         owned.push(chat);
       } else if (chat.guestUid === currentUser.uid) {
@@ -149,25 +164,24 @@ export default function MessagesPage() {
       }
     });
     return { displayOwnedChats: owned, displayRequestedChats: requested };
-  }, [allFetchedChats, eventDetailsMap, chatTimeFilter, currentUser]);
+  }, [allFetchedChats, eventDetailsMap, chatTimeFilter, chatStatusFilter, currentUser]);
 
 
   const renderChatList = (chats: EventChat[], type: 'owned' | 'guest') => {
     if (chats.length === 0) {
-      let noChatsMessage = HEBREW_TEXT.chat.noChatsFound; // Default generic message
+      let noChatsMessage = HEBREW_TEXT.chat.noChatsFound; 
+      // More specific messages can be added here based on filter combinations
+      // For brevity, keeping it simpler for now.
         if (type === 'owned') {
-            noChatsMessage = chatTimeFilter === 'future' ? HEBREW_TEXT.chat.noFutureOwnedChats :
-                             chatTimeFilter === 'past' ? HEBREW_TEXT.chat.noPastOwnedChats :
-                             HEBREW_TEXT.chat.noChatsFoundOwner;
-        } else { // guest
-            noChatsMessage = chatTimeFilter === 'future' ? HEBREW_TEXT.chat.noFutureRequestedChats :
-                             chatTimeFilter === 'past' ? HEBREW_TEXT.chat.noPastRequestedChats :
-                             HEBREW_TEXT.chat.noChatsFoundGuest;
+            noChatsMessage = HEBREW_TEXT.chat.noChatsFoundOwner;
+        } else { 
+            noChatsMessage = HEBREW_TEXT.chat.noChatsFoundGuest;
         }
       return (
         <div className="text-center py-10">
           <Inbox className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <p className="text-muted-foreground text-lg">{noChatsMessage}</p>
+          <p className="text-sm text-muted-foreground/80 mt-1">נסה לשנות את אפשרויות הסינון.</p>
         </div>
       );
     }
@@ -197,7 +211,7 @@ export default function MessagesPage() {
     </div>
   );
 
-  if (isLoading && !currentUser && !allFetchedChats.length) { // Initial loading for auth
+  if (isLoading && !currentUser && !allFetchedChats.length) { 
     return (
       <div className="container mx-auto px-4 py-12 flex justify-center items-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -217,25 +231,52 @@ export default function MessagesPage() {
           </div>
         </CardHeader>
 
-        <div className="p-2 sm:p-4 md:p-6 border-b">
-            <Label htmlFor="chat-time-filter" className="mb-2 block text-sm font-medium text-muted-foreground">
-                <Filter size={16} className="inline ml-1.5" />
-                {HEBREW_TEXT.chat.chatTimeFilter}
-            </Label>
-            <Select 
-                value={chatTimeFilter} 
-                onValueChange={(value) => setChatTimeFilter(value as 'all' | 'future' | 'past')}
-                disabled={isLoading}
-            >
-                <SelectTrigger id="chat-time-filter" className="w-full">
-                    <SelectValue placeholder={HEBREW_TEXT.chat.chatTimeFilter} />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="future">{HEBREW_TEXT.chat.futureEventChats}</SelectItem>
-                    <SelectItem value="past">{HEBREW_TEXT.chat.pastEventChats}</SelectItem>
-                    <SelectItem value="all">{HEBREW_TEXT.chat.allChats}</SelectItem>
-                </SelectContent>
-            </Select>
+        <div className="p-2 sm:p-4 md:p-6 border-b space-y-4">
+            <div>
+                <Label htmlFor="chat-time-filter" className="mb-2 block text-sm font-medium text-muted-foreground">
+                    <Filter size={16} className="inline ml-1.5" />
+                    {HEBREW_TEXT.chat.chatTimeFilter}
+                </Label>
+                <Select 
+                    value={chatTimeFilter} 
+                    onValueChange={(value) => setChatTimeFilter(value as 'all' | 'future' | 'past')}
+                    disabled={isLoading}
+                >
+                    <SelectTrigger id="chat-time-filter" className="w-full">
+                        <SelectValue placeholder={HEBREW_TEXT.chat.chatTimeFilter} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="future">{HEBREW_TEXT.chat.futureEventChats}</SelectItem>
+                        <SelectItem value="past">{HEBREW_TEXT.chat.pastEventChats}</SelectItem>
+                        <SelectItem value="all">{HEBREW_TEXT.chat.allChats}</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <div>
+                <Label htmlFor="chat-status-filter" className="mb-2 block text-sm font-medium text-muted-foreground">
+                    <Filter size={16} className="inline ml-1.5" />
+                    {HEBREW_TEXT.chat.chatStatusFilter}
+                </Label>
+                <Select
+                    value={chatStatusFilter}
+                    onValueChange={(value) => setChatStatusFilter(value as ChatStatusFilter)}
+                    disabled={isLoading}
+                >
+                    <SelectTrigger id="chat-status-filter" className="w-full">
+                        <SelectValue placeholder={HEBREW_TEXT.chat.chatStatusFilter} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {statusFilterOptions.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                                <div className="flex items-center">
+                                    {option.icon && <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
+                                    {option.label}
+                                </div>
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full p-2 sm:p-4 md:p-6 pt-0">
