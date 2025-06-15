@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2, MessageCircleMore, ListChecks } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2, MessageCircleMore, ListChecks, Share2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -271,6 +271,47 @@ export default function EventDetailPage() {
     }
   };
 
+  const handleShareEvent = async () => {
+    if (navigator.share && event) {
+      try {
+        await navigator.share({
+          title: event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder,
+          text: `${HEBREW_TEXT.event.checkOutEvent}: ${event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}\n${event.description || ''}`.substring(0, 250) + "...",
+          url: window.location.href,
+        });
+        toast({
+          title: HEBREW_TEXT.general.success,
+          description: HEBREW_TEXT.event.eventSharedSuccessfully,
+        });
+      } catch (error) {
+        console.error('Error sharing event:', error);
+        if ((error as DOMException).name !== 'AbortError') { // Don't show error if user cancels share
+          toast({
+            title: HEBREW_TEXT.general.error,
+            description: HEBREW_TEXT.event.errorSharingEvent,
+            variant: 'destructive',
+          });
+        }
+      }
+    } else {
+      // Fallback for browsers that don't support navigator.share
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        toast({
+          title: HEBREW_TEXT.general.success,
+          description: HEBREW_TEXT.event.linkCopiedToClipboard,
+        });
+      } catch (err) {
+        console.error('Error copying link to clipboard:', err);
+        toast({
+          title: HEBREW_TEXT.general.error,
+          description: HEBREW_TEXT.event.errorCopyingLink,
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
 
   if (isLoading || isLoadingApprovedCount) {
     return (
@@ -338,6 +379,15 @@ export default function EventDetailPage() {
             data-ai-hint="wedding detail"
             priority
           />
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute top-4 right-4 z-10 bg-background/80 hover:bg-background text-foreground rounded-full shadow-md"
+            onClick={handleShareEvent}
+            title={HEBREW_TEXT.event.shareEventTitle}
+          >
+            <Share2 className="h-5 w-5" />
+          </Button>
            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
         </div>
         <CardHeader className="relative z-10 -mt-16 md:-mt-20 p-6 bg-background/80 backdrop-blur-sm rounded-t-lg md:mx-4">
@@ -449,10 +499,7 @@ export default function EventDetailPage() {
                     התחבר כדי לבקש להצטרף
                 </Button>
               )}
-              <Button variant="outline" className="w-full font-body">
-                <MessageSquare className="ml-2 h-4 w-4" />
-                שתף אירוע
-              </Button>
+              {/* The old share button is removed from here */}
             </div>
           </div>
         </CardContent>

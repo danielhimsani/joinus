@@ -108,6 +108,12 @@ export const HEBREW_TEXT = {
     selectDateTimePlaceholder: "בחר תאריך ושעה",
     minAvailableSpotsFilterLabel: "מינימום מקומות פנויים",
     noApprovedGuestsYet: "אין אורחים מאושרים עדיין.",
+    shareEventTitle: "שתף אירוע",
+    eventSharedSuccessfully: "האירוע שותף בהצלחה!",
+    errorSharingEvent: "שגיאה בשיתוף האירוע. נסה שוב מאוחר יותר.",
+    linkCopiedToClipboard: "הקישור הועתק ללוח!",
+    errorCopyingLink: "שגיאה בהעתקת הקישור.",
+    checkOutEvent: "בדוק את האירוע הזה",
   },
   profile: {
     userProfile: "פרופיל משתמש",
@@ -288,3 +294,4 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
+
