@@ -44,10 +44,8 @@ export function MessageBubble({ message, currentUser }: MessageBubbleProps) {
       {isCurrentUserSender ? (
         <AvatarComponent />
       ) : (
-        <Link href={`/profile/${message.senderId}`} passHref>
-            <a className="cursor-pointer">
-                <AvatarComponent />
-            </a>
+        <Link href={`/profile/${message.senderId}`} className="cursor-pointer">
+            <AvatarComponent />
         </Link>
       )}
       <div
