@@ -66,7 +66,7 @@ const paymentOptions: { value: PaymentOption; label: string }[] = [
 ];
 
 const formSchema = z.object({
-  name: z.string().nonempty({ message: HEBREW_TEXT.event.eventNameRequiredError }).min(3, { message: HEBREW_TEXT.event.eventNameMinLengthError }),
+  name: z.string(), // Name is now optional (empty string allowed)
   ownerUids: z.array(z.string()).min(1, { message: "חייב להיות לפחות בעלים אחד לאירוע." }),
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
   paymentOption: z.enum(["fixed", "payWhatYouWant", "free"], { errorMap: () => ({ message: "יש לבחור אפשרות תשלום."}) }),
@@ -75,7 +75,7 @@ const formSchema = z.object({
   locationDisplayName: z.string().optional(),
   dateTime: z.date({ required_error: HEBREW_TEXT.event.dateTimeRequiredError })
     .refine(date => {
-      if (!date) return true; 
+      if (!date) return true;
       return date > new Date();
     }, { message: HEBREW_TEXT.event.dateTimeInFutureError }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
@@ -122,12 +122,12 @@ export function EventForm({
 }: EventFormProps) {
   const router = useRouter();
   const { toast } = useToast();
-  
+
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      ownerUids: [], 
+      name: "", // Default name is an empty string
+      ownerUids: [],
       numberOfGuests: 10,
       paymentOption: "payWhatYouWant" as PaymentOption,
       pricePerGuest: 200,
@@ -152,7 +152,7 @@ export function EventForm({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
-  const [isEditingName, setIsEditingName] = useState(!isEditMode);
+  const [isEditingName, setIsEditingName] = useState(false); // Initialize to false
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -183,12 +183,12 @@ export function EventForm({
       }
     });
     return () => unsubscribe();
-  }, [isEditMode, form]); // form is now initialized before this useEffect
+  }, [isEditMode, form]);
 
   useEffect(() => {
     if (isEditMode && initialEventData) {
       form.reset({
-        name: initialEventData.name,
+        name: initialEventData.name || "", // Ensure name defaults to "" if null/undefined from data
         ownerUids: initialEventData.ownerUids || (currentUser ? [currentUser.uid] : []),
         numberOfGuests: initialEventData.numberOfGuests,
         paymentOption: initialEventData.paymentOption,
@@ -208,11 +208,12 @@ export function EventForm({
       setLatitude(initialEventData.latitude || null);
       setLongitude(initialEventData.longitude || null);
       setTrueFormattedAddress(initialEventData.location || null);
-      setIsEditingName(false);
+      setIsEditingName(false); // Keep H1 displayed initially for edit mode
     } else if (!isEditMode && currentUser) {
         if (form.getValues("ownerUids").length === 0) {
             form.setValue("ownerUids", [currentUser.uid]);
         }
+        setIsEditingName(false); // Ensure H1 placeholder is shown for new events initially
     }
   }, [isEditMode, initialEventData, form, currentUser]);
 
@@ -250,7 +251,7 @@ export function EventForm({
     } finally {
       setIsLoadingOwnerDetails(false);
     }
-  }, [currentUser, toast]); 
+  }, [currentUser, toast]);
 
   useEffect(() => {
     if (watchedOwnerUids && watchedOwnerUids.length > 0) {
@@ -330,14 +331,14 @@ export function EventForm({
         const formattedAddress = place.formatted_address || displayName;
 
         form.setValue("location", displayName, { shouldValidate: true });
-        form.setValue("locationDisplayName", displayName, { shouldValidate: false }); 
+        form.setValue("locationDisplayName", displayName, { shouldValidate: false });
         setTrueFormattedAddress(formattedAddress);
 
         setLatitude(place.geometry.location.lat());
         setLongitude(place.geometry.location.lng());
       } else {
-        setTrueFormattedAddress(null); 
-        const currentLocationValue = form.getValues("location"); 
+        setTrueFormattedAddress(null);
+        const currentLocationValue = form.getValues("location");
         form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false });
         setLatitude(null);
         setLongitude(null);
@@ -360,7 +361,7 @@ export function EventForm({
       router.push('/signin');
       return;
     }
-    
+
     if (!values.ownerUids || values.ownerUids.length === 0) {
         toast({ title: HEBREW_TEXT.general.error, description: "חייב להיות לפחות בעלים אחד לאירוע.", variant: "destructive" });
         setIsSubmitting(false);
@@ -368,7 +369,7 @@ export function EventForm({
     }
 
 
-    let finalImageUrl = isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name)}`;
+    let finalImageUrl = isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : `https://placehold.co/800x400.png?text=${encodeURIComponent(values.name || HEBREW_TEXT.event.eventNameGenericPlaceholder )}`;
 
     if (imageFile) {
       setIsUploadingImage(true);
@@ -407,9 +408,9 @@ export function EventForm({
 
     const eventDataPayload = {
         ...values,
-        ownerUids: values.ownerUids, 
+        ownerUids: values.ownerUids,
         pricePerGuest: values.paymentOption === 'fixed' ? (values.pricePerGuest ?? 0) : null,
-        location: trueFormattedAddress || values.location, 
+        location: trueFormattedAddress || values.location,
         locationDisplayName: values.locationDisplayName || values.location.split(',')[0] || "מיקום לא ידוע",
         latitude: latitude,
         longitude: longitude,
@@ -423,14 +424,14 @@ export function EventForm({
 
       if (isEditMode && initialEventData?.id) {
         const eventDocRef = doc(db, "events", initialEventData.id);
-        const { createdAt, ...updatePayload } = eventDataPayload; 
+        const { createdAt, ...updatePayload } = eventDataPayload;
         await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
-        toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" עודכן בהצלחה!` });
+        toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}" עודכן בהצלחה!` });
         router.push(`/events/${initialEventData.id}`);
       } else {
         const payloadWithCreate = {...eventDataPayload, createdAt: serverTimestamp()};
         const newEventDoc = await promiseWithTimeout(addDoc(collection(db, "events"), payloadWithCreate), 15000);
-        toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" נוצר בהצלחה!` });
+        toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}" נוצר בהצלחה!` });
         router.push(`/events/${newEventDoc.id}`);
       }
     } catch (error) {
@@ -459,7 +460,7 @@ export function EventForm({
     const firstErrorField = Object.keys(errors)[0] as keyof FormSchemaType | undefined;
     if (firstErrorField) {
         const fieldElement = document.querySelector(`[name="${firstErrorField}"], [id^="${firstErrorField}-"], [data-fieldname="${firstErrorField}"]`) as HTMLElement;
-        
+
         if (fieldElement) {
             fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             try {
@@ -477,7 +478,7 @@ export function EventForm({
     if (isEditMode && initialEventData?.id) {
         router.push(`/events/${initialEventData.id}`);
     } else {
-        router.back(); 
+        router.back();
     }
   };
 
@@ -495,7 +496,7 @@ export function EventForm({
   if (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return <Card className="w-full max-w-3xl mx-auto p-6 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary mb-2" /><p>{HEBREW_TEXT.general.loading} רכיב המיקום...</p></Card>;
 
   const currentImageToDisplay = imagePreviewUrl || (isEditMode && initialEventData?.imageUrl) || "https://placehold.co/800x400.png?text=Event+Cover";
-  const headerTitle = eventNameValue || (isEditMode && initialEventData?.name) || "שם האירוע שלכם";
+  const headerTitle = eventNameValue || (isEditMode && initialEventData?.name) || HEBREW_TEXT.event.eventNameDisplayPlaceholder;
 
 
   return (
@@ -511,8 +512,8 @@ export function EventForm({
               objectFit="cover"
               className="transition-opacity duration-300 ease-in-out"
               data-ai-hint="event cover wedding"
-              key={currentImageToDisplay} 
-              priority={!isEditMode} 
+              key={currentImageToDisplay}
+              priority={!isEditMode}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
 
@@ -608,7 +609,7 @@ export function EventForm({
                                 const [newHours, newMinutes] = e.target.value.split(':').map(Number);
                                 const currentFieldValue = field.value;
                                 const currentDatePart = currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime()) ? currentFieldValue : new Date();
-                                
+
                                 const newDateTime = new Date(currentDatePart);
                                 newDateTime.setHours(newHours, newMinutes, 0, 0);
                                 field.onChange(newDateTime);
@@ -659,9 +660,6 @@ export function EventForm({
                {form.formState.errors.dateTime && !eventDateTimeValue && (
                   <p className="text-destructive text-xs mt-1">{form.formState.errors.dateTime.message}</p>
               )}
-              {form.formState.errors.name && (
-                  <p className="text-destructive text-xs mt-1">{form.formState.errors.name.message}</p>
-              )}
             </div>
           </div>
 
@@ -678,7 +676,7 @@ export function EventForm({
             <FormField
                 control={form.control}
                 name="ownerUids"
-                render={() => ( 
+                render={() => (
                     <FormItem>
                         <div className="flex justify-between items-center mb-2">
                             <FormLabel className="text-lg font-semibold flex items-center">
@@ -702,7 +700,7 @@ export function EventForm({
                                 <div key={owner.firebaseUid} className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/30">
                                 <div className="flex items-center space-x-3 rtl:space-x-reverse">
                                     <Avatar className="h-10 w-10">
-                                    <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="owner avatar" />
+                                    <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="owner avatar"/>
                                     <AvatarFallback>{owner.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
                                     </Avatar>
                                     <div>
@@ -710,7 +708,7 @@ export function EventForm({
                                         {owner.email && <p className="text-xs text-muted-foreground">{owner.email}</p>}
                                     </div>
                                 </div>
-                                {currentUser?.uid !== owner.firebaseUid && (form.getValues("ownerUids") || []).length > 1 && ( 
+                                {currentUser?.uid !== owner.firebaseUid && (form.getValues("ownerUids") || []).length > 1 && (
                                      <Button
                                         type="button"
                                         variant="ghost"
@@ -766,7 +764,7 @@ export function EventForm({
                     <FormControl>
                         <RadioGroup
                         onValueChange={field.onChange}
-                        value={field.value} 
+                        value={field.value}
                         className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-4 rtl:md:space-x-reverse pt-2"
                         >
                         {paymentOptions.map(option => (
@@ -840,7 +838,7 @@ export function EventForm({
                             }}
                             onChange={(e) => {
                                 field.onChange(e);
-                                if (trueFormattedAddress || latitude || longitude) { 
+                                if (trueFormattedAddress || latitude || longitude) {
                                     setTrueFormattedAddress(null);
                                     setLatitude(null);
                                     setLongitude(null);
@@ -920,9 +918,9 @@ export function EventForm({
                 )} />
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
-                <Button 
-                    type="submit" 
-                    className="w-full sm:flex-1 font-body text-lg py-6" 
+                <Button
+                    type="submit"
+                    className="w-full sm:flex-1 font-body text-lg py-6"
                     disabled={isSubmitting || isUploadingImage || (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) }
                 >
                     {(isSubmitting || isUploadingImage) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
@@ -930,10 +928,10 @@ export function EventForm({
                     {submitButtonText}
                 </Button>
                 {isEditMode && (
-                    <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={handleCancelEdit} 
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancelEdit}
                         className="w-full sm:flex-1 font-body text-lg py-6"
                         disabled={isSubmitting || isUploadingImage}
                     >
@@ -951,7 +949,7 @@ export function EventForm({
             isOpen={showAddOwnerModal}
             onOpenChange={setShowAddOwnerModal}
             onOwnerAdded={handleAddOwnerToForm}
-            currentOwnerUids={currentUser ? [...(form.getValues("ownerUids") || []), currentUser.uid] : (form.getValues("ownerUids") || [])} 
+            currentOwnerUids={currentUser ? [...(form.getValues("ownerUids") || []), currentUser.uid] : (form.getValues("ownerUids") || [])}
         />
     )}
     {ownerToRemove && (
@@ -978,4 +976,3 @@ export function EventForm({
     </>
   );
 }
-

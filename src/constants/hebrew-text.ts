@@ -33,8 +33,8 @@ export const HEBREW_TEXT = {
     createEventTitle: "יצירת אירוע חדש",
     editEvent: "ערוך אירוע",
     eventName: "שם האירוע",
-    eventNameRequiredError: "שם האירוע הוא שדה חובה.",
-    eventNameMinLengthError: "שם אירוע חייב להכיל לפחות 3 תווים.",
+    eventNameDisplayPlaceholder: "שם האירוע שלכם", // For UI display
+    eventNameGenericPlaceholder: "אירוע", // For generic fallback like image text
     numberOfGuests: "מספר אורחים",
     pricePerGuest: "מחיר לאורח",
     paymentOptions: "אפשרויות תשלום",
