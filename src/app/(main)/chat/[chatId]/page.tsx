@@ -329,7 +329,7 @@ export default function ChatPage() {
     <div className="container mx-auto px-0 md:px-4 py-0 md:py-8 h-screen md:h-[calc(100vh-120px)] flex flex-col">
       <Card className="flex-1 flex flex-col max-w-3xl mx-auto w-full shadow-lg overflow-hidden relative">
         {/* Chat Header */}
-        <CardHeader className="border-b p-3 md:p-4 sticky top-0 bg-background/95 backdrop-blur-sm z-10">
+        <CardHeader className="border-b p-3 md:p-4 sticky top-0 bg-background backdrop-blur-sm z-30">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 rtl:space-x-reverse">
                  <Button variant="ghost" size="icon" onClick={() => router.back()} className="md:hidden mr-1">
