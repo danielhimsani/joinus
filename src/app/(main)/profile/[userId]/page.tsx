@@ -20,7 +20,7 @@ import { CalendarDays, MapPin, ShieldCheck, User as UserIcon, AlertCircle, Chevr
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription, AlertTitle as ShadAlertTitle } from "@/components/ui/alert"; // Renamed AlertTitle
+import { Alert, AlertDescription, AlertTitle as ShadAlertTitle } from "@/components/ui/alert";
 import {
   Tooltip,
   TooltipContent,
@@ -44,7 +44,7 @@ const calculateAge = (birthDateString?: string): number | null => {
   if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
     age--;
   }
-  return age < 0 ? null : age; // Ensure age is not negative if birthdate is in future
+  return age < 0 ? null : age; 
 };
 
 export default function UserProfilePage() {
@@ -93,7 +93,7 @@ export default function UserProfilePage() {
           email: data.email, 
           profileImageUrl: data.profileImageUrl || `https://placehold.co/150x150.png?text=${(data.name || "U").charAt(0)}`,
           bio: data.bio || "",
-          birthday: data.birthday, // Fetch birthday string
+          birthday: data.birthday, 
           isVerified: data.isVerified || false,
         };
         setProfileData(userProfile);
@@ -214,26 +214,31 @@ export default function UserProfilePage() {
             <CardTitle className="font-headline text-3xl">{profileData.name}</CardTitle>
             <div className="flex items-center justify-center space-x-3 rtl:space-x-reverse mt-1">
                 {profileData.isVerified && (
-                <CardDescription className="flex items-center text-green-600">
-                    <Tooltip>
+                <Tooltip>
                     <TooltipTrigger asChild>
-                        <ShieldCheck className="mr-2 h-5 w-5" />
+                        <CardDescription className="flex items-center text-green-600 cursor-default">
+                            <ShieldCheck className="mr-2 h-5 w-5" />
+                            {HEBREW_TEXT.profile.verifiedBadge}
+                        </CardDescription>
                     </TooltipTrigger>
                     <TooltipContent>
                         <p>{HEBREW_TEXT.profile.verifiedBadge}</p>
                     </TooltipContent>
-                    </Tooltip>
-                    {HEBREW_TEXT.profile.verifiedBadge}
-                </CardDescription>
+                </Tooltip>
                 )}
                  {calculatedAge !== null && (
                     <>
-                    {profileData.isVerified && <Separator orientation="vertical" className="h-5" />}
+                    {profileData.isVerified && <Separator orientation="vertical" className="h-5 mx-1" />}
                     <CardDescription className="flex items-center text-muted-foreground">
                         <Cake className="mr-2 h-5 w-5 text-primary/80" />
-                        {calculatedAge} {HEBREW_TEXT.profile.yearsOldSuffix}
+                        {HEBREW_TEXT.profile.age}: {calculatedAge} {HEBREW_TEXT.profile.yearsOldSuffix}
                     </CardDescription>
                     </>
+                )}
+                {calculatedAge === null && !profileData.isVerified && (
+                     <CardDescription className="text-muted-foreground italic">
+                        {HEBREW_TEXT.profile.ageNotProvided}
+                    </CardDescription>
                 )}
             </div>
           </CardHeader>

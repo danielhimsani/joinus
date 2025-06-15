@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { UserProfile, Event as EventType } from "@/types"; 
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin } from "lucide-react"; 
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake } from "lucide-react"; 
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -39,7 +39,7 @@ import {
 import { onAuthStateChanged, type User as FirebaseUser, updateProfile } from "firebase/auth";
 import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; 
 import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"; 
-import { format as formatDate } from 'date-fns'; // Renamed to avoid conflict with component
+import { format as formatDate } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate } from '@/lib/dateUtils';
 
@@ -48,8 +48,11 @@ const profileFormSchema = z.object({
   email: z.string().email({ message: "אימייל לא תקין." }).optional(),
   birthday: z.string().optional(),
   bio: z.string().max(300, { message: "ביו יכול להכיל עד 300 תווים."}).optional(),
-  phone: z.string().regex(/^0\d([\d]{0,1})([-]{0,1})\d{7}$/, { message: "מספר טלפון לא תקין."}).optional(),
+  phone: z.string().refine(val => val === '' || /^0\d([\d]{0,1})([-]{0,1})\d{7}$/.test(val), { 
+    message: "מספר טלפון לא תקין. אם הוזן, חייב להיות בפורמט ישראלי תקין."
+  }).optional(),
 });
+
 
 const calculateAge = (birthDateString?: string): number | null => {
   if (!birthDateString) return null;
@@ -76,8 +79,6 @@ export default function ProfilePage() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [ownedEvents, setOwnedEvents] = useState<EventType[]>([]);
   const [isLoadingOwnedEvents, setIsLoadingOwnedEvents] = useState(false);
-  // calculatedAge state is kept as it might be used elsewhere or for future features,
-  // but primary display for own profile (non-edit) will be full birthdate.
   const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
 
 
@@ -91,19 +92,26 @@ export default function ProfilePage() {
       setIsLoading(true); 
       if (fbUser) {
         setFirebaseUser(fbUser);
+        // Placeholder for fetching extended profile data (bio, phone, birthday)
+        // In a real app, you'd fetch this from Firestore using fbUser.uid
+        const extendedProfileData = { bio: "", phone: "", birthday: "" }; // Simulate fetching
+        // Example: const userDoc = await getDoc(doc(db, "users", fbUser.uid));
+        // if (userDoc.exists()) { extendedProfileData = userDoc.data() as any; }
+
+
         const profileData: UserProfile = {
           id: fbUser.uid, 
           firebaseUid: fbUser.uid,
           name: fbUser.displayName || "משתמש",
           email: fbUser.email || "לא סופק אימייל",
           profileImageUrl: fbUser.photoURL || "https://placehold.co/150x150.png",
-          bio: user?.bio || "", 
-          phone: user?.phone || "", 
-          birthday: user?.birthday || "", 
+          bio: extendedProfileData.bio, 
+          phone: extendedProfileData.phone, 
+          birthday: extendedProfileData.birthday, 
           isVerified: fbUser.emailVerified,
         };
         setUser(profileData);
-        setCalculatedAge(calculateAge(profileData.birthday)); // Still calculate for potential other uses
+        setCalculatedAge(calculateAge(profileData.birthday));
         form.reset({
           name: profileData.name,
           email: profileData.email,
@@ -145,10 +153,8 @@ export default function ProfilePage() {
     });
 
     return () => unsubscribe();
-  }, [form, router, user?.bio, user?.phone, user?.birthday, toast]);
+  }, [form, router, toast]); // Removed user?.bio etc. as it might cause re-fetches. Fetch once.
 
-  // This useEffect is mainly for re-calculating age if birthday changes,
-  // but the direct display of full birthday on own profile (non-edit) is now primary.
   useEffect(() => {
     if (user?.birthday) {
       setCalculatedAge(calculateAge(user.birthday));
@@ -189,7 +195,9 @@ export default function ProfilePage() {
         await updateProfile(firebaseUser, { displayName: values.name });
       }
       
-      await new Promise(resolve => setTimeout(resolve, 1000)); 
+      // Here you would typically update the user document in Firestore
+      // For example: await setDoc(doc(db, "users", firebaseUser.uid), { bio: values.bio, phone: values.phone, birthday: values.birthday }, { merge: true });
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate Firestore update
       
       setUser(prevUser => prevUser ? { 
           ...prevUser, 
@@ -337,9 +345,9 @@ export default function ProfilePage() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{HEBREW_TEXT.profile.phone}</FormLabel>
+                        <FormLabel>{HEBREW_TEXT.profile.phone} ({HEBREW_TEXT.general.optional})</FormLabel>
                         <FormControl>
-                          <Input type="tel" {...field} />
+                          <Input type="tel" {...field} placeholder="05X-XXXXXXX"/>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -377,7 +385,7 @@ export default function ProfilePage() {
                         {HEBREW_TEXT.profile.saveChanges}
                       </Button>
                       <Button type="button" variant="outline" onClick={() => setIsEditing(false)} className="flex-1 font-body" disabled={isSubmitting}>
-                          ביטול
+                          {HEBREW_TEXT.general.cancel}
                       </Button>
                   </div>
                 </form>
@@ -396,7 +404,7 @@ export default function ProfilePage() {
                   </div>
                   <div>
                      <h3 className="font-semibold text-muted-foreground flex items-center">
-                        <CalendarDays className="ml-2 h-4 w-4 text-primary/80" />
+                        <Cake className="ml-2 h-4 w-4 text-primary/80" />
                         {HEBREW_TEXT.profile.birthday}
                     </h3>
                     <p className="text-foreground/90">
