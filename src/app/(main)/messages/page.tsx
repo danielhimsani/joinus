@@ -7,9 +7,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle, Filter, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash } from "lucide-react";
+import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle, Filter as FilterIcon, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose
+} from "@/components/ui/dialog";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { EventChat, Event as EventType } from "@/types";
 import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
@@ -39,8 +49,11 @@ export default function MessagesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("requested");
+  
+  // Filter states
   const [chatTimeFilter, setChatTimeFilter] = useState<'all' | 'future' | 'past'>('future');
   const [chatStatusFilter, setChatStatusFilter] = useState<ChatStatusFilter>('all');
+  const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
 
 
   useEffect(() => {
@@ -170,8 +183,6 @@ export default function MessagesPage() {
   const renderChatList = (chats: EventChat[], type: 'owned' | 'guest') => {
     if (chats.length === 0) {
       let noChatsMessage = HEBREW_TEXT.chat.noChatsFound; 
-      // More specific messages can be added here based on filter combinations
-      // For brevity, keeping it simpler for now.
         if (type === 'owned') {
             noChatsMessage = HEBREW_TEXT.chat.noChatsFoundOwner;
         } else { 
@@ -211,6 +222,11 @@ export default function MessagesPage() {
     </div>
   );
 
+  const handleClearFilters = () => {
+    setChatTimeFilter('future');
+    setChatStatusFilter('all');
+  };
+
   if (isLoading && !currentUser && !allFetchedChats.length) { 
     return (
       <div className="container mx-auto px-4 py-12 flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -228,59 +244,79 @@ export default function MessagesPage() {
               <MessageSquareText className="h-7 w-7 md:h-8 md:w-8 text-primary ml-2" />
               <CardTitle className="font-headline text-2xl md:text-3xl">{HEBREW_TEXT.chat.messagesPageTitle}</CardTitle>
             </div>
+            <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="mt-2 md:mt-0">
+                  <FilterIcon className="ml-2 h-4 w-4" />
+                  סינון שיחות
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle className="font-headline text-xl">סינון שיחות</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-6 py-4">
+                    <div>
+                        <Label htmlFor="chat-time-filter" className="mb-2 block text-sm font-medium text-muted-foreground">
+                            {HEBREW_TEXT.chat.chatTimeFilter}
+                        </Label>
+                        <Select 
+                            value={chatTimeFilter} 
+                            onValueChange={(value) => setChatTimeFilter(value as 'all' | 'future' | 'past')}
+                            disabled={isLoading}
+                        >
+                            <SelectTrigger id="chat-time-filter" className="w-full">
+                                <SelectValue placeholder={HEBREW_TEXT.chat.chatTimeFilter} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="future">{HEBREW_TEXT.chat.futureEventChats}</SelectItem>
+                                <SelectItem value="past">{HEBREW_TEXT.chat.pastEventChats}</SelectItem>
+                                <SelectItem value="all">{HEBREW_TEXT.chat.allChats}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label htmlFor="chat-status-filter" className="mb-2 block text-sm font-medium text-muted-foreground">
+                            {HEBREW_TEXT.chat.chatStatusFilter}
+                        </Label>
+                        <Select
+                            value={chatStatusFilter}
+                            onValueChange={(value) => setChatStatusFilter(value as ChatStatusFilter)}
+                            disabled={isLoading}
+                        >
+                            <SelectTrigger id="chat-status-filter" className="w-full">
+                                <SelectValue placeholder={HEBREW_TEXT.chat.chatStatusFilter} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {statusFilterOptions.map(option => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        <div className="flex items-center">
+                                            {option.icon && <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
+                                            {option.label}
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter className="sm:justify-between">
+                    <Button type="button" variant="ghost" onClick={handleClearFilters}>
+                        {HEBREW_TEXT.general.clearFilters}
+                    </Button>
+                    <DialogClose asChild>
+                        <Button type="button" variant="default">
+                            {HEBREW_TEXT.general.close}
+                        </Button>
+                    </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardHeader>
 
-        <div className="p-2 sm:p-4 md:p-6 border-b space-y-4">
-            <div>
-                <Label htmlFor="chat-time-filter" className="mb-2 block text-sm font-medium text-muted-foreground">
-                    <Filter size={16} className="inline ml-1.5" />
-                    {HEBREW_TEXT.chat.chatTimeFilter}
-                </Label>
-                <Select 
-                    value={chatTimeFilter} 
-                    onValueChange={(value) => setChatTimeFilter(value as 'all' | 'future' | 'past')}
-                    disabled={isLoading}
-                >
-                    <SelectTrigger id="chat-time-filter" className="w-full">
-                        <SelectValue placeholder={HEBREW_TEXT.chat.chatTimeFilter} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="future">{HEBREW_TEXT.chat.futureEventChats}</SelectItem>
-                        <SelectItem value="past">{HEBREW_TEXT.chat.pastEventChats}</SelectItem>
-                        <SelectItem value="all">{HEBREW_TEXT.chat.allChats}</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-            <div>
-                <Label htmlFor="chat-status-filter" className="mb-2 block text-sm font-medium text-muted-foreground">
-                    <Filter size={16} className="inline ml-1.5" />
-                    {HEBREW_TEXT.chat.chatStatusFilter}
-                </Label>
-                <Select
-                    value={chatStatusFilter}
-                    onValueChange={(value) => setChatStatusFilter(value as ChatStatusFilter)}
-                    disabled={isLoading}
-                >
-                    <SelectTrigger id="chat-status-filter" className="w-full">
-                        <SelectValue placeholder={HEBREW_TEXT.chat.chatStatusFilter} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {statusFilterOptions.map(option => (
-                            <SelectItem key={option.value} value={option.value}>
-                                <div className="flex items-center">
-                                    {option.icon && <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
-                                    {option.label}
-                                </div>
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full p-2 sm:p-4 md:p-6 pt-0">
-          <TabsList className="grid w-full grid-cols-2 mb-4 mt-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full p-2 sm:p-4 md:p-6">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="owned" className="py-2.5 text-sm sm:text-base font-body">
               <Briefcase className="ml-1.5 h-4 w-4 sm:h-5 sm:w-5" />
               {HEBREW_TEXT.chat.eventsInMyOwnership}
