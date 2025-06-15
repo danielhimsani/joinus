@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -15,6 +16,10 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: CalendarProps) {
+  // Determine RTL status. props.dir is preferred as DayPicker passes it.
+  // Fallback to document.documentElement.dir for robustness in client components.
+  const isRtl = props.dir === 'rtl' || (typeof document !== "undefined" && document.documentElement.dir === 'rtl');
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -29,8 +34,8 @@ function Calendar({
           buttonVariants({ variant: "outline" }),
           "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
         ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
+        nav_button_previous: "absolute left-1", // In RTL, this is visually on the right
+        nav_button_next: "absolute right-1",    // In RTL, this is visually on the left
         table: "w-full border-collapse space-y-1",
         head_row: "flex",
         head_cell:
@@ -54,12 +59,10 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn("h-4 w-4", className)} {...props} />
-        ),
-        IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn("h-4 w-4", className)} {...props} />
-        ),
+        IconLeft: ({ className: iconClassName, ...restIconProps }) => // Icon for the "previous month" button
+          isRtl ? <ChevronRight className={cn("h-4 w-4", iconClassName)} {...restIconProps} /> : <ChevronLeft className={cn("h-4 w-4", iconClassName)} {...restIconProps} />,
+        IconRight: ({ className: iconClassName, ...restIconProps }) => // Icon for the "next month" button
+          isRtl ? <ChevronLeft className={cn("h-4 w-4", iconClassName)} {...restIconProps} /> : <ChevronRight className={cn("h-4 w-4", iconClassName)} {...restIconProps} />,
       }}
       {...props}
     />
