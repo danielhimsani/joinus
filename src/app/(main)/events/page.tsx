@@ -97,11 +97,12 @@ export default function EventsPage() {
     try {
       const eventsCollectionRef = collection(db, "events");
       const q = query(
-        eventsCollectionRef, 
+        eventsCollectionRef,
         where("numberOfGuests", ">", 0), // Fetch events that have capacity > 0
-        orderBy("numberOfGuests", "asc"), 
-        orderBy("dateTime", "asc")
-      ); 
+        orderBy("numberOfGuests", "asc")
+        // Removed: orderBy("dateTime", "asc") // To simplify and avoid needing a specific composite index for now.
+                                          // For original sorting (by spots then date), create the index suggested by Firebase.
+      );
       const querySnapshot = await getDocs(q);
       const fetchedEvents = querySnapshot.docs.map(doc => {
         const data = doc.data();
@@ -151,7 +152,7 @@ export default function EventsPage() {
         return;
     }
 
-    let eventsToFilter = [...allEvents]; 
+    let eventsToFilter = [...allEvents];
 
     // Primary filter: only show events with available spots
     eventsToFilter = eventsToFilter.filter(event => {
@@ -256,7 +257,7 @@ export default function EventsPage() {
     const currentY = e.touches[0].clientY;
     const distance = Math.max(0, currentY - pullStart);
     setPullDistance(distance);
-    
+
     if (distance > 0 && window.scrollY === 0) {
         // e.preventDefault(); // This requires { passive: false } on listener
     }
@@ -275,10 +276,10 @@ export default function EventsPage() {
   useEffect(() => {
     if (!isMobileView || !bodyRef.current) return;
 
-    const el = bodyRef.current.parentElement; 
+    const el = bodyRef.current.parentElement;
     if (!el) return;
 
-    const options = { passive: true }; 
+    const options = { passive: true };
 
     el.addEventListener("touchstart", handleTouchStart, options);
     el.addEventListener("touchmove", handleTouchMove, options);
@@ -318,7 +319,7 @@ export default function EventsPage() {
       </div>
     ))
   );
-  
+
   const mapEventLocations: MapLocation[] = filteredEvents
     .filter(e => e.latitude != null && e.longitude != null)
     .map(e => ({
@@ -343,10 +344,10 @@ export default function EventsPage() {
         <div
           style={{
             position: 'fixed',
-            top: isRefreshingViaPull || isPulling ? `${Math.max(0, indicatorY - 20)}px` : '-60px', 
+            top: isRefreshingViaPull || isPulling ? `${Math.max(0, indicatorY - 20)}px` : '-60px',
             left: '50%',
             transform: 'translateX(-50%)',
-            zIndex: 1000, 
+            zIndex: 1000,
             padding: '10px',
             background: 'hsl(var(--background))',
             borderRadius: '50%',
@@ -430,8 +431,8 @@ export default function EventsPage() {
                   )}
                   {currentLocation && !locationError && (
                     <div className="mt-2 rounded-lg overflow-hidden shadow-md">
-                      <GoogleMapComponent 
-                          center={currentLocation} 
+                      <GoogleMapComponent
+                          center={currentLocation}
                           eventLocations={mapEventLocations}
                       />
                     </div>
