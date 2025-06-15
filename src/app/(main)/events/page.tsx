@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Image from 'next/image';
 import { EventCard } from "@/components/events/EventCard";
 import { EventFilters, type Filters } from "@/components/events/EventFilters";
-import type { Event } from "@/types";
+import type { Event, EventOwnerInfo } from "@/types";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy, Timestamp, where,getCountFromServer } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, Timestamp, where, getCountFromServer, doc } from "firebase/firestore";
 import { safeToDate } from '@/lib/dateUtils';
 
 
@@ -96,14 +96,15 @@ export default function EventsPage() {
     setFetchError(null);
     try {
       const eventsCollectionRef = collection(db, "events");
-      // Only order by dateTime. Filtering for available spots will happen client-side after fetching all.
       const q = query(eventsCollectionRef, orderBy("dateTime", "asc"));
       const querySnapshot = await getDocs(q);
-      const fetchedEvents = querySnapshot.docs.map(doc => {
-        const data = doc.data();
+      
+      const fetchedEventsData = querySnapshot.docs.map(docSnap => {
+        const data = docSnap.data();
         return {
-          id: doc.id,
+          id: docSnap.id,
           ...data,
+          ownerUids: data.ownerUids || [], // Ensure ownerUids is always an array
           dateTime: safeToDate(data.dateTime),
           createdAt: safeToDate(data.createdAt),
           updatedAt: safeToDate(data.updatedAt),
@@ -119,10 +120,42 @@ export default function EventsPage() {
           foodType: data.foodType || "notKosher",
           religionStyle: data.religionStyle || "mixed",
           imageUrl: data.imageUrl,
-        } as Event;
+        } as Omit<Event, 'owners'> & { ownerUids: string[] }; // Type assertion for intermediate step
       });
-      setAllEvents(fetchedEvents);
-      await fetchApprovedCountsForEvents(fetchedEvents); 
+
+      // Fetch owner profiles
+      const allOwnerUids = [...new Set(fetchedEventsData.flatMap(event => event.ownerUids || []))];
+      const ownerProfilesMap = new Map<string, EventOwnerInfo>();
+
+      if (allOwnerUids.length > 0) {
+        const MAX_IDS_PER_QUERY = 30;
+        for (let i = 0; i < allOwnerUids.length; i += MAX_IDS_PER_QUERY) {
+            const uidsChunk = allOwnerUids.slice(i, i + MAX_IDS_PER_QUERY);
+            if (uidsChunk.length > 0) {
+                const usersQuery = query(collection(db, "users"), where("__name__", "in", uidsChunk));
+                const usersSnapshot = await getDocs(usersQuery);
+                usersSnapshot.forEach(userDoc => {
+                    const userData = userDoc.data();
+                    ownerProfilesMap.set(userDoc.id, {
+                        uid: userDoc.id,
+                        name: userData.name || "Unknown Owner",
+                        profileImageUrl: userData.profileImageUrl || "",
+                    });
+                });
+            }
+        }
+      }
+      
+      const eventsWithPopulatedOwners: Event[] = fetchedEventsData.map(eventData => {
+          const owners: EventOwnerInfo[] = (eventData.ownerUids || []).map(uid =>
+              ownerProfilesMap.get(uid) || { uid, name: "Unknown Owner", profileImageUrl: "" }
+          );
+          return { ...eventData, owners } as Event;
+      });
+
+      setAllEvents(eventsWithPopulatedOwners);
+      await fetchApprovedCountsForEvents(eventsWithPopulatedOwners);
+
     } catch (error) {
       console.error("Error fetching events from Firestore:", error);
       setFetchError(HEBREW_TEXT.general.error + " " + HEBREW_TEXT.general.tryAgainLater + (error instanceof Error && (error as any).code === 'failed-precondition' ? " (ייתכן שחסר אינדקס ב-Firestore. בדוק את הודעת השגיאה המלאה בקונסולה.)" : ""));
