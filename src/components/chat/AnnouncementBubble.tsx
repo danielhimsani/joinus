@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { Megaphone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HEBREW_TEXT } from '@/constants/hebrew-text'; // Added import
 
 interface AnnouncementBubbleProps {
   announcement: EventAnnouncement;
@@ -22,7 +23,7 @@ export function AnnouncementBubble({ announcement }: AnnouncementBubbleProps) {
 
   return (
     <div className="my-3 w-full flex justify-center px-2">
-      <Card className="w-full max-w-xl shadow-md bg-muted/30 border-2 border-primary dark:bg-card dark:border-primary">
+      <Card className="w-full max-w-xl shadow-md bg-muted/30 dark:bg-card border-2 border-primary">
         <CardHeader className="p-3">
           <div className="flex items-center space-x-2 rtl:space-x-reverse">
             <div className="p-2 bg-primary/10 rounded-full">
