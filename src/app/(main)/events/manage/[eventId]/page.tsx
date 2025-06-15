@@ -28,7 +28,7 @@ import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, server
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
-import { Edit3, Users, FileText, Send, Loader2, AlertCircle, ChevronLeft, ChevronRight, Contact as UserPlaceholderIcon, MessageSquare } from 'lucide-react';
+import { Edit3, Users, FileText, Send, Loader2, AlertCircle, ChevronLeft, ChevronRight, Contact as UserPlaceholderIcon, MessageSquare, CalendarDays } from 'lucide-react';
 
 const GUESTS_PER_PAGE = 10;
 
