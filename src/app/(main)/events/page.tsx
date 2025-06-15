@@ -93,15 +93,12 @@ export default function EventsPage() {
 
   const fetchEventsFromFirestore = useCallback(async () => {
     setIsLoadingEvents(true);
-    setIsLoadingApprovedCounts(true); // Also set this true initially
+    setIsLoadingApprovedCounts(true); 
     setFetchError(null);
     try {
       const eventsCollectionRef = collection(db, "events");
-      const q = query(
-        eventsCollectionRef,
-        where("numberOfGuests", ">", 0), // Filter events with capacity > 0
-        orderBy("dateTime", "asc") // Only sort by date
-      );
+      // Simplified query: Only order by dateTime. Filtering by numberOfGuests will happen client-side.
+      const q = query(eventsCollectionRef, orderBy("dateTime", "asc"));
       const querySnapshot = await getDocs(q);
       const fetchedEvents = querySnapshot.docs.map(doc => {
         const data = doc.data();
@@ -112,7 +109,7 @@ export default function EventsPage() {
           createdAt: safeToDate(data.createdAt),
           updatedAt: safeToDate(data.updatedAt),
           name: data.name || "",
-          numberOfGuests: data.numberOfGuests || 0, // This is total capacity
+          numberOfGuests: data.numberOfGuests || 0, 
           paymentOption: data.paymentOption || "free",
           location: data.location || "No location specified",
           locationDisplayName: data.locationDisplayName || "",
@@ -126,16 +123,15 @@ export default function EventsPage() {
         } as Event;
       });
       setAllEvents(fetchedEvents);
-      await fetchApprovedCountsForEvents(fetchedEvents); // Fetch counts after events are fetched
+      await fetchApprovedCountsForEvents(fetchedEvents); 
     } catch (error) {
       console.error("Error fetching events from Firestore:", error);
       setFetchError(HEBREW_TEXT.general.error + " " + HEBREW_TEXT.general.tryAgainLater + (error instanceof Error && (error as any).code === 'failed-precondition' ? " (ייתכן שחסר אינדקס ב-Firestore. בדוק את הודעת השגיאה המלאה בקונסולה.)" : ""));
       setAllEvents([]);
       setApprovedCountsMap(new Map());
-      setIsLoadingApprovedCounts(false); // Ensure this is false on error too
+      setIsLoadingApprovedCounts(false); 
     } finally {
       setIsLoadingEvents(false);
-      // setIsLoadingApprovedCounts will be set by fetchApprovedCountsForEvents
       setIsRefreshingViaPull(false);
     }
   }, [fetchApprovedCountsForEvents]);
@@ -146,8 +142,8 @@ export default function EventsPage() {
 
 
   useEffect(() => {
-    if (isLoadingEvents || isLoadingApprovedCounts) { // Don't filter until counts are loaded
-        setFilteredEvents([]); // Or keep stale data, but empty is safer
+    if (isLoadingEvents || isLoadingApprovedCounts) { 
+        setFilteredEvents([]); 
         return;
     }
 
@@ -267,7 +263,7 @@ export default function EventsPage() {
     setIsPulling(false);
     if (pullDistance > PULL_TO_REFRESH_THRESHOLD) {
       setIsRefreshingViaPull(true);
-      fetchEventsFromFirestore(); // This will also trigger re-fetch of approved counts
+      fetchEventsFromFirestore(); 
     }
     setTimeout(() => setPullDistance(0), 200);
   }, [isPulling, pullDistance, fetchEventsFromFirestore]);
@@ -278,7 +274,7 @@ export default function EventsPage() {
     const el = bodyRef.current.parentElement;
     if (!el) return;
 
-    const options = { passive: true }; // passive: true is important for scroll performance
+    const options = { passive: true }; 
 
     el.addEventListener("touchstart", handleTouchStart, options);
     el.addEventListener("touchmove", handleTouchMove, options);
@@ -328,12 +324,12 @@ export default function EventsPage() {
       eventName: e.name || HEBREW_TEXT.event.eventNameGenericPlaceholder,
       locationDisplayName: e.locationDisplayName || e.location,
       dateTime: e.dateTime,
-      numberOfGuests: e.numberOfGuests - (approvedCountsMap.get(e.id) || 0), // Available spots
+      numberOfGuests: e.numberOfGuests - (approvedCountsMap.get(e.id) || 0), 
     }));
 
   const canActuallyRefresh = pullDistance > PULL_TO_REFRESH_THRESHOLD;
   const indicatorVisible = isPulling || isRefreshingViaPull;
-  const indicatorY = isRefreshingViaPull ? 20 : Math.min(pullDistance, PULL_INDICATOR_TRAVEL) * 0.5; // Adjust travel for feel
+  const indicatorY = isRefreshingViaPull ? 20 : Math.min(pullDistance, PULL_INDICATOR_TRAVEL) * 0.5; 
   const indicatorOpacity = isRefreshingViaPull ? 1 : Math.min(1, pullDistance / PULL_TO_REFRESH_THRESHOLD);
 
 
@@ -344,10 +340,10 @@ export default function EventsPage() {
         <div
           style={{
             position: 'fixed',
-            top: isRefreshingViaPull || isPulling ? `${Math.max(0, indicatorY - 20)}px` : '-60px', // Offset to keep it "above" content
+            top: isRefreshingViaPull || isPulling ? `${Math.max(0, indicatorY - 20)}px` : '-60px', 
             left: '50%',
             transform: 'translateX(-50%)',
-            zIndex: 1000, // Ensure it's above other content
+            zIndex: 1000, 
             padding: '10px',
             background: 'hsl(var(--background))',
             borderRadius: '50%',
@@ -466,7 +462,6 @@ export default function EventsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredEvents.map(event => {
                const availableSpots = event.numberOfGuests - (approvedCountsMap.get(event.id) || 0);
-               // We only display if availableSpots > 0 due to the useEffect filter logic
                return <EventCard key={event.id} event={event} availableSpots={availableSpots} />;
             })}
           </div>
