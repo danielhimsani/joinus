@@ -33,8 +33,8 @@ export const HEBREW_TEXT = {
     createEventTitle: "יצירת אירוע חדש",
     editEvent: "ערוך אירוע",
     eventName: "שם האירוע",
-    eventNameDisplayPlaceholder: "שם האירוע שלכם", // For UI display
-    eventNameGenericPlaceholder: "אירוע", // For generic fallback like image text
+    eventNameDisplayPlaceholder: "שם האירוע שלכם", 
+    eventNameGenericPlaceholder: "אירוע",
     numberOfGuests: "מספר אורחים",
     pricePerGuest: "מחיר לאורח",
     paymentOptions: "אפשרויות תשלום",
@@ -155,15 +155,19 @@ export const HEBREW_TEXT = {
     statusRejected: "הבקשה נדחתה",
     statusClosed: "סגור",
     noMessagesYet: "אין הודעות עדיין. התחל/י את השיחה!",
-    chatWith: "שיחה עם", // e.g. Chat with Guest Name / Event Name
+    chatWith: "שיחה עם", 
     guest: "אורח",
     eventOwner: "בעל אירוע",
     you: "אתה",
     startChatPrompt: "נראה שעדיין לא התחלת צ'אט עבור אירוע זה. כתוב הודעת פתיחה לבעלי האירוע:",
     messageRequired: "הודעה נדרשת.",
-    noChatsFound: "לא נמצאו צ'אטים.",
-    noChatsFoundOwner: "אין בקשות הצטרפות לאירועים שבבעלותך כרגע.",
-    noChatsFoundGuest: "לא ביקשת להצטרף לאירועים עדיין.",
+    noChatsFound: "לא נמצאו צ'אטים התואמים את הסינון הנוכחי.",
+    noChatsFoundOwner: "אין בקשות הצטרפות לאירועים שבבעלותך התואמות את הסינון הנוכחי.",
+    noChatsFoundGuest: "לא ביקשת להצטרף לאירועים התואמים את הסינון הנוכחי.",
+    noFutureOwnedChats: "אין בקשות הצטרפות לאירועים עתידיים שבבעלותך.",
+    noPastOwnedChats: "אין בקשות הצטרפות לאירועים קודמים שבבעלותך.",
+    noFutureRequestedChats: "לא ביקשת להצטרף לאירועים עתידיים.",
+    noPastRequestedChats: "לא ביקשת להצטרף לאירועים קודמים.",
     loadingChats: "טוען צ'אטים...",
     confirmDeclineRequestTitle: "אישור דחיית בקשה",
     confirmDeclineRequestMessage: "האם אתה בטוח שברצונך לדחות את בקשת ההצטרפות של {guestName}?",
@@ -191,6 +195,10 @@ export const HEBREW_TEXT = {
     closeChat: "סגור שיחה",
     confirmAction: "אישור פעולה",
     confirmCloseChatMessage: "האם אתה בטוח שברצונך לסגור שיחה זו?",
+    chatTimeFilter: "סנן לפי זמן אירוע",
+    allChats: "כל השיחות",
+    futureEventChats: "שיחות לאירועים עתידיים",
+    pastEventChats: "שיחות לאירועים שעברו",
   },
   general: {
     loading: "טוען...",
@@ -251,3 +259,4 @@ export const HEBREW_TEXT = {
     longitude: "קו אורך",
   }
 };
+

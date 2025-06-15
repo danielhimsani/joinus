@@ -1,13 +1,15 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"; // Card for overall structure
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle } from "lucide-react";
+import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle, Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { EventChat, Event as EventType } from "@/types";
 import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
@@ -20,15 +22,20 @@ import { safeToDate } from '@/lib/dateUtils';
 
 export default function MessagesPage() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
-  const [ownedChats, setOwnedChats] = useState<EventChat[]>([]);
-  const [requestedChats, setRequestedChats] = useState<EventChat[]>([]);
+  const [allFetchedChats, setAllFetchedChats] = useState<EventChat[]>([]);
+  const [eventDetailsMap, setEventDetailsMap] = useState<Map<string, { dateTime: Date }>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("requested"); // Default to "My Requests"
+  const [activeTab, setActiveTab] = useState<string>("requested");
+  const [chatTimeFilter, setChatTimeFilter] = useState<'all' | 'future' | 'past'>('future');
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
       setCurrentUser(user);
+      if (!user) {
+        setIsLoading(false); // No user, stop loading
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -36,32 +43,15 @@ export default function MessagesPage() {
   const fetchChatsAndEvents = useCallback(async () => {
     if (!currentUser) {
       setIsLoading(false);
+      setAllFetchedChats([]);
+      setEventDetailsMap(new Map());
       return;
     }
     setIsLoading(true);
     setError(null);
 
     try {
-      // Fetch future owned events to determine default tab
-      let hasFutureOwnedEvents = false;
-      try {
-        const futureEventsQuery = query(
-          collection(db, "events"),
-          where("ownerUids", "array-contains", currentUser.uid),
-          where("dateTime", ">=", Timestamp.now())
-        );
-        const futureEventsSnapshot = await getDocs(futureEventsQuery);
-        if (!futureEventsSnapshot.empty) {
-          hasFutureOwnedEvents = true;
-        }
-      } catch (e) {
-        console.error("Error fetching future owned events:", e);
-        // Non-critical error for default tab, so we don't set main error state
-      }
-      
-      setActiveTab(hasFutureOwnedEvents ? "owned" : "requested");
-
-      // Fetch chats
+      // Fetch all chats the user is a participant in
       const chatsQuery = query(
         collection(db, "eventChats"),
         where("participants", "array-contains", currentUser.uid),
@@ -69,34 +59,59 @@ export default function MessagesPage() {
       );
       const chatsSnapshot = await getDocs(chatsQuery);
       
-      const fetchedOwnedChats: EventChat[] = [];
-      const fetchedRequestedChats: EventChat[] = [];
-
+      const fetchedChatsForUser: EventChat[] = [];
       chatsSnapshot.forEach((doc) => {
         const chatData = doc.data() as Omit<EventChat, 'id' | 'createdAt' | 'updatedAt' | 'lastMessageTimestamp'> & { 
             createdAt: Timestamp, updatedAt: Timestamp, lastMessageTimestamp?: Timestamp 
         };
-        
-        const formattedChat: EventChat = {
+        fetchedChatsForUser.push({
           id: doc.id,
           ...chatData,
           createdAt: safeToDate(chatData.createdAt),
           updatedAt: safeToDate(chatData.updatedAt),
           lastMessageTimestamp: chatData.lastMessageTimestamp ? safeToDate(chatData.lastMessageTimestamp) : undefined,
-        };
-
-        if (formattedChat.ownerUids.includes(currentUser.uid)) {
-          fetchedOwnedChats.push(formattedChat);
-        } else if (formattedChat.guestUid === currentUser.uid) {
-          fetchedRequestedChats.push(formattedChat);
-        }
+        });
       });
+      setAllFetchedChats(fetchedChatsForUser);
 
-      setOwnedChats(fetchedOwnedChats);
-      setRequestedChats(fetchedRequestedChats);
+      // Fetch details for events associated with these chats
+      const eventIds = [...new Set(fetchedChatsForUser.map(chat => chat.eventId))];
+      const tempEventDetailsMap = new Map<string, { dateTime: Date }>();
+
+      if (eventIds.length > 0) {
+        // Firestore 'in' query limit is 30. If more eventIds, chunk the queries.
+        const MAX_IDS_PER_QUERY = 30;
+        for (let i = 0; i < eventIds.length; i += MAX_IDS_PER_QUERY) {
+            const chunkEventIds = eventIds.slice(i, i + MAX_IDS_PER_QUERY);
+            if (chunkEventIds.length > 0) {
+                const eventsQuery = query(collection(db, "events"), where("__name__", "in", chunkEventIds));
+                const eventsSnapshot = await getDocs(eventsQuery);
+                eventsSnapshot.forEach(eventDoc => {
+                    const eventData = eventDoc.data();
+                    if (eventData.dateTime) {
+                         tempEventDetailsMap.set(eventDoc.id, { dateTime: safeToDate(eventData.dateTime) });
+                    }
+                });
+            }
+        }
+      }
+      setEventDetailsMap(tempEventDetailsMap);
+      
+      // Determine default tab based on future owned chats
+      let hasFutureOwnedChats = false;
+      for (const chat of fetchedChatsForUser) {
+          if (chat.ownerUids.includes(currentUser.uid)) {
+              const eventDate = tempEventDetailsMap.get(chat.eventId)?.dateTime;
+              if (eventDate && eventDate >= new Date()) {
+                  hasFutureOwnedChats = true;
+                  break;
+              }
+          }
+      }
+      setActiveTab(hasFutureOwnedChats ? "owned" : "requested");
 
     } catch (e: any) {
-      console.error("Error fetching chats:", e);
+      console.error("Error fetching chats or events:", e);
       setError(HEBREW_TEXT.chat.errorFetchingChats + (e.message ? `: ${e.message}` : ''));
     } finally {
       setIsLoading(false);
@@ -107,14 +122,52 @@ export default function MessagesPage() {
     fetchChatsAndEvents();
   }, [fetchChatsAndEvents]);
 
+  const { displayOwnedChats, displayRequestedChats } = useMemo(() => {
+    if (!currentUser) return { displayOwnedChats: [], displayRequestedChats: [] };
+
+    const now = new Date();
+    const timeFilteredChats = allFetchedChats.filter(chat => {
+      const eventDateTime = eventDetailsMap.get(chat.eventId)?.dateTime;
+      
+      // If event details (and thus dateTime) are missing for a chat,
+      // include it only if the filter is 'all'.
+      if (!eventDateTime) return chatTimeFilter === 'all';
+
+      if (chatTimeFilter === 'future') return eventDateTime >= now;
+      if (chatTimeFilter === 'past') return eventDateTime < now;
+      return true; // 'all'
+    });
+
+    const owned: EventChat[] = [];
+    const requested: EventChat[] = [];
+
+    timeFilteredChats.forEach(chat => {
+      if (chat.ownerUids.includes(currentUser.uid)) {
+        owned.push(chat);
+      } else if (chat.guestUid === currentUser.uid) {
+        requested.push(chat);
+      }
+    });
+    return { displayOwnedChats: owned, displayRequestedChats: requested };
+  }, [allFetchedChats, eventDetailsMap, chatTimeFilter, currentUser]);
+
+
   const renderChatList = (chats: EventChat[], type: 'owned' | 'guest') => {
     if (chats.length === 0) {
+      let noChatsMessage = HEBREW_TEXT.chat.noChatsFound; // Default generic message
+        if (type === 'owned') {
+            noChatsMessage = chatTimeFilter === 'future' ? HEBREW_TEXT.chat.noFutureOwnedChats :
+                             chatTimeFilter === 'past' ? HEBREW_TEXT.chat.noPastOwnedChats :
+                             HEBREW_TEXT.chat.noChatsFoundOwner;
+        } else { // guest
+            noChatsMessage = chatTimeFilter === 'future' ? HEBREW_TEXT.chat.noFutureRequestedChats :
+                             chatTimeFilter === 'past' ? HEBREW_TEXT.chat.noPastRequestedChats :
+                             HEBREW_TEXT.chat.noChatsFoundGuest;
+        }
       return (
         <div className="text-center py-10">
           <Inbox className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground text-lg">
-            {type === 'owned' ? HEBREW_TEXT.chat.noChatsFoundOwner : HEBREW_TEXT.chat.noChatsFoundGuest}
-          </p>
+          <p className="text-muted-foreground text-lg">{noChatsMessage}</p>
         </div>
       );
     }
@@ -144,7 +197,7 @@ export default function MessagesPage() {
     </div>
   );
 
-  if (isLoading && !currentUser) { // Still waiting for auth
+  if (isLoading && !currentUser && !allFetchedChats.length) { // Initial loading for auth
     return (
       <div className="container mx-auto px-4 py-12 flex justify-center items-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -161,11 +214,32 @@ export default function MessagesPage() {
               <MessageSquareText className="h-7 w-7 md:h-8 md:w-8 text-primary ml-2" />
               <CardTitle className="font-headline text-2xl md:text-3xl">{HEBREW_TEXT.chat.messagesPageTitle}</CardTitle>
             </div>
-            {/* Potentially add a global search or filter for chats here later */}
           </div>
         </CardHeader>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full p-2 sm:p-4 md:p-6">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+
+        <div className="p-2 sm:p-4 md:p-6 border-b">
+            <Label htmlFor="chat-time-filter" className="mb-2 block text-sm font-medium text-muted-foreground">
+                <Filter size={16} className="inline ml-1.5" />
+                {HEBREW_TEXT.chat.chatTimeFilter}
+            </Label>
+            <Select 
+                value={chatTimeFilter} 
+                onValueChange={(value) => setChatTimeFilter(value as 'all' | 'future' | 'past')}
+                disabled={isLoading}
+            >
+                <SelectTrigger id="chat-time-filter" className="w-full">
+                    <SelectValue placeholder={HEBREW_TEXT.chat.chatTimeFilter} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="future">{HEBREW_TEXT.chat.futureEventChats}</SelectItem>
+                    <SelectItem value="past">{HEBREW_TEXT.chat.pastEventChats}</SelectItem>
+                    <SelectItem value="all">{HEBREW_TEXT.chat.allChats}</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full p-2 sm:p-4 md:p-6 pt-0">
+          <TabsList className="grid w-full grid-cols-2 mb-4 mt-4">
             <TabsTrigger value="owned" className="py-2.5 text-sm sm:text-base font-body">
               <Briefcase className="ml-1.5 h-4 w-4 sm:h-5 sm:w-5" />
               {HEBREW_TEXT.chat.eventsInMyOwnership}
@@ -184,14 +258,21 @@ export default function MessagesPage() {
             </Alert>
           )}
 
-          <TabsContent value="owned">
-            {isLoading ? renderSkeletons() : renderChatList(ownedChats, 'owned')}
-          </TabsContent>
-          <TabsContent value="requested">
-            {isLoading ? renderSkeletons() : renderChatList(requestedChats, 'guest')}
-          </TabsContent>
+          {isLoading ? (
+            renderSkeletons()
+          ) : (
+            <>
+              <TabsContent value="owned">
+                {renderChatList(displayOwnedChats, 'owned')}
+              </TabsContent>
+              <TabsContent value="requested">
+                {renderChatList(displayRequestedChats, 'guest')}
+              </TabsContent>
+            </>
+          )}
         </Tabs>
       </Card>
     </div>
   );
 }
+
