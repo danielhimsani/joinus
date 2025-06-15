@@ -53,17 +53,21 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
   
   return (
     <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg h-full">
-      <div className="relative w-full h-48">
-        <Image
-          src={event.imageUrl || placeholderImageSrc}
-          alt={event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}
-          layout="fill"
-          objectFit="cover"
-          data-ai-hint="wedding event"
-        />
-      </div>
+      <Link href={`/events/${event.id}`} passHref>
+        <div className="relative w-full h-48 cursor-pointer">
+          <Image
+            src={event.imageUrl || placeholderImageSrc}
+            alt={event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}
+            layout="fill"
+            objectFit="cover"
+            data-ai-hint="wedding event"
+          />
+        </div>
+      </Link>
       <CardHeader className="flex-grow">
-        <CardTitle className="font-headline text-xl mb-1">{event.name}</CardTitle>
+        <Link href={`/events/${event.id}`} passHref>
+          <CardTitle className="font-headline text-xl mb-1 cursor-pointer hover:underline">{event.name}</CardTitle>
+        </Link>
         <CardDescription className="flex items-center text-sm text-muted-foreground mb-1">
           <CalendarDays className="ml-1.5 h-4 w-4" />
           {format(new Date(event.dateTime), 'eeee, d MMMM yyyy', { locale: he })}
