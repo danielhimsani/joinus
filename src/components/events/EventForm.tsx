@@ -79,7 +79,7 @@ const formSchema = z.object({
       return date > new Date();
     }, { message: HEBREW_TEXT.event.dateTimeInFutureError }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
-  ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([25, 55]),
+  ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([18, 55]),
   foodType: z.enum(["kosherMeat", "kosherDairy", "kosherParve", "notKosher"], { errorMap: () => ({ message: "יש לבחור סוג אוכל."}) }),
   religionStyle: z.enum(["secular", "traditional", "religious", "mixed"], { errorMap: () => ({ message: "יש לבחור סגנון דתי."}) }),
   imageUrl: z.string().optional(),
@@ -129,13 +129,13 @@ export function EventForm({
       name: "שם האירוע שלכם",
       ownerUids: [], 
       numberOfGuests: 10,
-      paymentOption: "fixed" as PaymentOption,
-      pricePerGuest: 100,
+      paymentOption: "payWhatYouWant" as PaymentOption,
+      pricePerGuest: 200,
       location: "",
       locationDisplayName: "",
       description: "",
-      ageRange: [25, 55],
-      foodType: "kosherParve" as FoodType,
+      ageRange: [18, 55],
+      foodType: "kosherMeat" as FoodType,
       religionStyle: "mixed" as ReligionStyle,
       imageUrl: "",
       dateTime: undefined,
@@ -597,7 +597,7 @@ export function EventForm({
                                 }
                                 const currentFieldValue = field.value;
                                 const hours = currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime()) ? currentFieldValue.getHours() : 19;
-                                const minutes = currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime()) ? currentFieldValue.getMinutes() : 0;
+                                const minutes = currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime()) ? currentFieldValue.getMinutes() : 30;
 
                                 const newDateTime = new Date(selectedDate);
                                 newDateTime.setHours(hours, minutes, 0, 0);
@@ -619,7 +619,7 @@ export function EventForm({
                                 if (currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime())) {
                                     return format(currentFieldValue, 'HH:mm');
                                 }
-                                return "19:00";
+                                return "19:30";
                             };
 
                             return (
@@ -978,3 +978,4 @@ export function EventForm({
     </>
   );
 }
+
