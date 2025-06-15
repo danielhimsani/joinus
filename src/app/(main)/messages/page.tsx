@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle as ShadAlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle, Filter as FilterIcon, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,7 +15,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
+  DialogTitle as ShadDialogTitle,
   DialogTrigger,
   DialogFooter,
   DialogClose
@@ -238,22 +238,18 @@ export default function MessagesPage() {
   return (
     <div className="container mx-auto px-2 sm:px-4 py-8 md:py-12">
       <Card className="max-w-3xl mx-auto shadow-lg">
-        <CardHeader className="text-center md:text-right border-b">
-          <div className="flex flex-col md:flex-row items-center justify-center md:justify-between">
-            <div className="flex items-center mb-2 md:mb-0">
-              <MessageSquareText className="h-7 w-7 md:h-8 md:w-8 text-primary ml-2" />
-              <CardTitle className="font-headline text-2xl md:text-3xl">{HEBREW_TEXT.chat.messagesPageTitle}</CardTitle>
-            </div>
+        <CardHeader className="border-b p-3 md:p-4">
+          <div className="flex justify-end"> {/* Aligns button to the end (left in LTR, right in RTL) */}
             <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="mt-2 md:mt-0">
-                  <FilterIcon className="ml-2 h-4 w-4" />
-                  סינון שיחות
+                <Button variant="outline" size="sm">
+                  <FilterIcon className="ml-1.5 h-4 w-4" />
+                  סינון
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle className="font-headline text-xl">סינון שיחות</DialogTitle>
+                  <ShadDialogTitle className="font-headline text-xl">סינון שיחות</ShadDialogTitle>
                 </DialogHeader>
                 <div className="grid gap-6 py-4">
                     <div>
@@ -330,7 +326,7 @@ export default function MessagesPage() {
           {error && (
             <Alert variant="destructive" className="my-4">
               <AlertCircle className="h-5 w-5" />
-              <AlertTitle>{HEBREW_TEXT.general.error}</AlertTitle>
+              <ShadAlertTitle>{HEBREW_TEXT.general.error}</ShadAlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
