@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/tooltip";
 import { onAuthStateChanged, type User as FirebaseUser, updateProfile } from "firebase/auth";
 import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; 
-import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"; 
+import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore"; 
 import { format as formatDate } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate } from '@/lib/dateUtils';
@@ -48,7 +48,7 @@ const profileFormSchema = z.object({
   email: z.string().email({ message: "אימייל לא תקין." }).optional(),
   birthday: z.string().optional(),
   bio: z.string().max(300, { message: "ביו יכול להכיל עד 300 תווים."}).optional(),
-  phone: z.string().refine(val => val === '' || /^0\d([\d]{0,1})([-]{0,1})\d{7}$/.test(val), { 
+  phone: z.string().refine(val => val === '' || !val || /^0\d([\d]{0,1})([-]{0,1})\d{7}$/.test(val), { 
     message: "מספר טלפון לא תקין. אם הוזן, חייב להיות בפורמט ישראלי תקין."
   }).optional(),
 });
@@ -84,7 +84,13 @@ export default function ProfilePage() {
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
-    defaultValues: {},
+    defaultValues: {
+        name: "",
+        email: "",
+        birthday: "",
+        bio: "",
+        phone: "",
+    },
   });
   
   useEffect(() => {
@@ -92,22 +98,35 @@ export default function ProfilePage() {
       setIsLoading(true); 
       if (fbUser) {
         setFirebaseUser(fbUser);
-        // Placeholder for fetching extended profile data (bio, phone, birthday)
-        // In a real app, you'd fetch this from Firestore using fbUser.uid
-        const extendedProfileData = { bio: "", phone: "", birthday: "" }; // Simulate fetching
-        // Example: const userDoc = await getDoc(doc(db, "users", fbUser.uid));
-        // if (userDoc.exists()) { extendedProfileData = userDoc.data() as any; }
-
+        
+        let firestoreProfileData = { bio: "", phone: "", birthday: "", name: fbUser.displayName || "משתמש", email: fbUser.email || "" };
+        try {
+            const userDocRef = doc(db, "users", fbUser.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+                const data = userDocSnap.data();
+                firestoreProfileData = {
+                    name: data.name || fbUser.displayName || "משתמש",
+                    email: data.email || fbUser.email || "",
+                    bio: data.bio || "",
+                    phone: data.phone || "",
+                    birthday: data.birthday || "",
+                };
+            }
+        } catch (error) {
+            console.error("Error fetching user data from Firestore:", error);
+            toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בטעינת פרטי פרופיל מורחבים.", variant: "destructive" });
+        }
 
         const profileData: UserProfile = {
           id: fbUser.uid, 
           firebaseUid: fbUser.uid,
-          name: fbUser.displayName || "משתמש",
-          email: fbUser.email || "לא סופק אימייל",
+          name: firestoreProfileData.name,
+          email: firestoreProfileData.email,
           profileImageUrl: fbUser.photoURL || "https://placehold.co/150x150.png",
-          bio: extendedProfileData.bio, 
-          phone: extendedProfileData.phone, 
-          birthday: extendedProfileData.birthday, 
+          bio: firestoreProfileData.bio, 
+          phone: firestoreProfileData.phone, 
+          birthday: firestoreProfileData.birthday, 
           isVerified: fbUser.emailVerified,
         };
         setUser(profileData);
@@ -153,7 +172,7 @@ export default function ProfilePage() {
     });
 
     return () => unsubscribe();
-  }, [form, router, toast]); // Removed user?.bio etc. as it might cause re-fetches. Fetch once.
+  }, [form, router, toast]);
 
   useEffect(() => {
     if (user?.birthday) {
@@ -191,22 +210,38 @@ export default function ProfilePage() {
     }
 
     try {
+      // Update Firebase Auth display name if changed
       if (values.name !== firebaseUser.displayName) {
         await updateProfile(firebaseUser, { displayName: values.name });
       }
       
-      // Here you would typically update the user document in Firestore
-      // For example: await setDoc(doc(db, "users", firebaseUser.uid), { bio: values.bio, phone: values.phone, birthday: values.birthday }, { merge: true });
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate Firestore update
+      // Prepare data for Firestore update
+      const firestoreUpdateData: Partial<UserProfile> & { updatedAt: any } = {
+        name: values.name, // Keep name in sync
+        bio: values.bio || "",
+        phone: values.phone || "",
+        birthday: values.birthday || "",
+        updatedAt: serverTimestamp(),
+      };
       
-      setUser(prevUser => prevUser ? { 
+      // Update user document in Firestore
+      const userDocRef = doc(db, "users", firebaseUser.uid);
+      await setDoc(userDocRef, firestoreUpdateData, { merge: true });
+      
+      // Update local state
+      setUser(prevUser => {
+        if (!prevUser) return null;
+        const updatedUser = { 
           ...prevUser, 
           name: values.name,
-          birthday: values.birthday,
-          bio: values.bio,
-          phone: values.phone,
-      } : null);
-      form.reset(values); 
+          birthday: values.birthday || undefined,
+          bio: values.bio || undefined,
+          phone: values.phone || undefined,
+        };
+        setCalculatedAge(calculateAge(updatedUser.birthday));
+        return updatedUser;
+      });
+      form.reset(values); // Reset form with new values
 
       toast({
         title: HEBREW_TEXT.general.success,
@@ -278,7 +313,7 @@ export default function ProfilePage() {
                 <div className="relative inline-block mb-4">
                   <Avatar className="h-32 w-32 border-4 border-primary shadow-md">
                     <AvatarImage src={user.profileImageUrl} alt={user.name} data-ai-hint="profile picture"/>
-                    <AvatarFallback className="text-4xl">{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback className="text-4xl">{user.name?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   {isEditing && (
                       <Button variant="outline" size="icon" className="absolute bottom-0 left-0 bg-background rounded-full">
@@ -507,4 +542,3 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
-
