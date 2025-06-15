@@ -75,7 +75,7 @@ const formSchema = z.object({
   locationDisplayName: z.string().optional(),
   dateTime: z.date({ required_error: HEBREW_TEXT.event.dateTimeRequiredError })
     .refine(date => {
-      if (!date) return true;
+      if (!date) return true; // Will be caught by required_error if not set
       return date > new Date();
     }, { message: HEBREW_TEXT.event.dateTimeInFutureError }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
@@ -152,7 +152,7 @@ export function EventForm({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
-  const [isEditingName, setIsEditingName] = useState(!isEditMode); // True for create, false for edit initially
+  const [isEditingName, setIsEditingName] = useState(!isEditMode); 
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -214,7 +214,7 @@ export function EventForm({
         if (currentUser && form.getValues("ownerUids").length === 0) {
             form.setValue("ownerUids", [currentUser.uid]);
         }
-        setIsEditingName(true); // For create mode, name field should be editable by default
+        setIsEditingName(true); 
         setImagePreviewUrl(null);
     }
   }, [isEditMode, initialEventData, form, currentUser]);
@@ -296,7 +296,6 @@ export function EventForm({
   useEffect(() => {
     if (isEditingName && nameInputRef.current) {
       nameInputRef.current.focus();
-      // nameInputRef.current.select(); // Optionally select text, can be too aggressive
     }
   }, [isEditingName]);
 
@@ -442,7 +441,7 @@ export function EventForm({
 
       if (isEditMode && initialEventData?.id) {
         const eventDocRef = doc(db, "events", initialEventData.id);
-        const { createdAt, ...updatePayload } = eventDataPayload;
+        const { createdAt, ...updatePayload } = eventDataPayload; // Don't include createdAt in updates
         await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
         toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" עודכן בהצלחה!` });
         router.push(`/events/${initialEventData.id}`);
@@ -469,7 +468,20 @@ export function EventForm({
 
   const onInvalidSubmit = (errors: FieldErrors<FormSchemaType>) => {
     if (Object.keys(errors).length > 0) {
-      console.error("Form validation errors:", errors);
+      let detailedErrors = "No detailed messages found.";
+      try {
+        // Basic circular reference handler for JSON.stringify
+        // react-hook-form's 'ref' property can point to DOM elements causing circular issues.
+        detailedErrors = JSON.stringify(errors, (key, value) => {
+          if (key === 'ref' && value instanceof HTMLElement) return '[DOM Element]';
+          if (value instanceof Function) return '[Function]'; // Functions are not serializable
+          return value;
+        }, 2);
+      } catch (e) {
+        detailedErrors = "Could not stringify errors object (possibly due to circular references or unserializable content).";
+      }
+      console.error(`Form validation errors detected. Stringified details: ${detailedErrors}. Keys: ${Object.keys(errors).join(', ')}`);
+      
       toast({
         title: HEBREW_TEXT.general.error,
         description: HEBREW_TEXT.general.formValidationFailed,
@@ -493,7 +505,7 @@ export function EventForm({
       }
     } else {
       console.warn(
-        "onInvalidSubmit was called, but the errors object is empty. This may indicate an unexpected form state or a configuration issue with react-hook-form. No validation toast will be shown."
+        "onInvalidSubmit was called, but the errors object is empty according to Object.keys(). This may indicate an unexpected form state or a configuration issue with react-hook-form. No validation toast will be shown."
       );
     }
   };
@@ -536,7 +548,7 @@ export function EventForm({
               objectFit="cover"
               className="transition-opacity duration-300 ease-in-out"
               data-ai-hint="event cover wedding"
-              key={currentImageToDisplay}
+              key={currentImageToDisplay} 
               priority={!isEditMode && !imagePreviewUrl}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
@@ -560,7 +572,7 @@ export function EventForm({
             />
 
             <div className="absolute bottom-4 left-4 right-4 z-10 p-4 text-white">
-              {isEditingName || !isEditMode ? (
+              {(isEditingName || !isEditMode) ? (
                  <FormField
                     control={form.control}
                     name="name"
@@ -571,20 +583,14 @@ export function EventForm({
                           {...field}
                           onBlur={(e) => {
                             field.onBlur();
-                            if (isEditMode) {
-                                setIsEditingName(false);
-                            }
+                            if (isEditMode) setIsEditingName(false);
                           }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                                 e.preventDefault();
-                                if (isEditMode) {
-                                    setIsEditingName(false);
-                                }
+                                if (isEditMode) setIsEditingName(false);
                             } else if (e.key === 'Escape') {
-                                if (isEditMode) {
-                                    setIsEditingName(false);
-                                }
+                                if (isEditMode) setIsEditingName(false);
                             }
                           }}
                           className="text-3xl md:text-4xl font-bold bg-transparent border-0 border-b-2 border-white/50 focus:border-white focus:ring-0 p-0 h-auto text-white placeholder-white/70 flex-grow"
@@ -593,7 +599,7 @@ export function EventForm({
                       </div>
                     )}
                   />
-              ) : ( // Only in Edit mode and when not editing name
+              ) : ( 
                 <div className="flex items-center group/titleedit">
                     <h1
                         className={cn(
