@@ -77,7 +77,7 @@ export default function EventsPage() {
           dateTime: safeToDate(data.dateTime),
           createdAt: safeToDate(data.createdAt),
           updatedAt: safeToDate(data.updatedAt),
-          name: data.name || "Unnamed Event",
+          name: data.name || "", // Set to empty string if name is not present
           numberOfGuests: data.numberOfGuests || 0,
           paymentOption: data.paymentOption || "free",
           location: data.location || "No location specified",

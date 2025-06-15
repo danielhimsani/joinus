@@ -16,7 +16,7 @@ export interface MapLocation {
   id: string;
   lat: number;
   lng: number;
-  eventName: string;
+  eventName: string; // Can be an empty string
   locationDisplayName: string;
   dateTime: Date;
   numberOfGuests: number;
@@ -247,6 +247,7 @@ export function GoogleMapComponent({
           position={{ lat: loc.lat, lng: loc.lng }}
           onClick={() => handleMarkerClick(loc)}
           icon={eventMarkerIcon}
+          title={loc.eventName || HEBREW_TEXT.event.eventNameGenericPlaceholder}
         />
       ))}
 
@@ -266,7 +267,7 @@ export function GoogleMapComponent({
                 return (
                   <div>
                     <Link href={`/events/${event.id}`} className="font-headline text-primary hover:underline text-base block break-words mb-1">
-                      {event.eventName}
+                      {event.eventName || HEBREW_TEXT.event.eventNameGenericPlaceholder}
                     </Link>
                     <div className="space-y-1 text-sm">
                         <p className="flex items-center text-muted-foreground">
@@ -294,7 +295,7 @@ export function GoogleMapComponent({
                   {selectedEvents.map(event => (
                     <div key={event.id} className="border-b border-border/50 last:border-b-0 pb-1.5 mb-1.5 last:pb-0 last:mb-0">
                       <Link href={`/events/${event.id}`} className="font-semibold text-primary hover:underline text-sm block break-words">
-                        {event.eventName}
+                        {event.eventName || HEBREW_TEXT.event.eventNameGenericPlaceholder}
                       </Link>
                       <p className="text-xs text-muted-foreground flex items-center">
                         <CalendarDays className="ml-1 h-3 w-3 text-primary/70 flex-shrink-0" />
@@ -315,4 +316,3 @@ export function GoogleMapComponent({
     </GoogleMap>
   );
 }
-

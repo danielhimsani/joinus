@@ -119,7 +119,7 @@ export default function EventDetailPage() {
             dateTime: safeToDate(data.dateTime),
             createdAt: safeToDate(data.createdAt),
             updatedAt: safeToDate(data.updatedAt),
-            name: data.name || "Unnamed Event",
+            name: data.name || "", // Set to empty string if name is not present
             numberOfGuests: data.numberOfGuests || 0,
             paymentOption: data.paymentOption || "free",
             location: data.location || "No location specified",
@@ -260,7 +260,7 @@ export default function EventDetailPage() {
         <div className="relative w-full h-64 md:h-96">
           <Image
             src={event.imageUrl || "https://placehold.co/800x400.png"}
-            alt={event.name}
+            alt={event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}
             layout="fill"
             objectFit="cover"
             data-ai-hint="wedding detail"

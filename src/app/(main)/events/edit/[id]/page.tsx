@@ -79,7 +79,7 @@ export default function EditEventPage() {
               dateTime: safeToDate(data.dateTime),
               createdAt: safeToDate(data.createdAt),
               updatedAt: safeToDate(data.updatedAt),
-              name: data.name || "Unnamed Event",
+              name: data.name || "", // Set to empty string if name is not present
               numberOfGuests: data.numberOfGuests || 0,
               paymentOption: data.paymentOption || "free",
               pricePerGuest: data.pricePerGuest,
@@ -156,7 +156,9 @@ export default function EditEventPage() {
     );
   }
   
-  const pageTitle = `${HEBREW_TEXT.event.editEvent}: ${eventToEdit.name}`;
+  const pageTitle = eventToEdit.name 
+    ? `${HEBREW_TEXT.event.editEvent}: ${eventToEdit.name}` 
+    : HEBREW_TEXT.event.editEvent;
   const submitButtonText = "שמור שינויים";
 
 
