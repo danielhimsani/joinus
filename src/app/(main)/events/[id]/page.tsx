@@ -283,9 +283,15 @@ export default function EventDetailPage() {
           title: HEBREW_TEXT.general.success,
           description: HEBREW_TEXT.event.eventSharedSuccessfully,
         });
+        return; // Successfully shared, no need for fallback
       } catch (error) {
         console.error('Error sharing event:', error);
-        if ((error as DOMException).name !== 'AbortError') { // Don't show error if user cancels share
+        // Check if it's a DOMException and specific types like AbortError or NotAllowedError
+        if (error instanceof DOMException && (error.name === 'AbortError' || error.name === 'NotAllowedError')) {
+          console.log(`Native share failed due to ${error.name}, proceeding to clipboard fallback.`);
+          // Don't show an error toast for these specific cases, let the clipboard fallback handle it.
+        } else {
+          // For other unexpected errors with navigator.share, show a toast.
           toast({
             title: HEBREW_TEXT.general.error,
             description: HEBREW_TEXT.event.errorSharingEvent,
@@ -293,22 +299,22 @@ export default function EventDetailPage() {
           });
         }
       }
-    } else {
-      // Fallback for browsers that don't support navigator.share
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        toast({
-          title: HEBREW_TEXT.general.success,
-          description: HEBREW_TEXT.event.linkCopiedToClipboard,
-        });
-      } catch (err) {
-        console.error('Error copying link to clipboard:', err);
-        toast({
-          title: HEBREW_TEXT.general.error,
-          description: HEBREW_TEXT.event.errorCopyingLink,
-          variant: 'destructive',
-        });
-      }
+    }
+
+    // Fallback for browsers that don't support navigator.share OR if navigator.share failed permissively
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: HEBREW_TEXT.general.success,
+        description: HEBREW_TEXT.event.linkCopiedToClipboard,
+      });
+    } catch (err) {
+      console.error('Error copying link to clipboard:', err);
+      toast({
+        title: HEBREW_TEXT.general.error,
+        description: HEBREW_TEXT.event.errorCopyingLink,
+        variant: 'destructive',
+      });
     }
   };
 
