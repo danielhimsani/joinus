@@ -71,6 +71,7 @@ export default function EventsPage() {
     setIsLoadingApprovedCounts(true);
     const newApprovedCountsMap = new Map<string, number>();
     try {
+      // Consider batching these calls if eventsToQuery can be very large
       const countPromises = eventsToQuery.map(async (event) => {
         const chatsRef = collection(db, "eventChats");
         const q = query(chatsRef, where("eventId", "==", event.id), where("status", "==", "request_approved"));
@@ -99,8 +100,7 @@ export default function EventsPage() {
       const q = query(
         eventsCollectionRef,
         where("numberOfGuests", ">", 0), // Filter events with capacity > 0
-        orderBy("numberOfGuests", "asc"), // Sort by capacity (total spots)
-        orderBy("dateTime", "asc") // Then sort by date
+        orderBy("dateTime", "asc") // Only sort by date
       );
       const querySnapshot = await getDocs(q);
       const fetchedEvents = querySnapshot.docs.map(doc => {
@@ -278,7 +278,7 @@ export default function EventsPage() {
     const el = bodyRef.current.parentElement;
     if (!el) return;
 
-    const options = { passive: true };
+    const options = { passive: true }; // passive: true is important for scroll performance
 
     el.addEventListener("touchstart", handleTouchStart, options);
     el.addEventListener("touchmove", handleTouchMove, options);
@@ -333,20 +333,21 @@ export default function EventsPage() {
 
   const canActuallyRefresh = pullDistance > PULL_TO_REFRESH_THRESHOLD;
   const indicatorVisible = isPulling || isRefreshingViaPull;
-  const indicatorY = isRefreshingViaPull ? 20 : Math.min(pullDistance, PULL_INDICATOR_TRAVEL) * 0.5;
+  const indicatorY = isRefreshingViaPull ? 20 : Math.min(pullDistance, PULL_INDICATOR_TRAVEL) * 0.5; // Adjust travel for feel
   const indicatorOpacity = isRefreshingViaPull ? 1 : Math.min(1, pullDistance / PULL_TO_REFRESH_THRESHOLD);
 
 
   return (
     <div ref={bodyRef} className="relative min-h-screen">
+      {/* Pull to refresh indicator for mobile */}
       {isMobileView && (
         <div
           style={{
             position: 'fixed',
-            top: isRefreshingViaPull || isPulling ? `${Math.max(0, indicatorY - 20)}px` : '-60px',
+            top: isRefreshingViaPull || isPulling ? `${Math.max(0, indicatorY - 20)}px` : '-60px', // Offset to keep it "above" content
             left: '50%',
             transform: 'translateX(-50%)',
-            zIndex: 1000,
+            zIndex: 1000, // Ensure it's above other content
             padding: '10px',
             background: 'hsl(var(--background))',
             borderRadius: '50%',
@@ -403,6 +404,7 @@ export default function EventsPage() {
           </div>
         </div>
 
+        {/* Map Section */}
         <div className="mb-8 p-4 bg-muted rounded-lg">
           <div className="flex justify-between items-center mb-3 cursor-pointer" onClick={toggleMapSection}>
               <h2 className="font-headline text-xl font-semibold text-center sm:text-right">
@@ -447,6 +449,7 @@ export default function EventsPage() {
 
         <Separator className="my-8"/>
 
+        {/* Event List Section */}
         {fetchError && !(isLoadingEvents || isLoadingApprovedCounts) && (
           <Alert variant="destructive" className="my-8">
             <AlertCircle className="h-5 w-5" />
@@ -463,6 +466,7 @@ export default function EventsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredEvents.map(event => {
                const availableSpots = event.numberOfGuests - (approvedCountsMap.get(event.id) || 0);
+               // We only display if availableSpots > 0 due to the useEffect filter logic
                return <EventCard key={event.id} event={event} availableSpots={availableSpots} />;
             })}
           </div>
