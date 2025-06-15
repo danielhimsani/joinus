@@ -75,7 +75,7 @@ const formSchema = z.object({
   locationDisplayName: z.string().optional(),
   dateTime: z.date({ required_error: HEBREW_TEXT.event.dateTimeRequiredError })
     .refine(date => {
-      if (!date) return true; // Handled by required_error
+      if (!date) return true; 
       return date > new Date();
     }, { message: HEBREW_TEXT.event.dateTimeInFutureError }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
@@ -160,6 +160,8 @@ export function EventForm({
   const [isLoadingOwnerDetails, setIsLoadingOwnerDetails] = useState(false);
   const [showAddOwnerModal, setShowAddOwnerModal] = useState(false);
   const [ownerToRemove, setOwnerToRemove] = useState<UserProfile | null>(null);
+  const [isDateTimePopoverOpen, setIsDateTimePopoverOpen] = useState(false);
+
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const locationInputRef = useRef<HTMLInputElement | null>(null);
@@ -248,7 +250,7 @@ export function EventForm({
     } finally {
       setIsLoadingOwnerDetails(false);
     }
-  }, [currentUser, toast]); // Removed ownerProfileDetails from dependencies
+  }, [currentUser, toast]); 
 
   useEffect(() => {
     if (watchedOwnerUids && watchedOwnerUids.length > 0) {
@@ -475,7 +477,7 @@ export function EventForm({
     if (isEditMode && initialEventData?.id) {
         router.push(`/events/${initialEventData.id}`);
     } else {
-        router.back(); // Fallback for other cases, though primarily for edit mode
+        router.back(); 
     }
   };
 
@@ -572,11 +574,12 @@ export function EventForm({
                     </Button>
                 </div>
               )}
-              <Popover>
+              <Popover open={isDateTimePopoverOpen} onOpenChange={setIsDateTimePopoverOpen}>
                 <PopoverTrigger asChild>
                     <p
                         className="mt-2 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center"
                         title="לחץ לעריכת תאריך ושעה"
+                        onClick={() => setIsDateTimePopoverOpen(true)}
                     >
                         <CalendarIcon className="ml-1.5 h-4 w-4" />
                         {eventDateTimeValue ? format(eventDateTimeValue, "EEEE, d MMMM yyyy, HH:mm", { locale: he }) : HEBREW_TEXT.event.selectDateTimePlaceholder}
@@ -586,38 +589,70 @@ export function EventForm({
                     <Controller
                         control={form.control}
                         name="dateTime"
-                        render={({ field }) => (
-                            <>
-                                <Calendar
-                                    mode="single"
-                                    selected={field.value}
-                                    onSelect={field.onChange}
-                                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-                                    initialFocus
-                                    locale={he}
-                                />
-                                <div className="p-2 border-t">
-                                <Input
-                                    type="time"
-                                    defaultValue={field.value ? format(field.value, 'HH:mm') : "19:00"}
-                                    onChange={(e) => {
-                                        const [hours, minutes] = e.target.value.split(':').map(Number);
-                                        const newDate = field.value ? new Date(field.value) : new Date(); // Use current date if no date selected yet
-                                        if (isNaN(newDate.getTime())) { // Handle case where field.value might be initially undefined or invalid
-                                          const todayForTime = new Date();
-                                          todayForTime.setHours(hours, minutes, 0, 0);
-                                          field.onChange(todayForTime);
-                                        } else {
-                                          newDate.setHours(hours, minutes, 0, 0);
-                                          field.onChange(newDate);
-                                        }
-                                    }}
-                                    className="w-full"
-                                />
-                                </div>
-                                {form.formState.errors.dateTime && <FormMessage className="p-2 text-sm">{form.formState.errors.dateTime.message}</FormMessage>}
-                            </>
-                        )}
+                        render={({ field }) => {
+                            const handleDateSelect = (selectedDate?: Date) => {
+                                if (!selectedDate) {
+                                    field.onChange(undefined);
+                                    return;
+                                }
+                                const currentFieldValue = field.value;
+                                const hours = currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime()) ? currentFieldValue.getHours() : 19;
+                                const minutes = currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime()) ? currentFieldValue.getMinutes() : 0;
+
+                                const newDateTime = new Date(selectedDate);
+                                newDateTime.setHours(hours, minutes, 0, 0);
+                                field.onChange(newDateTime);
+                            };
+
+                            const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                                const [newHours, newMinutes] = e.target.value.split(':').map(Number);
+                                const currentFieldValue = field.value;
+                                const currentDatePart = currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime()) ? currentFieldValue : new Date();
+                                
+                                const newDateTime = new Date(currentDatePart);
+                                newDateTime.setHours(newHours, newMinutes, 0, 0);
+                                field.onChange(newDateTime);
+                            };
+
+                            const getTimeInputValue = () => {
+                                const currentFieldValue = field.value;
+                                if (currentFieldValue instanceof Date && !isNaN(currentFieldValue.getTime())) {
+                                    return format(currentFieldValue, 'HH:mm');
+                                }
+                                return "19:00";
+                            };
+
+                            return (
+                                <>
+                                    <Calendar
+                                        mode="single"
+                                        selected={field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value : undefined}
+                                        onSelect={handleDateSelect}
+                                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                                        initialFocus
+                                        locale={he}
+                                    />
+                                    <div className="p-2 border-t">
+                                    <Input
+                                        type="time"
+                                        value={getTimeInputValue()}
+                                        onChange={handleTimeChange}
+                                        className="w-full"
+                                    />
+                                    </div>
+                                    {form.formState.errors.dateTime && (
+                                        <FormMessage className="p-2 text-sm">
+                                            {form.formState.errors.dateTime.message}
+                                        </FormMessage>
+                                    )}
+                                    <div className="p-2 flex justify-end border-t">
+                                        <Button type="button" size="sm" onClick={() => setIsDateTimePopoverOpen(false)}>
+                                            {HEBREW_TEXT.general.confirm}
+                                        </Button>
+                                    </div>
+                                </>
+                            );
+                        }}
                     />
                 </PopoverContent>
               </Popover>

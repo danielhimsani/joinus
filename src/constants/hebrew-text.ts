@@ -219,6 +219,7 @@ export const HEBREW_TEXT = {
     howItWorks: "איך זה עובד?",
     delete: "מחק",
     cancel: "ביטול",
+    confirm: "אישור",
     formValidationFailed: "אנא מלא את כל שדות החובה ותקן את השגיאות המסומנות.",
   },
   foodIcons: {
