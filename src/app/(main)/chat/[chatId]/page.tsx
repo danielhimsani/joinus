@@ -458,7 +458,7 @@ export default function ChatPage() {
 
         {/* Messages Area */}
         <ScrollArea ref={scrollAreaRef} className="flex-1 bg-background/70">
-          <div className="px-3 pt-[60px] pb-36 md:p-4 md:pt-4 flex flex-col space-y-1">
+          <div className="px-3 pt-20 pb-36 md:p-4 md:pt-4 flex flex-col space-y-1">
             {showOwnerActionBlock && (
                 <div className="my-3 p-3 bg-muted/60 dark:bg-muted/40 rounded-lg shadow-sm w-full self-center max-w-md mx-auto">
                   <div className="flex gap-3 justify-center">
@@ -535,6 +535,7 @@ export default function ChatPage() {
                     size="icon" 
                     onClick={handleSendMessage} 
                     disabled={isSendingMessage || !newMessage.trim()}
+                    className="order-1" // Ensure button is first visually in LTR, last in RTL due to space-x-reverse
                 >
                   {isSendingMessage ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                   <span className="sr-only">{HEBREW_TEXT.chat.sendMessage}</span>
@@ -550,7 +551,7 @@ export default function ChatPage() {
                       }
                   }}
                   rows={1}
-                  className="min-h-[40px] max-h-[100px] resize-none"
+                  className="min-h-[40px] max-h-[100px] resize-none order-2" // Ensure textarea is second
                   disabled={isSendingMessage}
                 />
               </div>
