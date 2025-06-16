@@ -299,7 +299,7 @@ export default function ChatPage() {
           headerImage = chatDetails.guestInfo?.profileImageUrl;
           headerLink = `/profile/${chatDetails.guestUid}`;
       } else {
-          headerTitleElement = <div className="font-semibold tracking-tight font-headline text-base md:text-lg leading-tight">{`${HEBREW_TEXT.event.eventName}: ${chatDetails.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}`}</div>;
+          headerTitleElement = <div className="font-semibold tracking-tight font-headline text-base md:text-lg leading-tight">{chatDetails.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}</div>;
           headerImage = chatDetails.eventInfo?.imageUrl;
           headerLink = `/events/${chatDetails.eventId}`;
       }
@@ -383,7 +383,7 @@ export default function ChatPage() {
             "md:sticky md:top-0" // Sticky for desktop
           )}
         >
-          <div className="flex items-center justify-between p-2 md:px-3 md:py-2 w-full max-w-3xl mx-auto"> {/* Inner div gets padding */}
+          <div className="flex items-center justify-between p-2 md:p-3 w-full max-w-3xl mx-auto"> {/* Inner div gets padding */}
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
                  <Button variant="ghost" size="icon" onClick={() => router.back()} className="md:hidden mr-1 h-8 w-8"> {/* Adjusted icon size */}
                     <ChevronLeft className="h-5 w-5" />
