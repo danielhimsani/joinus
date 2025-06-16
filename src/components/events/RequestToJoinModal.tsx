@@ -152,7 +152,7 @@ export function RequestToJoinModal({ isOpen, onOpenChange, event, currentUser }:
             />
           </div>
         </div>
-        <DialogFooter className="flex-row-reverse gap-2">
+        <DialogFooter className="flex-row-reverse sm:justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             {HEBREW_TEXT.general.cancel}
           </Button>
