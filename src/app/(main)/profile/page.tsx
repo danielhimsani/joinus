@@ -42,6 +42,7 @@ import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, serv
 import { format as formatDate } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
+import { getDisplayInitial } from '@/lib/textUtils';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
@@ -310,9 +311,9 @@ export default function ProfilePage() {
                     {user.profileImageUrl ? (
                       <AvatarImage src={user.profileImageUrl} alt={user.name} data-ai-hint="profile picture"/>
                     ) : (
-                      <AvatarFallback className="text-4xl bg-muted">
-                        <UserPlaceholderIcon className="h-16 w-16 text-muted-foreground" />
-                      </AvatarFallback>
+                       <AvatarFallback className="text-4xl bg-muted">
+                         <UserPlaceholderIcon className="h-16 w-16 text-muted-foreground" />
+                       </AvatarFallback>
                     )}
                   </Avatar>
                   {isEditing && (
@@ -479,7 +480,7 @@ export default function ProfilePage() {
                                             <Skeleton className="h-4 w-1/2" />
                                             <Skeleton className="h-4 w-1/3" />
                                         </div>
-                                        <Skeleton className="h-8 w-24 rounded-md" />
+                                        <Skeleton className="h-8 w-8 rounded-md" /> 
                                     </div>
                                 </Card>
                             ))}
@@ -505,18 +506,21 @@ export default function ProfilePage() {
                                             <CardTitle className="text-md font-body mb-1 truncate hover:underline">{event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}</CardTitle>
                                         </Link>
                                         <div className="text-xs text-muted-foreground flex items-center mb-0.5">
-                                            <CalendarDays className="ml-1.5 h-3 w-3" /> {formatDate(event.dateTime, 'dd/MM/yy, HH:mm', { locale: he })}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground flex items-center truncate">
-                                            <MapPin className="ml-1.5 h-3 w-3" /> {event.locationDisplayName || event.location}
+                                            <CalendarDays className="ml-1.5 h-3 w-3" /> {formatDate(event.dateTime, 'dd/MM/yy', { locale: he })}
                                         </div>
                                     </div>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href={`/events/manage/${event.id}`}>
-                                            <Users className="ml-1.5 h-4 w-4" />
-                                            {HEBREW_TEXT.event.manageGuestsTitle}
-                                        </Link>
-                                    </Button>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button asChild variant="outline" size="icon">
+                                                <Link href={`/events/manage/${event.id}`}>
+                                                    <Users className="h-4 w-4" />
+                                                </Link>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>{HEBREW_TEXT.event.manageGuestsTitle}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
                                 </div>
                             </Card>
                         ))}
