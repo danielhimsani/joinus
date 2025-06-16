@@ -52,7 +52,7 @@ const getFoodTypeLabel = (foodType: FoodType | undefined) => {
         case 'vegetarian': return HEBREW_TEXT.event.vegetarian;
         case 'vegan': return HEBREW_TEXT.event.vegan;
         case 'kosherParve': return HEBREW_TEXT.event.kosherParve;
-        default: return foodType; // Fallback for any unmapped old values, though ideally migration handles this
+        default: return foodType; 
     }
 }
 
@@ -71,7 +71,7 @@ const getWeddingTypeLabel = (weddingType: WeddingType | undefined) => {
         case 'traditional': return HEBREW_TEXT.event.traditional;
         case 'civil': return HEBREW_TEXT.event.civil;
         case 'harediWithSeparation': return HEBREW_TEXT.event.harediWithSeparation;
-        default: return weddingType; // Fallback for any unmapped old values
+        default: return weddingType; 
     }
 }
 
@@ -174,9 +174,9 @@ export default function EventDetailPage() {
           longitude: data.longitude || null,
           description: data.description || "",
           ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
-          foodType: data.foodType as FoodType || "meat", // Default if missing
-          kashrut: data.kashrut as KashrutType || "kosher", // Default if missing
-          weddingType: data.weddingType || (data as any).religionStyle || "traditional", // Map old religionStyle, default if missing
+          foodType: data.foodType as FoodType || "meat", 
+          kashrut: data.kashrut as KashrutType || "kosher", 
+          weddingType: data.weddingType || (data as any).religionStyle || "traditional", 
           imageUrl: data.imageUrl,
         } as Event;
         setEvent(fetchedEvent);
@@ -306,15 +306,12 @@ export default function EventDetailPage() {
           title: HEBREW_TEXT.general.success,
           description: HEBREW_TEXT.event.eventSharedSuccessfully,
         });
-        return; // Successfully shared, no need for clipboard fallback
+        return; 
       } catch (shareError) {
         console.error('Web Share API attempt failed:', shareError);
-        // Silently proceed to clipboard fallback.
-        // No toast here for the share attempt itself.
       }
     }
 
-    // Fallback for browsers that don't support navigator.share OR if navigator.share failed
     try {
       await navigator.clipboard.writeText(window.location.href);
       toast({
@@ -406,7 +403,7 @@ export default function EventDetailPage() {
           <Button
             variant="outline"
             size="icon"
-            className="absolute top-4 right-4 z-10 bg-background/80 hover:bg-background text-foreground rounded-full shadow-md"
+            className="absolute top-4 right-4 z-10 bg-background/80 hover:bg-background focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background text-foreground rounded-full shadow-md"
             onClick={handleShareEvent}
             title={HEBREW_TEXT.event.shareEventTitle}
           >
@@ -444,7 +441,7 @@ export default function EventDetailPage() {
                             <TooltipTrigger asChild>
                               <Link href={`/profile/${owner.uid}`} passHref>
                                 <Avatar className="h-10 w-10 border cursor-pointer hover:ring-2 hover:ring-primary transition-all">
-                                  <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="organizer avatar" />
+                                  <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="organizer avatar"/>
                                   <AvatarFallback>{owner.name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
                                 </Avatar>
                               </Link>
@@ -509,7 +506,7 @@ export default function EventDetailPage() {
                       </div>
                     ) : approvedGuestsData.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {approvedGuestsData.slice(0, 4).map(guest => ( // Show max 4 guests preview
+                        {approvedGuestsData.slice(0, 4).map(guest => ( 
                           <ApprovedGuestListItem key={guest.guestUid} guest={guest} />
                         ))}
                       </div>
@@ -541,7 +538,7 @@ export default function EventDetailPage() {
                     התחבר כדי לבקש להצטרף
                 </Button>
               )}
-              {/* The old share button is removed from here */}
+              
             </div>
           </div>
         </CardContent>

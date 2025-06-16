@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import type { Event } from '@/types';
 import type { User as FirebaseUser } from "firebase/auth";
-import { db, auth } from '@/lib/firebase'; // Assuming auth is firebaseAuthInstance
+import { db, auth } from '@/lib/firebase'; 
 import { doc, setDoc, getDoc, Timestamp, collection, addDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -54,7 +54,7 @@ export function RequestToJoinModal({ isOpen, onOpenChange, event, currentUser }:
         // Chat already exists, navigate to it
         toast({ title: HEBREW_TEXT.chat.chatAlreadyExists, duration: 3000 });
         router.push(`/chat/${chatId}`);
-        onOpenChange(false); // Close modal
+        onOpenChange(false); 
         return;
       }
 
@@ -84,7 +84,7 @@ export function RequestToJoinModal({ isOpen, onOpenChange, event, currentUser }:
           profileImageUrl: guestProfileImageUrl,
         },
         unreadCount: event.ownerUids.reduce((acc, ownerUid) => {
-          acc[ownerUid] = 1; // Initial unread message for each owner
+          acc[ownerUid] = 1; 
           return acc;
         }, {} as { [key: string]: number }),
       };
@@ -107,8 +107,8 @@ export function RequestToJoinModal({ isOpen, onOpenChange, event, currentUser }:
 
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.chat.chatCreatedSuccessfully, duration: 3000 });
       router.push(`/chat/${chatId}`);
-      onOpenChange(false); // Close modal
-      setMessage(""); // Clear message for next time
+      onOpenChange(false); 
+      setMessage(""); 
 
     } catch (error) {
       console.error("Error creating chat or sending first message:", error);
@@ -124,7 +124,7 @@ export function RequestToJoinModal({ isOpen, onOpenChange, event, currentUser }:
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) setMessage(""); // Clear message if modal is closed
+      if (!open) setMessage(""); 
       onOpenChange(open);
     }}>
       <DialogContent className="sm:max-w-[480px]">
@@ -152,7 +152,7 @@ export function RequestToJoinModal({ isOpen, onOpenChange, event, currentUser }:
             />
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-row-reverse gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             {HEBREW_TEXT.general.cancel}
           </Button>
