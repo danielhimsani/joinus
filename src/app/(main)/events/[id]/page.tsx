@@ -51,6 +51,7 @@ const getFoodTypeLabel = (foodType: FoodType | undefined) => {
         case 'meatAndDairy': return HEBREW_TEXT.event.meatAndDairy;
         case 'vegetarian': return HEBREW_TEXT.event.vegetarian;
         case 'vegan': return HEBREW_TEXT.event.vegan;
+        case 'kosherParve': return HEBREW_TEXT.event.kosherParve;
         default: return foodType; // Fallback for any unmapped old values, though ideally migration handles this
     }
 }
@@ -173,8 +174,8 @@ export default function EventDetailPage() {
           longitude: data.longitude || null,
           description: data.description || "",
           ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
-          foodType: data.foodType || "meat", // Default if missing
-          kashrut: data.kashrut || "kosher", // Default if missing
+          foodType: data.foodType as FoodType || "meat", // Default if missing
+          kashrut: data.kashrut as KashrutType || "kosher", // Default if missing
           weddingType: data.weddingType || (data as any).religionStyle || "traditional", // Map old religionStyle, default if missing
           imageUrl: data.imageUrl,
         } as Event;
@@ -393,7 +394,7 @@ export default function EventDetailPage() {
     );
   }
 
-  const placeholderImageSrc = `https://placehold.co/800x400.png${event.name ? `?text=${encodeURIComponent(event.name)}` : ''}`;
+  const imageToDisplay = event.imageUrl || "/onboarding/slide-2.png";
   const googleMapsQuery = event.latitude && event.longitude
     ? `${event.latitude},${event.longitude}`
     : encodeURIComponent(event.locationDisplayName || event.location);
@@ -404,12 +405,13 @@ export default function EventDetailPage() {
       <Card className="overflow-hidden shadow-lg">
         <div className="relative w-full h-64 md:h-96">
           <Image
-            src={event.imageUrl || placeholderImageSrc}
+            src={imageToDisplay}
             alt={event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}
             layout="fill"
             objectFit="cover"
             data-ai-hint="wedding detail"
             priority
+            key={imageToDisplay}
           />
           <Button
             variant="outline"

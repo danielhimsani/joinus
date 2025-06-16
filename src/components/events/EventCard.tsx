@@ -25,6 +25,7 @@ const getFoodTypeLabel = (foodType: FoodType | undefined) => {
         case 'meatAndDairy': return HEBREW_TEXT.event.meatAndDairy;
         case 'vegetarian': return HEBREW_TEXT.event.vegetarian;
         case 'vegan': return HEBREW_TEXT.event.vegan;
+        case 'kosherParve': return HEBREW_TEXT.event.kosherParve;
         default: return foodType;
     }
 }
@@ -49,18 +50,19 @@ const getPriceDisplay = (event: Event) => {
 }
 
 export function EventCard({ event, availableSpots }: EventCardProps) {
-  const placeholderImageSrc = `https://placehold.co/600x400.png${event.name ? `?text=${encodeURIComponent(event.name)}` : ''}`;
+  const imageToDisplay = event.imageUrl || "/onboarding/slide-2.png";
   
   return (
     <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg h-full">
       <Link href={`/events/${event.id}`} passHref>
         <div className="relative w-full h-48 cursor-pointer">
           <Image
-            src={event.imageUrl || placeholderImageSrc}
+            src={imageToDisplay}
             alt={event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}
             layout="fill"
             objectFit="cover"
             data-ai-hint="wedding event"
+            key={imageToDisplay} // Add key to re-render if image src changes
           />
         </div>
       </Link>
@@ -69,11 +71,11 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
           <CardTitle className="font-headline text-xl mb-1 cursor-pointer hover:underline">{event.name}</CardTitle>
         </Link>
         <CardDescription className="flex items-center text-sm text-muted-foreground mb-1">
-          <CalendarDays className="ml-1.5 h-4 w-4" />
+          <CalendarDays className="ml-1.5 h-4 w-4 text-primary" />
           {format(new Date(event.dateTime), 'eeee, d MMMM yyyy', { locale: he })}
         </CardDescription>
         <CardDescription className="flex items-center text-sm text-muted-foreground">
-          <MapPin className="ml-1.5 h-4 w-4" />
+          <MapPin className="ml-1.5 h-4 w-4 text-primary" />
           {event.locationDisplayName || event.location}
         </CardDescription>
       </CardHeader>
@@ -110,3 +112,4 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
     </Card>
   );
 }
+

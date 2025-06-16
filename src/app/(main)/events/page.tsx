@@ -1,16 +1,16 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Image from 'next/image';
+import Link from 'next/link';
 import { EventCard } from "@/components/events/EventCard";
 import { EventFilters, type Filters } from "@/components/events/EventFilters";
 import type { Event, EventOwnerInfo, FoodType, KashrutType, WeddingType } from "@/types";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { MapPin, SearchX, Loader2, Search, Filter, ListFilter, ChevronDown, ChevronUp, AlertCircle, ArrowDown, RefreshCw } from "lucide-react";
-import { GoogleMapComponent, type MapLocation } from "@/components/maps/GoogleMapComponent";
+import { MapPin, SearchX, Loader2, Search, Filter, ListFilter, ChevronDown, ChevronUp, AlertCircle, ArrowDown, RefreshCw, ChevronLeft, ChevronRight, Map as MapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 
 const PULL_TO_REFRESH_THRESHOLD = 70; // Pixels to pull to trigger refresh
 const PULL_INDICATOR_TRAVEL = 60; // Max pixels the indicator travels down
+const EVENTS_PER_PAGE = 20;
 
 const defaultAdvancedFilters: Filters = {
   date: undefined,
@@ -57,7 +58,7 @@ const checkAreEventsFiltersActive = (currentFilters: Filters): boolean => {
 
 export default function EventsPage() {
   const [allEvents, setAllEvents] = useState<Event[]>([]);
-  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
+  const [filteredAndPaginatedEvents, setFilteredAndPaginatedEvents] = useState<Event[]>([]);
   const [approvedCountsMap, setApprovedCountsMap] = useState<Map<string, number>>(new Map());
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [isLoadingApprovedCounts, setIsLoadingApprovedCounts] = useState(true);
@@ -65,11 +66,6 @@ export default function EventsPage() {
   const [advancedFilters, setAdvancedFilters] = useState<Filters>({...defaultAdvancedFilters}); 
   const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
   const [showFiltersModal, setShowFiltersModal] = useState(false);
-  const [isMapSectionOpen, setIsMapSectionOpen] = useState(false);
-
-  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
   // Pull to refresh states
   const [isMobileView, setIsMobileView] = useState(false);
@@ -78,6 +74,10 @@ export default function EventsPage() {
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshingViaPull, setIsRefreshingViaPull] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
 
   useEffect(() => {
@@ -201,7 +201,7 @@ export default function EventsPage() {
 
   useEffect(() => {
     if (isLoadingEvents || isLoadingApprovedCounts) { 
-        setFilteredEvents([]); 
+        setFilteredAndPaginatedEvents([]); 
         return;
     }
 
@@ -265,37 +265,23 @@ export default function EventsPage() {
       eventsToFilter = eventsToFilter.filter(event => event.weddingType === advancedFilters.weddingType);
     }
 
-
-    setFilteredEvents(eventsToFilter);
-
-  }, [allEvents, approvedCountsMap, simpleSearchQuery, advancedFilters, isLoadingEvents, isLoadingApprovedCounts]);
-
-
-  useEffect(() => {
-    if (isMapSectionOpen && !currentLocation && !locationError && !isFetchingLocation) {
-      setIsFetchingLocation(true);
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            setCurrentLocation({
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            });
-            setLocationError(null);
-            setIsFetchingLocation(false);
-          },
-          (error) => {
-            console.error("Error getting location:", error);
-            setLocationError(HEBREW_TEXT.map.locationError);
-            setIsFetchingLocation(false);
-          }
-        );
-      } else {
-        setLocationError(HEBREW_TEXT.map.geolocationNotSupported);
-        setIsFetchingLocation(false);
-      }
+    const newTotalPages = Math.ceil(eventsToFilter.length / EVENTS_PER_PAGE);
+    setTotalPages(newTotalPages);
+    
+    // Reset to page 1 if current page is out of bounds for new total pages
+    const newCurrentPage = (currentPage > newTotalPages && newTotalPages > 0) ? newTotalPages : (currentPage === 0 && newTotalPages > 0 ? 1 : currentPage);
+    if (currentPage !== newCurrentPage && newTotalPages > 0) {
+        setCurrentPage(newCurrentPage);
+    } else if (newTotalPages === 0) {
+        setCurrentPage(1); // Default to 1 if no events
     }
-  }, [isMapSectionOpen, currentLocation, locationError, isFetchingLocation]);
+
+    const startIndex = (newCurrentPage - 1) * EVENTS_PER_PAGE;
+    const endIndex = startIndex + EVENTS_PER_PAGE;
+    setFilteredAndPaginatedEvents(eventsToFilter.slice(startIndex, endIndex));
+
+  }, [allEvents, approvedCountsMap, simpleSearchQuery, advancedFilters, isLoadingEvents, isLoadingApprovedCounts, currentPage]);
+
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     if (window.scrollY === 0 && !isRefreshingViaPull && !isLoadingEvents && !isLoadingApprovedCounts) {
@@ -320,6 +306,7 @@ export default function EventsPage() {
     setIsPulling(false);
     if (pullDistance > PULL_TO_REFRESH_THRESHOLD) {
       setIsRefreshingViaPull(true);
+      setCurrentPage(1); // Reset to first page on refresh
       fetchEventsFromFirestore(); 
     }
     setTimeout(() => setPullDistance(0), 200);
@@ -349,16 +336,15 @@ export default function EventsPage() {
 
   const handleAdvancedFilterChange = (newFilters: Filters) => {
     setAdvancedFilters(newFilters);
+    setCurrentPage(1); // Reset to first page when filters change
     setShowFiltersModal(false);
   };
 
   const handleSimpleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSimpleSearchQuery(event.target.value);
+    setCurrentPage(1); // Reset to first page on new search
   };
 
-  const toggleMapSection = () => {
-    setIsMapSectionOpen(prev => !prev);
-  };
 
   const renderSkeletons = () => (
     Array.from({ length: 4 }).map((_, index) => (
@@ -371,18 +357,6 @@ export default function EventsPage() {
       </div>
     ))
   );
-
-  const mapEventLocations: MapLocation[] = filteredEvents
-    .filter(e => e.latitude != null && e.longitude != null)
-    .map(e => ({
-      id: e.id,
-      lat: e.latitude!,
-      lng: e.longitude!,
-      eventName: e.name || HEBREW_TEXT.event.eventNameGenericPlaceholder,
-      locationDisplayName: e.locationDisplayName || e.location,
-      dateTime: e.dateTime,
-      numberOfGuests: e.numberOfGuests - (approvedCountsMap.get(e.id) || 0), 
-    }));
 
   const canActuallyRefresh = pullDistance > PULL_TO_REFRESH_THRESHOLD;
   const indicatorVisible = isPulling || isRefreshingViaPull;
@@ -426,17 +400,34 @@ export default function EventsPage() {
       )}
 
       <div className="container mx-auto px-4 py-12">
-        <div className="flex items-center justify-between mb-6 gap-4">
-          <div className="flex flex-row-reverse sm:flex-row items-center gap-2 flex-grow">
-            <Dialog open={showFiltersModal} onOpenChange={setShowFiltersModal}>
+        <div className="mb-6 flex justify-center md:hidden"> {/* Mobile Logo */}
+          <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={120} height={36} data-ai-hint="app logo"/>
+        </div>
+        <div className="hidden md:flex mb-6 justify-center"> {/* Desktop Logo */}
+          <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={150} height={45} data-ai-hint="app logo"/>
+        </div>
+
+        <div className="mb-8 flex items-center gap-2 rtl:space-x-reverse">
+          <Button asChild variant="outline" size="icon" className="flex-shrink-0">
+            <Link href="/events/map">
+              <MapIcon className="h-5 w-5" />
+              <span className="sr-only">{HEBREW_TEXT.map.openFullMap}</span>
+            </Link>
+          </Button>
+          <Dialog open={showFiltersModal} onOpenChange={setShowFiltersModal}>
               <DialogTrigger asChild>
                 <Button
                   variant={areFiltersApplied ? "secondary" : "outline"}
-                  className="shrink-0"
+                  size="icon"
+                  className="flex-shrink-0"
                   aria-label={HEBREW_TEXT.event.filters}
                 >
-                  <FilterButtonIcon className={cn(areFiltersApplied && "ml-2", "h-4 w-4")} />
-                  {areFiltersApplied ? `${HEBREW_TEXT.event.filterButtonAppliedText} (${activeEventFilterCount})` : null}
+                  <FilterButtonIcon className="h-5 w-5" />
+                   {activeEventFilterCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                        {activeEventFilterCount}
+                    </span>
+                  )}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[650px]">
@@ -445,64 +436,18 @@ export default function EventsPage() {
                 </DialogHeader>
                 <EventFilters onFilterChange={handleAdvancedFilterChange} initialFilters={advancedFilters} />
               </DialogContent>
-            </Dialog>
-            <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
-                <Input
-                    type="search"
-                    placeholder={HEBREW_TEXT.general.searchEventsSimplePlaceholder}
-                    className="w-full pl-10 pr-3"
-                    value={simpleSearchQuery}
-                    onChange={handleSimpleSearchChange}
-                />
-            </div>
+          </Dialog>
+          <div className="relative flex-grow">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none rtl:right-3 rtl:left-auto" />
+              <Input
+                  type="search"
+                  placeholder={HEBREW_TEXT.general.searchEventsSimplePlaceholder}
+                  className="w-full pl-10 pr-3 rtl:pr-10 rtl:pl-3 h-10"
+                  value={simpleSearchQuery}
+                  onChange={handleSimpleSearchChange}
+                  dir="rtl"
+              />
           </div>
-
-          <div className="flex-shrink-0 md:hidden">
-            <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={100} height={30} data-ai-hint="app logo"/>
-          </div>
-        </div>
-
-        <div className="mb-8 p-4 bg-muted rounded-lg">
-          <div className="flex justify-between items-center mb-3 cursor-pointer" onClick={toggleMapSection}>
-              <h2 className="font-headline text-xl font-semibold text-center sm:text-right">
-                  {HEBREW_TEXT.map.searchOnMapTitle}
-              </h2>
-              <Button variant="ghost" size="icon">
-                  {isMapSectionOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-              </Button>
-          </div>
-
-          {isMapSectionOpen && (
-              <div>
-                  {isFetchingLocation && (
-                      <div className="flex items-center text-muted-foreground pt-2">
-                          <Loader2 className="ml-2 h-5 w-5 animate-spin" />
-                          {HEBREW_TEXT.map.fetchingLocation}
-                      </div>
-                  )}
-                  {locationError && (
-                      <Alert variant="default" className="mt-2">
-                          <MapPin className="h-5 w-5"/>
-                          <AlertTitle>{HEBREW_TEXT.map.errorTitleShort}</AlertTitle>
-                          <AlertDescription>{locationError}</AlertDescription>
-                      </Alert>
-                  )}
-                  {currentLocation && !locationError && (
-                    <div className="mt-2 rounded-lg overflow-hidden shadow-md">
-                      <GoogleMapComponent
-                          center={currentLocation}
-                          eventLocations={mapEventLocations}
-                      />
-                    </div>
-                  )}
-                  {!isFetchingLocation && !currentLocation && !locationError && (
-                      <div className="flex items-center justify-center h-[400px] bg-gray-200 rounded-lg">
-                          <p className="text-muted-foreground">{HEBREW_TEXT.map.locationUnavailable}</p>
-                      </div>
-                  )}
-              </div>
-          )}
         </div>
 
         <Separator className="my-8"/>
@@ -519,14 +464,39 @@ export default function EventsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {renderSkeletons()}
           </div>
-        ) : !fetchError && filteredEvents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredEvents.map(event => {
-               const availableSpots = event.numberOfGuests - (approvedCountsMap.get(event.id) || 0);
-               return <EventCard key={event.id} event={event} availableSpots={availableSpots} />;
-            })}
-          </div>
-        ) : !fetchError && filteredEvents.length === 0 && !(isLoadingEvents || isLoadingApprovedCounts) ? (
+        ) : !fetchError && filteredAndPaginatedEvents.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredAndPaginatedEvents.map(event => {
+                 const availableSpots = event.numberOfGuests - (approvedCountsMap.get(event.id) || 0);
+                 return <EventCard key={event.id} event={event} availableSpots={availableSpots} />;
+              })}
+            </div>
+            {totalPages > 1 && (
+              <div className="mt-8 flex justify-center items-center space-x-2 rtl:space-x-reverse">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronRight className="h-4 w-4" /> {/* Icon for Previous in RTL */}
+                  {HEBREW_TEXT.general.previous}
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  עמוד {currentPage} מתוך {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  {HEBREW_TEXT.general.next}
+                  <ChevronLeft className="h-4 w-4" /> {/* Icon for Next in RTL */}
+                </Button>
+              </div>
+            )}
+          </>
+        ) : !fetchError && filteredAndPaginatedEvents.length === 0 && !(isLoadingEvents || isLoadingApprovedCounts) ? (
           <Alert variant="default" className="mt-8">
               <SearchX className="h-5 w-5" />
             <AlertTitle className="font-headline">{HEBREW_TEXT.event.noEventsFound}</AlertTitle>

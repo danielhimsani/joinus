@@ -46,6 +46,7 @@ const foodTypeOptions: { value: FoodType | "any"; label: string }[] = [
     { value: "meatAndDairy", label: HEBREW_TEXT.event.meatAndDairy },
     { value: "vegetarian", label: HEBREW_TEXT.event.vegetarian },
     { value: "vegan", label: HEBREW_TEXT.event.vegan },
+    { value: "kosherParve", label: HEBREW_TEXT.event.kosherParve },
 ];
 
 const kashrutOptions: { value: KashrutType | "any"; label: string }[] = [
@@ -124,7 +125,7 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
     <form onSubmit={handleSubmit}> 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6 items-end py-4">
             <div>
-                <Label htmlFor="date">תאריך</Label>
+                <Label htmlFor="date">{HEBREW_TEXT.event.dateTime}</Label>
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button

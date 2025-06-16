@@ -51,6 +51,7 @@ const foodTypeOptions: { value: FoodType; label: string }[] = [
   { value: "meatAndDairy", label: HEBREW_TEXT.event.meatAndDairy },
   { value: "vegetarian", label: HEBREW_TEXT.event.vegetarian },
   { value: "vegan", label: HEBREW_TEXT.event.vegan },
+  { value: "kosherParve", label: HEBREW_TEXT.event.kosherParve },
 ];
 
 const kashrutOptions: { value: KashrutType; label: string }[] = [
@@ -85,7 +86,7 @@ const formSchema = z.object({
     }, { message: HEBREW_TEXT.event.dateTimeInFutureError }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
   ageRange: z.array(z.number().min(18).max(80)).length(2, { message: "יש לבחור טווח גילאים." }).default([18, 55]),
-  foodType: z.enum(["meat", "dairy", "meatAndDairy", "vegetarian", "vegan"], { errorMap: () => ({ message: "יש לבחור סוג כיבוד."}) }),
+  foodType: z.enum(["meat", "dairy", "meatAndDairy", "vegetarian", "vegan", "kosherParve"], { errorMap: () => ({ message: "יש לבחור סוג כיבוד."}) }),
   kashrut: z.enum(["kosher", "notKosher"], { errorMap: () => ({ message: "יש לבחור רמת כשרות."}) }),
   weddingType: z.enum(["traditional", "civil", "harediWithSeparation"], { errorMap: () => ({ message: "יש לבחור סוג חתונה."}) }),
   imageUrl: z.string().optional(),
@@ -201,7 +202,7 @@ export function EventForm({
 
       const oldFoodType = (initialEventData as any).foodType_old || initialEventData.foodType; // Check for a temporary old field or use current
 
-      if (!initialEventData.kashrut) { // If kashrut isn't set, infer from old foodType
+      if (!initialEventData.kashrut && oldFoodType !== "kosherParve") { // If kashrut isn't set, infer from old foodType, unless it's kosherParve
           switch(oldFoodType) {
               case 'kosherMeat':
                   migratedFoodType = 'meat';
@@ -211,9 +212,9 @@ export function EventForm({
                   migratedFoodType = 'dairy';
                   migratedKashrut = 'kosher';
                   break;
-              case 'kosherParve':
-                  migratedFoodType = 'vegetarian'; // Or 'vegan'
-                  migratedKashrut = 'kosher';
+              case 'kosherParve': // This case is now handled by new FoodType
+                  migratedFoodType = 'kosherParve';
+                  migratedKashrut = 'kosher'; // kosherParve implies kosher
                   break;
               case 'notKosher':
                   migratedFoodType = 'meatAndDairy'; // Default if not kosher
@@ -225,6 +226,9 @@ export function EventForm({
                   migratedFoodType = initialEventData.foodType as FoodType;
                   migratedKashrut = initialEventData.kashrut || 'kosher';
           }
+      } else if (oldFoodType === "kosherParve") {
+          migratedFoodType = 'kosherParve';
+          migratedKashrut = 'kosher';
       }
 
 
@@ -244,7 +248,7 @@ export function EventForm({
         weddingType: initialEventData.weddingType || (initialEventData as any).religionStyle || 'traditional', // Map old religionStyle
         imageUrl: initialEventData.imageUrl || "",
       });
-      if (initialEventData.imageUrl && !initialEventData.imageUrl.startsWith("https://placehold.co")) {
+      if (initialEventData.imageUrl) {
         setImagePreviewUrl(initialEventData.imageUrl);
       }
       setLatitude(initialEventData.latitude || null);
@@ -421,7 +425,7 @@ export function EventForm({
         return;
     }
 
-    let finalImageUrl: string | undefined;
+    let finalImageUrl: string | undefined = "/onboarding/slide-2.png"; // Default image
 
     if (imageFile) {
       setIsUploadingImage(true);
@@ -458,8 +462,8 @@ export function EventForm({
       setImageUploadProgress(100);
     } else if (values.imageUrl && values.imageUrl.startsWith('http')) {
       finalImageUrl = values.imageUrl;
-    } else {
-      finalImageUrl = `https://placehold.co/800x400.png${values.name ? `?text=${encodeURIComponent(values.name)}` : ''}`;
+    } else if (isEditMode && initialEventData?.imageUrl) {
+        finalImageUrl = initialEventData.imageUrl; // Keep existing image if not changed
     }
 
 
@@ -576,7 +580,7 @@ export function EventForm({
   }
   if (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return <Card className="w-full max-w-3xl mx-auto p-6 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary mb-2" /><p>{HEBREW_TEXT.general.loading} רכיב המיקום...</p></Card>;
   
-  const currentImageToDisplay = imagePreviewUrl || (isEditMode && initialEventData?.imageUrl && !initialEventData.imageUrl.startsWith("https://placehold.co") ? initialEventData.imageUrl : `https://placehold.co/800x400.png${eventNameValue ? `?text=${encodeURIComponent(eventNameValue)}` : ''}`);
+  const currentImageToDisplay = imagePreviewUrl || (isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : "/onboarding/slide-2.png");
   const headerTitleText = eventNameValue || (isEditingName || !isEditMode ? "" : HEBREW_TEXT.event.eventNameDisplayPlaceholder);
 
 
@@ -1087,3 +1091,4 @@ export function EventForm({
     </>
   );
 }
+

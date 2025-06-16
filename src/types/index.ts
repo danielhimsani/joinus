@@ -13,7 +13,7 @@ export interface UserProfile {
 }
 
 export type PaymentOption = 'fixed' | 'payWhatYouWant' | 'free';
-export type FoodType = 'meat' | 'dairy' | 'meatAndDairy' | 'vegetarian' | 'vegan';
+export type FoodType = 'meat' | 'dairy' | 'meatAndDairy' | 'vegetarian' | 'vegan' | 'kosherParve';
 export type KashrutType = 'kosher' | 'notKosher';
 export type WeddingType = 'traditional' | 'civil' | 'harediWithSeparation';
 

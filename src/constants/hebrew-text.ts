@@ -43,7 +43,7 @@ export const HEBREW_TEXT = {
     payWhatYouWant: "שלם כפי יכולתך",
     free: "חינם",
     location: "מיקום",
-    dateTime: "תאריך ושעה",
+    dateTime: "תאריך",
     selectDate: "בחר תאריך",
     description: "תיאור",
     ageRange: "טווח גילאים",
@@ -53,6 +53,7 @@ export const HEBREW_TEXT = {
     meatAndDairy: "בשרי + חלבי",
     vegetarian: "צמחוני",
     vegan: "טבעוני",
+    kosherParve: "כשר פרווה",
     kashrut: "כשרות",
     kosher: "כשר",
     notKosher: "ללא כשרות", // Changed from "לא כשר" to be more explicit
@@ -331,6 +332,7 @@ export const HEBREW_TEXT = {
     yourCurrentLocation: "המיקום הנוכחי שלך:",
     latitude: "קו רוחב",
     longitude: "קו אורך",
+    openFullMap: "פתח מפה מלאה",
   },
   legal: {
     privacyPolicyTitle: "מדיניות פרטיות",
