@@ -131,10 +131,10 @@ export default function ProfilePage() {
           const eventsRef = collection(db, "events");
           const q = query(eventsRef, where("ownerUids", "array-contains", fbUser.uid), where("dateTime", ">=", Timestamp.now()));
           const querySnapshot = await getDocs(q);
-          const fetchedEvents = querySnapshot.docs.map(doc => {
-            const data = doc.data();
+          const fetchedEvents = querySnapshot.docs.map(eventDoc => {
+            const data = eventDoc.data();
             return {
-                id: doc.id,
+                id: eventDoc.id,
                 ...data,
                 dateTime: safeToDate(data.dateTime),
                 createdAt: safeToDate(data.createdAt),
@@ -191,7 +191,7 @@ export default function ProfilePage() {
     }
   };
 
-  const onSubmit = async (values: z.infer<typeof profileFormSchema>>) => {
+  const onSubmit = async (values: z.infer<typeof profileFormSchema>) => {
     setIsSubmitting(true);
     if (!firebaseUser) {
       toast({ title: HEBREW_TEXT.general.error, description: "משתמש לא מאומת.", variant: "destructive" });
