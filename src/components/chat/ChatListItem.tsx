@@ -127,7 +127,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
             </p>
              {formattedTimestamp && (
-              <p className="text-xs text-muted-foreground/90 whitespace-nowrap mt-1.5 self-start">{formattedTimestamp}</p>
+              <p className="text-xs text-muted-foreground/90 whitespace-nowrap mt-1.5">{formattedTimestamp}</p>
             )}
           </div>
 
@@ -170,3 +170,4 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   );
 }
 
+    
