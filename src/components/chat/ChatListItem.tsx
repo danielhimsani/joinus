@@ -102,9 +102,9 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   return (
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
-        <CardContent className="p-3 sm:p-4 flex flex-row-reverse items-center justify-evenly">
+        <CardContent className="p-3 sm:p-4 flex flex-row-reverse items-center gap-3 sm:gap-4">
           {/* Block 1: Text content (name, message, timestamp, unread) */}
-          <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex-1 min-w-0 flex flex-col text-right">
             <div className="flex justify-between items-start">
               <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
               {unreadMessages > 0 && (
@@ -142,7 +142,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                 }
               }}
               className={cn(
-                "w-full flex justify-center", 
+                "w-full flex justify-center",
                 avatarLink && "cursor-pointer"
               )}
               role={avatarLink ? "link" : undefined}
