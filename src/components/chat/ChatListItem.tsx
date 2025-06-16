@@ -108,21 +108,21 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             <div className="flex justify-end items-start">
               <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
               {unreadMessages > 0 && (
-                <Badge variant="destructive" className="text-xs px-1.5 py-0.5 leading-none h-5 shrink-0">
+                <Badge variant="destructive" className="text-xs px-1.5 py-0.5 leading-none h-5 shrink-0 mr-2">
                   {unreadMessages}
                 </Badge>
               )}
             </div>
 
             {secondaryTitle && (
-              <p className="text-xs text-muted-foreground truncate mt-0.5">{secondaryTitle}</p>
+              <p className="text-xs text-muted-foreground truncate mt-0.5" dir="rtl">{secondaryTitle}</p>
             )}
 
             <p className={cn(
               "text-sm text-muted-foreground truncate",
               secondaryTitle ? "mt-1" : "mt-0.5",
               !chat.lastMessageText && "italic"
-            )}>
+            )} dir="rtl">
               {chat.lastMessageSenderId === currentUserId ? `${HEBREW_TEXT.chat.you}: ` : ''}
               {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
             </p>
@@ -142,7 +142,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                 }
               }}
               className={cn(
-                "w-full flex justify-start", // Changed from justify-center
+                "w-full flex justify-start",
                 avatarLink && "cursor-pointer"
               )}
               role={avatarLink ? "link" : undefined}
@@ -151,7 +151,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             >
               <AvatarContent />
             </div>
-            <div className="mt-1.5"> {/* Adjusted margin for badge */}
+            <div className="mt-1.5">
                 <Badge
                     variant={statusDisplay.variant}
                     className={cn(
