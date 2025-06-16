@@ -135,12 +135,13 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
                             "w-full justify-start text-right font-normal mt-1",
                             !filters.date && "text-muted-foreground"
                         )}
+                        dir="rtl"
                         >
                         <CalendarIcon className="ml-2 h-4 w-4" />
                         {filters.date ? format(filters.date, "PPP", { locale: he }) : <span>בחר תאריך</span>}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0" dir="rtl">
                         <Calendar
                         mode="single"
                         selected={filters.date}
@@ -154,10 +155,10 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
              <div>
                 <Label htmlFor="priceRange">{HEBREW_TEXT.event.filterByPrice}</Label>
                 <Select value={filters.priceRange || "any"} onValueChange={(value) => handleInputChange("priceRange", value === "any" ? "any" : value)}>
-                    <SelectTrigger id="priceRange" className="w-full mt-1">
+                    <SelectTrigger id="priceRange" className="w-full mt-1" dir="rtl">
                         <SelectValue placeholder="בחר טווח מחירים" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent dir="rtl">
                         {priceRanges.map(range => (
                             <SelectItem key={range.value} value={range.value}>{range.label}</SelectItem>
                         ))}
@@ -167,10 +168,10 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
              <div>
                 <Label htmlFor="foodType">{HEBREW_TEXT.event.foodType}</Label>
                 <Select value={filters.foodType || "any"} onValueChange={(value) => handleInputChange("foodType", value === "any" ? "any" : value as FoodType)}>
-                    <SelectTrigger id="foodType" className="w-full mt-1">
+                    <SelectTrigger id="foodType" className="w-full mt-1" dir="rtl">
                         <SelectValue placeholder="בחר סוג כיבוד" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent dir="rtl">
                         {foodTypeOptions.map(type => (
                             <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                         ))}
@@ -180,10 +181,10 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
              <div>
                 <Label htmlFor="kashrut">{HEBREW_TEXT.event.kashrut}</Label>
                 <Select value={filters.kashrut || "any"} onValueChange={(value) => handleInputChange("kashrut", value === "any" ? "any" : value as KashrutType)}>
-                    <SelectTrigger id="kashrut" className="w-full mt-1">
+                    <SelectTrigger id="kashrut" className="w-full mt-1" dir="rtl">
                         <SelectValue placeholder="בחר רמת כשרות" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent dir="rtl">
                         {kashrutOptions.map(type => (
                             <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                         ))}
@@ -193,10 +194,10 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
             <div>
                 <Label htmlFor="weddingType">{HEBREW_TEXT.event.weddingType}</Label>
                 <Select value={filters.weddingType || "any"} onValueChange={(value) => handleInputChange("weddingType", value === "any" ? "any" : value as WeddingType)}>
-                    <SelectTrigger id="weddingType" className="w-full mt-1">
+                    <SelectTrigger id="weddingType" className="w-full mt-1" dir="rtl">
                         <SelectValue placeholder="בחר סוג חתונה" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent dir="rtl">
                         {weddingTypeOptions.map(type => (
                             <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                         ))}
