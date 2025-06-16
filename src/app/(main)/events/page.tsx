@@ -400,9 +400,6 @@ export default function EventsPage() {
       )}
 
       <div className="container mx-auto px-4 py-12">
-        <div className="mb-6 flex justify-center md:hidden"> {/* Mobile Logo */}
-          <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={120} height={36} data-ai-hint="app logo"/>
-        </div>
         <div className="hidden md:flex mb-6 justify-center"> {/* Desktop Logo */}
           <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={150} height={45} data-ai-hint="app logo"/>
         </div>
