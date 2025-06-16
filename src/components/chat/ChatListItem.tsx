@@ -142,7 +142,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                 }
               }}
               className={cn(
-                "w-full flex justify-center",
+                "w-full flex justify-start", // Changed from justify-center
                 avatarLink && "cursor-pointer"
               )}
               role={avatarLink ? "link" : undefined}
