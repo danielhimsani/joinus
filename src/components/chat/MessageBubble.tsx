@@ -37,10 +37,10 @@ const MessageBubbleComponent = ({ message, currentUser }: MessageBubbleProps) =>
 
   return (
     <div
-      dir="rtl" // Added for explicit RTL direction
+      dir="ltr" // Overall direction for layout purposes (avatar left/right of bubble)
       className={cn(
         "flex items-end gap-2 max-w-[85%] sm:max-w-[75%] my-2",
-        isCurrentUserSender ? "self-end flex-row-reverse" : "self-start"
+        isCurrentUserSender ? "self-end flex-row-reverse" : "self-start" // flex-row-reverse for sender places avatar to the right of bubble in LTR
       )}
     >
       {isCurrentUserSender ? (
@@ -51,11 +51,12 @@ const MessageBubbleComponent = ({ message, currentUser }: MessageBubbleProps) =>
         </Link>
       )}
       <div
+        dir="rtl" // Text direction within the bubble content is RTL
         className={cn(
           "flex flex-col rounded-lg px-3 py-2 shadow-sm",
           isCurrentUserSender
-            ? "bg-primary text-primary-foreground rounded-br-none"
-            : "bg-muted text-muted-foreground rounded-bl-none"
+            ? "bg-primary text-primary-foreground rounded-br-none" // Bottom-right corner not rounded for sender's bubble
+            : "bg-muted text-muted-foreground rounded-bl-none"   // Bottom-left corner not rounded for other's bubble
         )}
       >
         {!isCurrentUserSender && (
@@ -66,6 +67,8 @@ const MessageBubbleComponent = ({ message, currentUser }: MessageBubbleProps) =>
           className={cn(
             "text-xs mt-1",
             isCurrentUserSender ? "text-primary-foreground/70 text-left" : "text-muted-foreground/70 text-right"
+            // In dir="rtl" bubble: text-left is visual right, text-right is visual left.
+            // This seems to correctly place timestamp at the "end" of the last line of text.
           )}
         >
           {timestamp}
