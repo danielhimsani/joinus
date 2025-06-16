@@ -416,7 +416,7 @@ export default function EventsPage() {
                 <Button
                   variant={areFiltersApplied ? "secondary" : "outline"}
                   size="icon"
-                  className="flex-shrink-0"
+                  className="flex-shrink-0 relative"
                   aria-label={HEBREW_TEXT.event.filters}
                 >
                   <FilterButtonIcon className="h-5 w-5" />
@@ -429,7 +429,7 @@ export default function EventsPage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[650px]">
                 <DialogHeader>
-                  <DialogTitle className="font-headline text-xl">{HEBREW_TEXT.event.filters}</DialogTitle>
+                  <DialogTitle className="font-headline text-xl"></DialogTitle>
                 </DialogHeader>
                 <EventFilters onFilterChange={handleAdvancedFilterChange} initialFilters={advancedFilters} />
               </DialogContent>
