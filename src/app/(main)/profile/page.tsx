@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { UserProfile, Event as EventType } from "@/types";
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users, FileText, Gavel, Contact as UserPlaceholderIcon } from "lucide-react";
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users, FileText, Gavel, UserPlaceholderIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -478,7 +478,6 @@ export default function ProfilePage() {
                                         <div className="flex-1 space-y-1.5">
                                             <Skeleton className="h-5 w-3/4" />
                                             <Skeleton className="h-4 w-1/2" />
-                                            <Skeleton className="h-4 w-1/3" />
                                         </div>
                                         <Skeleton className="h-8 w-8 rounded-md" /> 
                                     </div>
@@ -511,7 +510,7 @@ export default function ProfilePage() {
                                     </div>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <Button asChild variant="outline" size="icon">
+                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8">
                                                 <Link href={`/events/manage/${event.id}`}>
                                                     <Users className="h-4 w-4" />
                                                 </Link>
@@ -594,8 +593,20 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
+
+        <div className="mt-12 text-center">
+          <div className="inline-block mb-2">
+            <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={80} height={24} className="h-auto" data-ai-hint="app logo small"/>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            נבנה באהבה ע״י דניאל הימסני וסטיבן דנישבסקי. כל הזכויות שמורות © {new Date().getFullYear()}
+          </p>
+        </div>
+
       </div>
     </TooltipProvider>
   );
 }
+    
+
     
