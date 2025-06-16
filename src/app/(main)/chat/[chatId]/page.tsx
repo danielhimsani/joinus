@@ -379,10 +379,11 @@ export default function ChatPage() {
         <CardHeader 
           className={cn(
             "border-b bg-background backdrop-blur-sm z-30",
-            "fixed top-0 left-0 right-0 md:sticky md:top-0" 
+            "fixed top-0 left-0 right-0", // Fixed on mobile
+            "md:sticky md:top-0" // Sticky on desktop
           )}
         >
-          <div className="flex items-center justify-between p-2 md:p-3 w-full max-w-3xl mx-auto">
+          <div className="flex items-center justify-between w-full max-w-3xl mx-auto">
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
                  <Button variant="ghost" size="icon" onClick={() => router.back()} className="md:hidden mr-1 h-8 w-8">
                     <ChevronLeft className="h-5 w-5" />
@@ -457,7 +458,7 @@ export default function ChatPage() {
 
         {/* Messages Area */}
         <ScrollArea ref={scrollAreaRef} className="flex-1 bg-background/70">
-          <div className="px-3 pt-[60px] pb-36 md:p-4 md:pt-4 flex flex-col space-y-1"> {/* Adjusted padding */}
+          <div className="px-3 pt-12 pb-36 md:p-4 md:pt-4 flex flex-col space-y-1"> {/* Adjusted mobile top padding pt-12 */}
             {showOwnerActionBlock && (
                 <div className="my-3 p-3 bg-muted/60 dark:bg-muted/40 rounded-lg shadow-sm w-full self-center max-w-md mx-auto">
                   <div className="flex gap-3 justify-center">
