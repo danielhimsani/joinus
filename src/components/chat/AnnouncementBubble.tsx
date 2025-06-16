@@ -9,6 +9,7 @@ import { he } from 'date-fns/locale';
 import { Megaphone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
+import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 interface AnnouncementBubbleProps {
   announcement: EventAnnouncement;
@@ -20,12 +21,13 @@ export function AnnouncementBubble({ announcement }: AnnouncementBubbleProps) {
     : '';
 
   const ownerName = announcement.ownerName || "בעל אירוע";
+  const displayInitial = getDisplayInitial(ownerName);
 
   return (
     <div className="my-4 w-full flex justify-center px-2">
       <Card className="w-full max-w-xl shadow-md bg-muted/30 dark:bg-card border-2 border-primary">
-        <CardHeader className="p-3 flex justify-start items-center">
-          <div className="flex items-center space-x-2 rtl:space-x-reverse">
+        <CardHeader className="p-3 flex justify-start  items-center">
+          <div className="flex items-center flex-row-reverse space-x-2 rtl:space-x-reverse">
             <div className="p-2 bg-primary/10 rounded-full">
                 <Megaphone className="h-5 w-5 text-primary" />
             </div>
@@ -41,7 +43,7 @@ export function AnnouncementBubble({ announcement }: AnnouncementBubbleProps) {
                         <AvatarImage src={announcement.ownerProfileImageUrl} alt={ownerName} data-ai-hint="owner avatar"/>
                     ) : (
                         <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                            {ownerName?.charAt(0)?.toUpperCase() || 'A'}
+                            {displayInitial || 'A'}
                         </AvatarFallback>
                     )}
                 </Avatar>

@@ -41,6 +41,7 @@ import { ref as storageRef, deleteObject } from "firebase/storage";
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { safeToDate } from '@/lib/dateUtils';
+import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 
 const getFoodTypeLabel = (foodType: FoodType | undefined) => {
@@ -403,7 +404,7 @@ export default function EventDetailPage() {
           <Button
             variant="outline"
             size="icon"
-            className="absolute top-4 right-4 z-10 bg-background/80 hover:bg-background focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background text-foreground rounded-full shadow-md"
+            className="absolute top-4 right-4 z-10 bg-background/80 hover:bg-background focus-visible:bg-background focus-visible:outline-none focus-visible:ring-0 text-foreground rounded-full shadow-md"
             onClick={handleShareEvent}
             title={HEBREW_TEXT.event.shareEventTitle}
           >
@@ -442,7 +443,7 @@ export default function EventDetailPage() {
                               <Link href={`/profile/${owner.uid}`} passHref>
                                 <Avatar className="h-10 w-10 border cursor-pointer hover:ring-2 hover:ring-primary transition-all">
                                   <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="organizer avatar"/>
-                                  <AvatarFallback>{owner.name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                                  <AvatarFallback>{getDisplayInitial(owner.name) || "U"}</AvatarFallback>
                                 </Avatar>
                               </Link>
                             </TooltipTrigger>

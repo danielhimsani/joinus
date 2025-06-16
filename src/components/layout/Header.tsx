@@ -21,6 +21,7 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth"; // Firebase Auth
 import { auth as firebaseAuthInstance } from "@/lib/firebase"; // Firebase Auth Instance
+import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 // Navigation items for Desktop Top Bar
 const desktopNavItems = [
@@ -72,7 +73,7 @@ export default function Header() {
     }
     if (!firebaseUser) return null;
 
-    const userInitial = firebaseUser.displayName ? firebaseUser.displayName.charAt(0).toUpperCase() : (firebaseUser.email ? firebaseUser.email.charAt(0).toUpperCase() : 'U');
+    const userInitial = getDisplayInitial(firebaseUser.displayName || firebaseUser.email) || "U";
 
     return (
       <DropdownMenu>

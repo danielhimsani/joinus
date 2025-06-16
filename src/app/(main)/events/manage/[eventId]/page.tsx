@@ -45,6 +45,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle as ShadAlertDialogTitle, // Using alias for Shadcn's title
 } from "@/components/ui/alert-dialog";
+import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 
 const GUESTS_PER_PAGE = 10;
@@ -376,50 +377,53 @@ export default function ManageEventGuestsPage() {
               </div>
               {approvedGuests.length > 0 ? (
                 <div className="space-y-3">
-                  {paginatedGuests.map(guest => (
-                    <Card key={guest.id} className="p-3 shadow-sm">
-                      <div className="flex items-center justify-between space-x-3 rtl:space-x-reverse">
-                        <div className="flex items-center space-x-3 rtl:space-x-reverse flex-1 min-w-0">
-                          <Link href={`/profile/${guest.firebaseUid}`} passHref>
-                            <Avatar className="h-10 w-10 border cursor-pointer">
-                              <AvatarImage src={guest.profileImageUrl} alt={guest.name} data-ai-hint="guest avatar" />
-                              <AvatarFallback className="bg-muted">
-                                {guest.name?.charAt(0).toUpperCase() || <UserPlaceholderIcon className="h-6 w-6 text-muted-foreground"/>}
-                              </AvatarFallback>
-                            </Avatar>
-                          </Link>
-                           <Link href={`/profile/${guest.firebaseUid}`} passHref className="flex-1 min-w-0">
-                            <p className="font-medium truncate cursor-pointer hover:underline">{guest.name}</p>
-                            {guest.email && <p className="text-xs text-muted-foreground truncate">{guest.email}</p>}
-                          </Link>
+                  {paginatedGuests.map(guest => {
+                    const guestInitialDisplay = getDisplayInitial(guest.name);
+                    return (
+                      <Card key={guest.id} className="p-3 shadow-sm">
+                        <div className="flex items-center justify-between space-x-3 rtl:space-x-reverse">
+                          <div className="flex items-center space-x-3 rtl:space-x-reverse flex-1 min-w-0">
+                            <Link href={`/profile/${guest.firebaseUid}`} passHref>
+                              <Avatar className="h-10 w-10 border cursor-pointer">
+                                <AvatarImage src={guest.profileImageUrl} alt={guest.name} data-ai-hint="guest avatar" />
+                                <AvatarFallback className="bg-muted">
+                                  {guestInitialDisplay || <UserPlaceholderIcon className="h-6 w-6 text-muted-foreground"/>}
+                                </AvatarFallback>
+                              </Avatar>
+                            </Link>
+                            <Link href={`/profile/${guest.firebaseUid}`} passHref className="flex-1 min-w-0">
+                              <p className="font-medium truncate cursor-pointer hover:underline">{guest.name}</p>
+                              {guest.email && <p className="text-xs text-muted-foreground truncate">{guest.email}</p>}
+                            </Link>
+                          </div>
+                          <div className="flex items-center space-x-1 rtl:space-x-reverse">
+                              <Button asChild variant="ghost" size="sm" className="text-xs">
+                                  <Link href={`/chat/${guest.chatId}`}>
+                                      <MessageSquare className="ml-1.5 h-3 w-3"/>
+                                      {HEBREW_TEXT.chat.title}
+                                  </Link>
+                              </Button>
+                              <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                          <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                                      </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                      <DropdownMenuItem 
+                                          onSelect={() => { setGuestToRevoke(guest); setShowRevokeDialog(true); }}
+                                          className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                                      >
+                                          <UserX className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                                          {HEBREW_TEXT.event.revokeApproval}
+                                      </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                              </DropdownMenu>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-1 rtl:space-x-reverse">
-                            <Button asChild variant="ghost" size="sm" className="text-xs">
-                                <Link href={`/chat/${guest.chatId}`}>
-                                    <MessageSquare className="ml-1.5 h-3 w-3"/>
-                                    {HEBREW_TEXT.chat.title}
-                                </Link>
-                            </Button>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem 
-                                        onSelect={() => { setGuestToRevoke(guest); setShowRevokeDialog(true); }}
-                                        className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-                                    >
-                                        <UserX className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
-                                        {HEBREW_TEXT.event.revokeApproval}
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
+                      </Card>
+                    );
+                  })}
                    {totalGuestPages > 1 && (
                     <div className="flex justify-center items-center space-x-2 rtl:space-x-reverse mt-6">
                         <Button
@@ -481,28 +485,31 @@ export default function ManageEventGuestsPage() {
                 {announcements.length > 0 ? (
                   <ScrollArea className="h-72 pr-3">
                     <div className="space-y-4">
-                      {announcements.map(ann => (
-                        <Card key={ann.id} className="p-3 shadow-sm">
-                          <p className="text-sm text-foreground whitespace-pre-line" dir="rtl">{ann.messageText}</p>
-                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
-                            <div className='flex items-center text-xs text-muted-foreground'>
-                                <Avatar className="h-6 w-6 ml-1.5 border">
-                                    <AvatarImage src={ann.ownerDisplayImage} alt={ann.ownerDisplayName} data-ai-hint="owner avatar" />
-                                    <AvatarFallback className="text-xs">{ann.ownerDisplayName?.charAt(0)?.toUpperCase() || 'A'}</AvatarFallback>
-                                </Avatar>
-                                {ann.ownerDisplayName || HEBREW_TEXT.event.eventOwner}
+                      {announcements.map(ann => {
+                        const announcerInitial = getDisplayInitial(ann.ownerDisplayName);
+                        return (
+                          <Card key={ann.id} className="p-3 shadow-sm">
+                            <p className="text-sm text-foreground whitespace-pre-line" dir="rtl">{ann.messageText}</p>
+                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
+                              <div className='flex items-center text-xs text-muted-foreground'>
+                                  <Avatar className="h-6 w-6 ml-1.5 border">
+                                      <AvatarImage src={ann.ownerDisplayImage} alt={ann.ownerDisplayName} data-ai-hint="owner avatar" />
+                                      <AvatarFallback className="text-xs">{announcerInitial || "A"}</AvatarFallback>
+                                  </Avatar>
+                                  {ann.ownerDisplayName || HEBREW_TEXT.event.eventOwner}
+                              </div>
+                              <Tooltip>
+                                  <TooltipTrigger asChild>
+                                      <span className="text-xs text-muted-foreground">{format(ann.timestamp, 'dd/MM/yy HH:mm', { locale: he })}</span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                      <p>{format(ann.timestamp, 'PPPPp', { locale: he })}</p>
+                                  </TooltipContent>
+                              </Tooltip>
                             </div>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <span className="text-xs text-muted-foreground">{format(ann.timestamp, 'dd/MM/yy HH:mm', { locale: he })}</span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{format(ann.timestamp, 'PPPPp', { locale: he })}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                          </div>
-                        </Card>
-                      ))}
+                          </Card>
+                        );
+                      })}
                     </div>
                   </ScrollArea>
                 ) : (

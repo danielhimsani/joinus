@@ -42,6 +42,7 @@ import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, serv
 import { format as formatDate } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
+import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
@@ -190,7 +191,7 @@ export default function ProfilePage() {
     }
   };
 
-  const onSubmit = async (values: z.infer<typeof profileFormSchema>) => {
+  const onSubmit = async (values: z.infer<typeof profileFormSchema>>) => {
     setIsSubmitting(true);
     if (!firebaseUser) {
       toast({ title: HEBREW_TEXT.general.error, description: "משתמש לא מאומת.", variant: "destructive" });
@@ -308,7 +309,7 @@ export default function ProfilePage() {
                 <div className="relative inline-block mb-4">
                   <Avatar className="h-32 w-32 border-4 border-primary shadow-md">
                     <AvatarImage src={user.profileImageUrl} alt={user.name} data-ai-hint="profile picture"/>
-                    <AvatarFallback className="text-4xl">{user.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback className="text-4xl">{getDisplayInitial(user.name) || "U"}</AvatarFallback>
                   </Avatar>
                   {isEditing && (
                       <Button variant="outline" size="icon" className="absolute bottom-0 left-0 bg-background rounded-full">

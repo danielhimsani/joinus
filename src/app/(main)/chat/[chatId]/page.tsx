@@ -40,7 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, Send, UserX, CheckCircle, XCircle, Info, ShieldAlert, MessageSquareDashed, ChevronLeft, Ban, Contact as UserPlaceholderIcon, MoreVertical, EllipsisVertical } from 'lucide-react';
+import { Loader2, Send, UserX, CheckCircle, XCircle, Info, ShieldAlert, MessageSquareDashed, ChevronLeft, Ban, Contact as UserPlaceholderIcon, MoreVertical, EllipsisVertical, ChevronRight } from 'lucide-react';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { AnnouncementBubble } from '@/components/chat/AnnouncementBubble';
 import Link from 'next/link';
@@ -346,7 +346,7 @@ export default function ChatPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
         <Button onClick={() => router.back()} className="mt-6">
-            <ChevronLeft className="ml-1 h-4 w-4"/>
+            <ChevronRight className="ml-1 h-4 w-4"/>
             {HEBREW_TEXT.general.back}
         </Button>
       </div>
@@ -359,7 +359,7 @@ export default function ChatPage() {
             <MessageSquareDashed className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">{HEBREW_TEXT.chat.errorFetchingChat}</p>
              <Button onClick={() => router.back()} className="mt-6">
-                <ChevronLeft className="ml-1 h-4 w-4"/>
+                <ChevronRight className="ml-1 h-4 w-4"/>
                 {HEBREW_TEXT.general.back}
             </Button>
         </div>
@@ -373,7 +373,7 @@ export default function ChatPage() {
   );
 
   return (
-    <div className="container mx-auto px-0 md:px-4 py-0 md:py-8 h-screen md:h-[calc(100vh-120px)] flex flex-col">
+    <div className="container mx-auto px-0 md:px-4 py-0 md:py-8 h-screen  md:h-[calc(100vh-120px)] flex flex-col">
       <Card className="flex-1 flex flex-col max-w-3xl mx-auto w-full shadow-lg overflow-hidden relative">
         {/* Chat Header */}
         <CardHeader 
@@ -386,7 +386,7 @@ export default function ChatPage() {
           <div className="flex items-center justify-between p-2 md:p-3 w-full max-w-3xl mx-auto"> {/* Inner div gets padding */}
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
                  <Button variant="ghost" size="icon" onClick={() => router.back()} className="md:hidden mr-1 h-8 w-8"> {/* Adjusted icon size */}
-                    <ChevronLeft className="h-5 w-5" />
+                    <ChevronRight className="h-5 w-5" />
                  </Button>
               {headerLink ? (
                 <Link href={headerLink} passHref>
@@ -459,7 +459,7 @@ export default function ChatPage() {
         {/* Messages Area */}
         <ScrollArea ref={scrollAreaRef} className="flex-1 bg-background/70">
            {/* Adjusted padding: pt-16 for mobile (64px), md:p-4 for desktop (standard padding, md:pt-4 will ensure it's fine with sticky header) */}
-          <div className="px-3 pt-16 pb-36 md:p-4 md:pt-4 flex flex-col space-y-1">
+          <div className="px-3 pt-32 pb-36 md:p-4 md:pt-4 flex flex-col space-y-1">
             {showOwnerActionBlock && (
                 <div className="my-3 p-3 bg-muted/60 dark:bg-muted/40 rounded-lg shadow-sm w-full self-center max-w-md mx-auto">
                   <div className="flex gap-3 justify-center">

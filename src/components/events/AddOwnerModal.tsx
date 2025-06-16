@@ -13,6 +13,7 @@ import type { UserProfile } from '@/types';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 interface AddOwnerModalProps {
   isOpen: boolean;
@@ -144,7 +145,7 @@ export function AddOwnerModal({ isOpen, onOpenChange, onOwnerAdded, currentOwner
                 <div className="flex items-center space-x-3 rtl:space-x-reverse">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={user.profileImageUrl} alt={user.name} data-ai-hint="user avatar" />
-                    <AvatarFallback>{user.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                    <AvatarFallback>{getDisplayInitial(user.name) || "U"}</AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-medium">{user.name}</p>

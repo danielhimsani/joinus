@@ -12,6 +12,7 @@ import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; // Added db
 import { collection, query, where, onSnapshot, type DocumentData } from "firebase/firestore"; // Firebase imports
 import type { EventChat } from '@/types'; // Import EventChat type
+import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 // Updated order: Events, Requests (Messages), Create Event, Profile
 const navItemsConfig = [
@@ -91,7 +92,7 @@ export default function BottomNavigationBar() {
           const DefaultIcon = item.icon;
 
           if (item.isProfile) {
-            const userInitial = firebaseUser?.displayName?.charAt(0).toUpperCase() || firebaseUser?.email?.charAt(0).toUpperCase() || 'U';
+            const userInitial = getDisplayInitial(firebaseUser?.displayName || firebaseUser?.email) || "U";
             IconElement = isLoadingAuth ? (
               <UserCircle className={cn("w-6 h-6 mb-1", currentItemIsActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground/80")} />
             ) : firebaseUser && firebaseUser.photoURL ? (

@@ -33,6 +33,7 @@ import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate } from '@/lib/dateUtils';
 import type { User as FirebaseUser } from "firebase/auth";
+import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 const calculateAge = (birthDateString?: string): number | null => {
   if (!birthDateString) return null;
@@ -208,7 +209,7 @@ export default function UserProfilePage() {
             <div className="relative inline-block mb-4 mt-8 sm:mt-0">
               <Avatar className="h-32 w-32 border-4 border-primary shadow-md">
                 <AvatarImage src={profileData.profileImageUrl} alt={profileData.name} data-ai-hint="profile picture public"/>
-                <AvatarFallback className="text-4xl">{profileData.name.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="text-4xl">{getDisplayInitial(profileData.name) || "U"}</AvatarFallback>
               </Avatar>
             </div>
             <CardTitle className="font-headline text-3xl">{profileData.name}</CardTitle>
