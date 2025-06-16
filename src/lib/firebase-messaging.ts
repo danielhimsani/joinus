@@ -18,11 +18,10 @@ export const requestNotificationPermissionAndSaveToken = async (userId: string):
 
       if (permission === 'granted') {
         console.log('Notification permission granted.');
-        // IMPORTANT: Replace 'YOUR_VAPID_KEY_FROM_FIREBASE_CONSOLE' with your actual VAPID key
         const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
         if (!vapidKey) {
             console.error("VAPID key is not defined. Push notifications will not work. Define NEXT_PUBLIC_FIREBASE_VAPID_KEY in your .env.local file.");
-            return permission; // Return permission status but can't get token
+            return permission;
         }
 
         const currentToken = await getToken(messaging, {
@@ -30,13 +29,13 @@ export const requestNotificationPermissionAndSaveToken = async (userId: string):
         });
 
         if (currentToken) {
-          console.log('FCM Token:', currentToken);
+          console.log('FCM Token (copy for testing):', currentToken); // Log the token
           const tokenRef = doc(db, 'users', userId, 'fcmTokens', currentToken);
           await setDoc(tokenRef, {
             token: currentToken,
             createdAt: serverTimestamp(),
             userAgent: navigator.userAgent,
-          }, { merge: true }); // Use merge:true to avoid overwriting if the token doc already exists (e.g., for updating userAgent)
+          }, { merge: true });
           console.log('FCM token saved/updated in Firestore for user:', userId);
         } else {
           console.log('No registration token available. Request permission to generate one.');
@@ -67,7 +66,7 @@ export const onForegroundMessageListener = () =>
           resolve(payload);
         });
       } else {
-        resolve(null); // Resolve with null if not supported
+        resolve(null); 
       }
     });
   });

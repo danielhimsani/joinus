@@ -8,7 +8,7 @@ import { auth as firebaseAuthInstance } from '@/lib/firebase';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { useRouter } from 'next/navigation';
-import { ToastAction } from '@/components/ui/toast'; // Import ToastAction
+import { ToastAction } from '@/components/ui/toast';
 
 export function NotificationSetup() {
   const { toast } = useToast();
@@ -18,26 +18,34 @@ export function NotificationSetup() {
     const unsubscribeAuth = firebaseAuthInstance.onAuthStateChanged(async (user: FirebaseUser | null) => {
       if (user) {
         console.log("User authenticated, attempting to set up notifications for:", user.uid);
-        const permission = await requestNotificationPermissionAndSaveToken(user.uid);
-        // Optional: inform user about permission status
-        // if (permission === 'granted') {
-        //   toast({ title: "התראות מופעלות", description: "תקבל התראות על הודעות חדשות." });
-        // } else if (permission === 'denied') {
-        //   toast({ title: "התראות נדחו", description: "לא תקבל התראות. תוכל לשנות זאת בהגדרות הדפדפן.", variant: "default", duration: 5000 });
-        // }
+        await requestNotificationPermissionAndSaveToken(user.uid);
       }
     });
 
-    // Handle foreground messages
-    onForegroundMessageListener().then(payload => {
-      if (payload && typeof payload === 'object' && payload !== null) { // Check if payload is not null and is an object
-        const notification = (payload as any).notification;
-        const data = (payload as any).data;
+    onForegroundMessageListener().then(messagePayload => { // Renamed to avoid confusion with outer 'payload' if any
+      if (messagePayload && typeof messagePayload === 'object' && messagePayload !== null) {
+        // The structure of the payload can vary slightly depending on how it's sent.
+        // Common structures include `notification` and `data` properties directly on the payload.
+        const notification = (messagePayload as any).notification;
+        const data = (messagePayload as any).data;
 
-        console.log('Foreground message received:', payload);
+        console.log('Foreground message received:', messagePayload);
+        
+        let title = HEBREW_TEXT.notifications.newMessage;
+        let body = "You have a new message."; // Default body
+
+        if (notification) {
+          title = notification.title || title;
+          body = notification.body || body;
+        } else if (data) {
+          // If no 'notification' part, try to get from 'data'
+          title = data.title || title;
+          body = data.body || body;
+        }
+        
         toast({
-          title: notification?.title || HEBREW_TEXT.notifications.newMessage,
-          description: notification?.body,
+          title: title,
+          description: body,
           action: data?.chatId ? (
             <ToastAction altText="פתח צ'אט" onClick={() => router.push(`/chat/${data.chatId}`)}>
               פתח צ'אט
@@ -47,14 +55,10 @@ export function NotificationSetup() {
       }
     }).catch(err => console.error("Error setting up foreground message listener:", err));
 
-
     return () => {
       unsubscribeAuth();
-      // Note: onMessage returns an unsubscribe function, but onForegroundMessageListener is Promise-based.
-      // If you need to unsubscribe from onMessage directly, you'd call it inside the onForegroundMessageListener logic.
-      // For this setup, the listener is set up once.
     };
   }, [toast, router]);
 
-  return null; // This component does not render anything itself
+  return null;
 }
