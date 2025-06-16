@@ -15,30 +15,62 @@ export function NotificationSetup() {
   const router = useRouter();
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        console.warn(
+          'Push notifications require a secure context (HTTPS) or localhost. ' +
+          'If testing on a mobile device, use a service like ngrok to serve your local environment over HTTPS.'
+        );
+        // Optionally, inform the user via UI if not on HTTPS and not localhost
+        // toast({
+        //   title: "Warning: Insecure Context",
+        //   description: "Push notifications may not work correctly as this page is not served over HTTPS.",
+        //   variant: "default", // Or "warning" if you add that variant
+        //   duration: 10000,
+        // });
+      }
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(registration => {
+          console.log('[NotificationSetup] Service Worker is ready: ', registration);
+          if (registration.active) {
+            console.log('[NotificationSetup] Active Service Worker: ', registration.active);
+          } else {
+            console.warn('[NotificationSetup] No active Service Worker found by navigator.serviceWorker.ready');
+          }
+        }).catch(error => {
+          console.error('[NotificationSetup] Service Worker registration failed or not ready: ', error);
+        });
+      } else {
+        console.warn('[NotificationSetup] Service workers are not supported in this browser.');
+      }
+    }
+
+
     const unsubscribeAuth = firebaseAuthInstance.onAuthStateChanged(async (user: FirebaseUser | null) => {
       if (user) {
-        console.log("User authenticated, attempting to set up notifications for:", user.uid);
-        await requestNotificationPermissionAndSaveToken(user.uid);
+        console.log("[NotificationSetup] User authenticated, attempting to set up notifications for:", user.uid);
+        // Small delay to ensure service worker might have had a chance to register via Firebase SDK
+        setTimeout(async () => {
+            await requestNotificationPermissionAndSaveToken(user.uid);
+        }, 1000);
       }
     });
 
-    onForegroundMessageListener().then(messagePayload => { // Renamed to avoid confusion with outer 'payload' if any
+    onForegroundMessageListener().then(messagePayload => {
       if (messagePayload && typeof messagePayload === 'object' && messagePayload !== null) {
-        // The structure of the payload can vary slightly depending on how it's sent.
-        // Common structures include `notification` and `data` properties directly on the payload.
         const notification = (messagePayload as any).notification;
         const data = (messagePayload as any).data;
 
-        console.log('Foreground message received:', messagePayload);
+        console.log('[NotificationSetup] Foreground message received:', messagePayload);
         
         let title = HEBREW_TEXT.notifications.newMessage;
-        let body = "You have a new message."; // Default body
+        let body = "You have a new message.";
 
         if (notification) {
           title = notification.title || title;
           body = notification.body || body;
         } else if (data) {
-          // If no 'notification' part, try to get from 'data'
           title = data.title || title;
           body = data.body || body;
         }
@@ -53,7 +85,7 @@ export function NotificationSetup() {
           ) : undefined,
         });
       }
-    }).catch(err => console.error("Error setting up foreground message listener:", err));
+    }).catch(err => console.error("[NotificationSetup] Error setting up foreground message listener:", err));
 
     return () => {
       unsubscribeAuth();
@@ -62,3 +94,4 @@ export function NotificationSetup() {
 
   return null;
 }
+
