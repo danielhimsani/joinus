@@ -13,7 +13,7 @@ import { format as formatDateFns, isToday, isYesterday } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { MessageSquareText, Hash, Contact as UserPlaceholderIcon, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react'; // Added useState, useEffect
 import { getDisplayInitial } from '@/lib/textUtils';
 
 interface ChatListItemProps {
@@ -67,17 +67,31 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
 
   const unreadMessages = chat.unreadCount?.[currentUserId] || 0;
 
-  const formattedTimestamp = useMemo(() => {
+  // Initial state for timestamp, rendered on server and client's first pass
+  const initialTimestampFormat = useMemo(() => {
     if (!chat.lastMessageTimestamp) return '';
     const date = new Date(chat.lastMessageTimestamp);
-    if (isToday(date)) {
-      return formatDateFns(date, 'HH:mm', { locale: he });
-    }
-    if (isYesterday(date)) {
-      return HEBREW_TEXT.general.yesterday;
-    }
-    return formatDateFns(date, 'dd/MM/yy', { locale: he });
+    return formatDateFns(date, 'dd/MM/yy HH:mm', { locale: he }); // Full, non-relative format
   }, [chat.lastMessageTimestamp]);
+
+  const [displayTimestamp, setDisplayTimestamp] = useState(initialTimestampFormat);
+
+  useEffect(() => {
+    // This effect runs only on the client after hydration
+    if (chat.lastMessageTimestamp) {
+      const date = new Date(chat.lastMessageTimestamp);
+      if (isToday(date)) {
+        setDisplayTimestamp(formatDateFns(date, 'HH:mm', { locale: he }));
+      } else if (isYesterday(date)) {
+        setDisplayTimestamp(HEBREW_TEXT.general.yesterday);
+      } else {
+        setDisplayTimestamp(formatDateFns(date, 'dd/MM/yy', { locale: he }));
+      }
+    } else {
+        setDisplayTimestamp('');
+    }
+  }, [chat.lastMessageTimestamp]);
+
 
   const statusDisplay = getChatStatusDisplay(chat.status, isCurrentUserOwner, chat.guestInfo?.name);
 
@@ -127,8 +141,8 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               {chat.lastMessageSenderId === currentUserId ? `${HEBREW_TEXT.chat.you}: ` : ''}
               {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
             </p>
-             {formattedTimestamp && (
-              <p className="text-xs text-muted-foreground/90 whitespace-nowrap mt-1.5">{formattedTimestamp}</p>
+             {displayTimestamp && (
+              <p className="text-xs text-muted-foreground/90 whitespace-nowrap mt-1.5">{displayTimestamp}</p>
             )}
           </div>
 
