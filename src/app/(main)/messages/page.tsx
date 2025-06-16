@@ -332,7 +332,7 @@ export default function MessagesPage() {
         </CardHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full p-2 sm:p-4 md:p-6">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsList className="grid w-full grid-cols-2 mb-4 h-12"> {/* Changed h-10 to h-12 */}
             <TabsTrigger value="owned" className="py-2.5 text-sm sm:text-base font-body">
               <Briefcase className="ml-1.5 h-4 w-4 sm:h-5 sm:w-5" />
               {HEBREW_TEXT.chat.eventsInMyOwnership}
