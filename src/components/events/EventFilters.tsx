@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import { ListFilter, Search, Users, ShieldCheck, Heart } from "lucide-react"; // Added Users icon
+import { ListFilter, Search, Users, ShieldCheck, Heart } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
@@ -18,13 +18,11 @@ import { DialogFooter, DialogClose } from "@/components/ui/dialog";
 import type { FoodType, KashrutType, WeddingType } from "@/types";
 
 export interface Filters {
-  location?: string;
   date?: Date;
   priceRange?: string;
   foodType?: FoodType | "any";
   kashrut?: KashrutType | "any";
   weddingType?: WeddingType | "any";
-  searchTerm?: string;
   minAvailableSpots?: number;
 }
 
@@ -66,8 +64,6 @@ const weddingTypeOptions: { value: WeddingType | "any"; label: string }[] = [
 
 export function EventFilters({ onFilterChange, initialFilters = {} }: EventFiltersProps) {
   const [filters, setFilters] = useState<Filters>(() => ({
-    searchTerm: initialFilters.searchTerm || undefined,
-    location: initialFilters.location || undefined,
     date: initialFilters.date || undefined,
     priceRange: initialFilters.priceRange || "any",
     foodType: initialFilters.foodType || "any",
@@ -78,8 +74,6 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
 
   useEffect(() => {
     setFilters(prev => ({
-      searchTerm: initialFilters.searchTerm || undefined,
-      location: initialFilters.location || undefined,
       date: initialFilters.date || undefined,
       priceRange: initialFilters.priceRange || "any",
       foodType: initialFilters.foodType || "any",
@@ -115,8 +109,6 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
 
   const handleClearFilters = () => {
     const clearedFilters: Filters = {
-        searchTerm: undefined,
-        location: undefined,
         date: undefined,
         priceRange: "any",
         foodType: "any",
@@ -131,26 +123,6 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
   return (
     <form onSubmit={handleSubmit}> 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6 items-end py-4">
-            <div>
-                <Label htmlFor="advancedSearchTerm">{HEBREW_TEXT.general.search}</Label>
-                <Input 
-                    id="advancedSearchTerm"
-                    placeholder="שם אירוע, מארגן..."
-                    value={filters.searchTerm || ""}
-                    onChange={(e) => handleInputChange("searchTerm", e.target.value)}
-                    className="mt-1"
-                />
-            </div>
-            <div>
-                <Label htmlFor="location">{HEBREW_TEXT.event.location}</Label>
-                <Input 
-                    id="location"
-                    placeholder="לדוגמה: תל אביב, צפון..."
-                    value={filters.location || ""}
-                    onChange={(e) => handleInputChange("location", e.target.value)}
-                    className="mt-1"
-                />
-            </div>
             <div>
                 <Label htmlFor="date">{HEBREW_TEXT.event.dateTime}</Label>
                 <Popover>

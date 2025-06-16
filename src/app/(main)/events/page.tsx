@@ -31,8 +31,6 @@ const PULL_TO_REFRESH_THRESHOLD = 70; // Pixels to pull to trigger refresh
 const PULL_INDICATOR_TRAVEL = 60; // Max pixels the indicator travels down
 
 const defaultAdvancedFilters: Filters = {
-  searchTerm: undefined,
-  location: undefined,
   date: undefined,
   priceRange: "any",
   foodType: "any",
@@ -43,8 +41,6 @@ const defaultAdvancedFilters: Filters = {
 
 const countActiveEventFilters = (currentFilters: Filters): number => {
   let count = 0;
-  if (currentFilters.searchTerm && currentFilters.searchTerm !== (defaultAdvancedFilters.searchTerm || "")) count++;
-  if (currentFilters.location && currentFilters.location !== (defaultAdvancedFilters.location || "")) count++;
   if (currentFilters.date) count++;
   if (currentFilters.priceRange && currentFilters.priceRange !== defaultAdvancedFilters.priceRange) count++;
   if (currentFilters.foodType && currentFilters.foodType !== defaultAdvancedFilters.foodType) count++;
@@ -235,20 +231,6 @@ export default function EventsPage() {
       );
     }
 
-    if (advancedFilters.searchTerm && advancedFilters.searchTerm.trim()) {
-      const advancedQueryText = advancedFilters.searchTerm.toLowerCase().trim();
-       eventsToFilter = eventsToFilter.filter(event =>
-          (event.name?.toLowerCase() || '').includes(advancedQueryText) ||
-          (event.description?.toLowerCase() || '').includes(advancedQueryText)
-      );
-    }
-    if (advancedFilters.location && advancedFilters.location.trim()) {
-      const advancedLocationQuery = advancedFilters.location.toLowerCase().trim();
-      eventsToFilter = eventsToFilter.filter(event =>
-          (event.locationDisplayName?.toLowerCase() || '').includes(advancedLocationQuery) ||
-          (event.location?.toLowerCase() || '').includes(advancedLocationQuery)
-      );
-    }
     if (advancedFilters.date) {
       const filterDateString = advancedFilters.date.toDateString();
       eventsToFilter = eventsToFilter.filter(event => {
@@ -453,7 +435,7 @@ export default function EventsPage() {
                   className="shrink-0"
                   aria-label={HEBREW_TEXT.event.filters}
                 >
-                  <FilterButtonIcon className={areFiltersApplied ? "ml-2 h-4 w-4" : "h-4 w-4"} />
+                  <FilterButtonIcon className={cn(areFiltersApplied && "ml-2", "h-4 w-4")} />
                   {areFiltersApplied ? `${HEBREW_TEXT.event.filterButtonAppliedText} (${activeEventFilterCount})` : null}
                 </Button>
               </DialogTrigger>
