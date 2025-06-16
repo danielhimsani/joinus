@@ -40,7 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, Send, UserX, CheckCircle, XCircle, Info, ShieldAlert, MessageSquareDashed, ChevronLeft, Ban, Contact as UserPlaceholderIcon, MoreVertical } from 'lucide-react';
+import { Loader2, Send, UserX, CheckCircle, XCircle, Info, ShieldAlert, MessageSquareDashed, ChevronLeft, Ban, Contact as UserPlaceholderIcon, MoreVertical, EllipsisVertical } from 'lucide-react';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { AnnouncementBubble } from '@/components/chat/AnnouncementBubble';
 import Link from 'next/link';
@@ -291,20 +291,20 @@ export default function ChatPage() {
   let headerLink: string | undefined;
 
   if (isLoadingChat && !chatDetails) {
-      headerTitleElement = <CardTitle className="font-headline text-base md:text-lg leading-tight">{HEBREW_TEXT.chat.loadingChatDetails}</CardTitle>;
+      headerTitleElement = <div className="font-headline text-base md:text-lg leading-tight">{HEBREW_TEXT.chat.loadingChatDetails}</div>;
       headerImage = undefined;
   } else if (chatDetails) {
       if (isCurrentUserOwner) {
-          headerTitleElement = <CardTitle className="font-headline text-base md:text-lg leading-tight">{`${HEBREW_TEXT.chat.chatWith} ${chatDetails.guestInfo?.name || HEBREW_TEXT.chat.guest}`}</CardTitle>;
+          headerTitleElement = <div className="font-headline text-base md:text-lg leading-tight">{`${HEBREW_TEXT.chat.chatWith} ${chatDetails.guestInfo?.name || HEBREW_TEXT.chat.guest}`}</div>;
           headerImage = chatDetails.guestInfo?.profileImageUrl;
           headerLink = `/profile/${chatDetails.guestUid}`;
       } else {
-          headerTitleElement = <CardTitle className="font-headline text-base md:text-lg leading-tight">{`${HEBREW_TEXT.event.eventName}: ${chatDetails.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}`}</CardTitle>;
+          headerTitleElement = <div className="font-headline text-base md:text-lg leading-tight">{`${HEBREW_TEXT.event.eventName}: ${chatDetails.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}`}</div>;
           headerImage = chatDetails.eventInfo?.imageUrl;
           headerLink = `/events/${chatDetails.eventId}`;
       }
   } else {
-       headerTitleElement = <CardTitle className="font-headline text-base md:text-lg leading-tight">{HEBREW_TEXT.chat.chatPageTitle}</CardTitle>;
+       headerTitleElement = <div className="font-headline text-base md:text-lg leading-tight">{HEBREW_TEXT.chat.chatPageTitle}</div>;
   }
 
 
@@ -378,12 +378,12 @@ export default function ChatPage() {
         {/* Chat Header */}
         <CardHeader 
           className={cn(
-            "border-b bg-background backdrop-blur-sm z-30",
-            "fixed top-0 left-0 right-0", // Fixed on mobile
-            "md:sticky md:top-0" // Sticky on desktop
+            "border-b bg-background backdrop-blur-sm z-30 p-0",
+            "fixed top-0 left-0 right-0",
+            "md:sticky md:top-0" 
           )}
         >
-          <div className="flex items-center justify-between w-full max-w-3xl mx-auto">
+          <div className="flex items-center justify-between w-full max-w-3xl mx-auto p-0"> {/* Removed padding here */}
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
                  <Button variant="ghost" size="icon" onClick={() => router.back()} className="md:hidden mr-1 h-8 w-8">
                     <ChevronLeft className="h-5 w-5" />
@@ -421,7 +421,7 @@ export default function ChatPage() {
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-5 w-5 text-muted-foreground" />
+                            <EllipsisVertical className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -458,7 +458,7 @@ export default function ChatPage() {
 
         {/* Messages Area */}
         <ScrollArea ref={scrollAreaRef} className="flex-1 bg-background/70">
-          <div className="px-3 pt-12 pb-36 md:p-4 md:pt-4 flex flex-col space-y-1"> {/* Adjusted mobile top padding pt-12 */}
+          <div className="px-3 pt-[60px] pb-36 md:p-4 md:pt-4 flex flex-col space-y-1"> {/* Adjusted mobile top padding */}
             {showOwnerActionBlock && (
                 <div className="my-3 p-3 bg-muted/60 dark:bg-muted/40 rounded-lg shadow-sm w-full self-center max-w-md mx-auto">
                   <div className="flex gap-3 justify-center">
@@ -520,15 +520,15 @@ export default function ChatPage() {
         {canSendMessage ? (
             <CardFooter 
               className={cn(
-                "border-t bg-background z-40", // Common classes
-                "fixed bottom-16 left-0 right-0 p-0", // Mobile: fixed, above main nav, no padding on CardFooter
-                "md:sticky md:bottom-0 md:p-3 md:z-auto" // Desktop: sticky, standard padding
+                "border-t bg-background z-40", 
+                "fixed bottom-16 left-0 right-0 p-0", 
+                "md:sticky md:bottom-0 md:p-3 md:z-auto" 
               )}
             >
               <div className={cn(
-                "w-full flex items-center space-x-2 rtl:space-x-reverse", // Common classes for inner div
-                "max-w-3xl mx-auto p-2 bg-background", // Mobile: constrained width & padding
-                "md:max-w-none md:mx-0 md:p-0" // Desktop: full width of CardFooter, no extra padding
+                "w-full flex items-center space-x-2 rtl:space-x-reverse", 
+                "max-w-3xl mx-auto p-2 bg-background", 
+                "md:max-w-none md:mx-0 md:p-0" 
               )}>
                 <Textarea
                   placeholder={HEBREW_TEXT.chat.typeYourMessage}
@@ -553,15 +553,15 @@ export default function ChatPage() {
         ) : (
             <CardFooter 
               className={cn(
-                "border-t bg-muted z-40", // Common classes
-                "fixed bottom-16 left-0 right-0 p-0", // Mobile: fixed, above main nav
-                "md:sticky md:bottom-0 md:p-3 md:z-auto" // Desktop: sticky
+                "border-t bg-muted z-40", 
+                "fixed bottom-16 left-0 right-0 p-0", 
+                "md:sticky md:bottom-0 md:p-3 md:z-auto" 
               )}
             >
                 <div className={cn(
                   "w-full text-center",
-                  "max-w-3xl mx-auto p-2", // Mobile: constrained width & padding
-                  "md:max-w-none md:mx-0 md:p-0" // Desktop
+                  "max-w-3xl mx-auto p-2", 
+                  "md:max-w-none md:mx-0 md:p-0" 
                 )}>
                     <p className="text-sm text-muted-foreground">
                         <Info className="inline-block ml-1 h-4 w-4" />
