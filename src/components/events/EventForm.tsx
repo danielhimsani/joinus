@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller, type FieldErrors } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, Loader2, ImagePlus, Info, Edit2, PlusCircle, UserX, Users, XCircle, Utensils, ShieldCheck, Heart } from "lucide-react"; // Added new icons
+import { CalendarIcon, Loader2, ImagePlus, Info, Edit2, PlusCircle, UserX, Users, XCircle, Utensils, ShieldCheck, Heart, Contact as UserPlaceholderIcon } from "lucide-react"; // Added new icons
 import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -43,7 +43,7 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AddOwnerModal } from "./AddOwnerModal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
+import { getDisplayInitial } from '@/lib/textUtils';
 
 const foodTypeOptions: { value: FoodType; label: string }[] = [
   { value: "meat", label: HEBREW_TEXT.event.meat },
@@ -798,8 +798,11 @@ export function EventForm({
                                 <div key={owner.firebaseUid} className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/30">
                                 <div className="flex items-center space-x-3 rtl:space-x-reverse">
                                     <Avatar className="h-10 w-10">
-                                    <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="owner avatar"/>
-                                    <AvatarFallback>{getDisplayInitial(owner.name) || "U"}</AvatarFallback>
+                                        {owner.profileImageUrl ? (
+                                            <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="owner avatar"/>
+                                        ) : (
+                                            <AvatarFallback><UserPlaceholderIcon className="h-6 w-6 text-muted-foreground" /></AvatarFallback>
+                                        )}
                                     </Avatar>
                                     <div>
                                         <p className="font-medium">{owner.name}</p>
@@ -990,9 +993,9 @@ export function EventForm({
                     render={({ field }) => (
                         <FormItem data-fieldname="foodType">
                         <FormLabel>{HEBREW_TEXT.event.foodType}</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="בחר סוג כיבוד" /></SelectTrigger></FormControl>
-                            <SelectContent>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} dir="rtl">
+                            <FormControl><SelectTrigger dir="rtl"><SelectValue placeholder="בחר סוג כיבוד" /></SelectTrigger></FormControl>
+                            <SelectContent dir="rtl">
                             {foodTypeOptions.map(type => (<SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>))}
                             </SelectContent>
                         </Select>
@@ -1007,9 +1010,9 @@ export function EventForm({
                     render={({ field }) => (
                         <FormItem data-fieldname="kashrut">
                         <FormLabel>{HEBREW_TEXT.event.kashrut}</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="בחר רמת כשרות" /></SelectTrigger></FormControl>
-                            <SelectContent>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} dir="rtl">
+                            <FormControl><SelectTrigger dir="rtl"><SelectValue placeholder="בחר רמת כשרות" /></SelectTrigger></FormControl>
+                            <SelectContent dir="rtl">
                             {kashrutOptions.map(option => (<SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>))}
                             </SelectContent>
                         </Select>
@@ -1022,9 +1025,9 @@ export function EventForm({
                     render={({ field }) => (
                         <FormItem data-fieldname="weddingType">
                         <FormLabel>{HEBREW_TEXT.event.weddingType}</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="בחר סוג חתונה" /></SelectTrigger></FormControl>
-                            <SelectContent>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} dir="rtl">
+                            <FormControl><SelectTrigger dir="rtl"><SelectValue placeholder="בחר סוג חתונה" /></SelectTrigger></FormControl>
+                            <SelectContent dir="rtl">
                             {weddingTypeOptions.map(style => (<SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>))}
                             </SelectContent>
                         </Select>
