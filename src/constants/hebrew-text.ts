@@ -260,7 +260,7 @@ export const HEBREW_TEXT = {
     futureEventChats: "שיחות לאירועים עתידיים",
     pastEventChats: "שיחות לאירועים שעברו",
     statusPendingDisplayGuest: "בקשתך ממתינה",
-    statusPendingDisplayOwner: "בקשה חדשה ממתינה",
+    statusPendingDisplayOwner: "בהמתנה",
     statusApprovedDisplay: "אושרה",
     statusRejectedDisplay: "נדחתה",
     statusActiveDisplay: "פעילה",
