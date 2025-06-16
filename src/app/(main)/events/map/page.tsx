@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from 'next/navigation';
 import { GoogleMapComponent, type MapLocation } from "@/components/maps/GoogleMapComponent";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
