@@ -2,7 +2,7 @@
 "use client";
 
 import type React from 'react';
-import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-maps/api';
+import { GoogleMap, MarkerF, InfoWindowF } from '@react-google-maps/api';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
@@ -38,7 +38,7 @@ const defaultMapContainerStyle: React.CSSProperties = {
   borderRadius: '0.5rem',
 };
 
-const libraries: ("places" | "marker")[] = ['places', 'marker'];
+// libraries prop is not used here anymore as useJsApiLoader is removed
 
 const darkMapStyles: google.maps.MapTypeStyle[] = [
   { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
@@ -143,33 +143,29 @@ export function GoogleMapComponent({
   mapContainerStyle = defaultMapContainerStyle,
   eventLocations = []
 }: GoogleMapComponentProps) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   
   const [selectedEvents, setSelectedEvents] = useState<MapLocation[] | null>(null);
   const [infoWindowPosition, setInfoWindowPosition] = useState<{lat: number; lng: number} | null>(null);
   const [eventMarkerIcon, setEventMarkerIcon] = useState<google.maps.Icon | null>(null);
   const [currentMapOptions, setCurrentMapOptions] = useState<google.maps.MapOptions>(lightMapOptions);
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: apiKey || "",
-    libraries,
-    language: 'iw', 
-    region: 'IL', 
-  });
+  // The useJsApiLoader hook is removed from this component.
+  // The parent component (e.g., FullMapPage) is responsible for loading the API.
 
   useEffect(() => {
-    if (isLoaded && typeof window !== 'undefined' && window.google && window.google.maps) {
+    // Assuming the API is loaded because the parent component controls rendering.
+    if (typeof window !== 'undefined' && window.google && window.google.maps) {
       setEventMarkerIcon({
         url: '/ring-marker.png', 
         scaledSize: new window.google.maps.Size(36, 48), 
         anchor: new window.google.maps.Point(18, 48),
       });
     }
-  }, [isLoaded]);
+  }, []); // Runs once on mount
 
   useEffect(() => {
-    if (!isLoaded || typeof window === 'undefined') return;
+    // This effect handles theme changes
+    if (typeof window === 'undefined' || !window.google || !window.google.maps) return;
 
     const applyThemeStyles = () => {
       const isDarkMode = document.documentElement.classList.contains('dark');
@@ -191,7 +187,7 @@ export function GoogleMapComponent({
     return () => {
       observer.disconnect();
     };
-  }, [isLoaded]);
+  }, []); // Runs once on mount and re-runs if documentElement class changes (indirectly)
 
 
   const handleMarkerClick = (clickedLocation: MapLocation) => {
@@ -207,28 +203,9 @@ export function GoogleMapComponent({
     setInfoWindowPosition(null);
   };
   
-  if (loadError) {
-    console.error("Google Maps API load error:", loadError);
-    return (
-        <Alert variant="destructive">
-            <MapPin className="h-5 w-5" />
-            <AlertTitle>{HEBREW_TEXT.map.errorTitle}</AlertTitle>
-            <AlertDescription>{HEBREW_TEXT.map.loadError}</AlertDescription>
-        </Alert>
-    );
-  }
-
-  if (!apiKey) {
-    return (
-        <Alert variant="destructive">
-            <MapPin className="h-5 w-5" />
-            <AlertTitle>{HEBREW_TEXT.map.errorTitle}</AlertTitle>
-            <AlertDescription>{HEBREW_TEXT.map.apiKeyMissing}</AlertDescription>
-        </Alert>
-    );
-  }
-
-  if (!isLoaded || !eventMarkerIcon) { 
+  // Conditional rendering based on API key or loadError is handled by the parent.
+  // Skeleton for loading marker icon is still useful if eventMarkerIcon is not yet set.
+  if (!eventMarkerIcon) { 
     return <Skeleton className="h-[400px] w-full rounded-lg" />;
   }
 
@@ -245,12 +222,12 @@ export function GoogleMapComponent({
           key={loc.id + '-' + loc.lat + '-' + loc.lng} 
           position={{ lat: loc.lat, lng: loc.lng }}
           onClick={() => handleMarkerClick(loc)}
-          icon={eventMarkerIcon}
+          icon={eventMarkerIcon} // eventMarkerIcon is now set in useEffect
           title={loc.eventName || HEBREW_TEXT.event.eventNameGenericPlaceholder}
         />
       ))}
 
-      {selectedEvents && infoWindowPosition && (
+      {selectedEvents && infoWindowPosition && window.google && window.google.maps && ( // Ensure google.maps is available
         <InfoWindowF
           position={infoWindowPosition}
           onCloseClick={handleMapClick} 
@@ -315,4 +292,3 @@ export function GoogleMapComponent({
     </GoogleMap>
   );
 }
-
