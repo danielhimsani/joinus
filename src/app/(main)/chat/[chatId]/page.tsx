@@ -379,13 +379,13 @@ export default function ChatPage() {
         <CardHeader 
           className={cn(
             "border-b bg-background backdrop-blur-sm z-30",
-            "fixed top-0 left-0 right-0",
-            "md:sticky md:top-0" 
+            "fixed top-0 left-0 right-0", // Fixed for mobile
+            "md:sticky md:top-0" // Sticky for desktop
           )}
         >
-          <div className="flex items-center justify-between p-2 md:p-3 w-full max-w-3xl mx-auto">
+          <div className="flex items-center justify-between p-2 md:px-3 md:py-2 w-full max-w-3xl mx-auto"> {/* Inner div gets padding */}
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                 <Button variant="ghost" size="icon" onClick={() => router.back()} className="md:hidden mr-1 h-8 w-8">
+                 <Button variant="ghost" size="icon" onClick={() => router.back()} className="md:hidden mr-1 h-8 w-8"> {/* Adjusted icon size */}
                     <ChevronLeft className="h-5 w-5" />
                  </Button>
               {headerLink ? (
@@ -458,7 +458,8 @@ export default function ChatPage() {
 
         {/* Messages Area */}
         <ScrollArea ref={scrollAreaRef} className="flex-1 bg-background/70">
-          <div className="px-3 pt-20 pb-36 md:p-4 md:pt-4 flex flex-col space-y-1">
+           {/* Adjusted padding: pt-16 for mobile (64px), md:p-4 for desktop (standard padding, md:pt-4 will ensure it's fine with sticky header) */}
+          <div className="px-3 pt-16 pb-36 md:p-4 md:pt-4 flex flex-col space-y-1">
             {showOwnerActionBlock && (
                 <div className="my-3 p-3 bg-muted/60 dark:bg-muted/40 rounded-lg shadow-sm w-full self-center max-w-md mx-auto">
                   <div className="flex gap-3 justify-center">
@@ -521,14 +522,14 @@ export default function ChatPage() {
             <CardFooter 
               className={cn(
                 "border-t bg-background z-40", 
-                "fixed bottom-16 left-0 right-0 p-0", 
-                "md:sticky md:bottom-0 md:p-3 md:z-auto" 
+                "fixed bottom-16 left-0 right-0 p-0", // Fixed for mobile (height of bottom nav)
+                "md:sticky md:bottom-0 md:p-3 md:z-auto" // Sticky for desktop
               )}
             >
               <div className={cn(
                 "w-full flex items-center space-x-2 rtl:space-x-reverse", 
-                "max-w-3xl mx-auto p-2 bg-background", 
-                "md:max-w-none md:mx-0 md:p-0" 
+                "max-w-3xl mx-auto p-2 bg-background", // Padding for mobile inner container
+                "md:max-w-none md:mx-0 md:p-0" // No padding for desktop inner container
               )}>
                 <Button 
                     type="button" 
@@ -561,7 +562,7 @@ export default function ChatPage() {
               className={cn(
                 "border-t bg-muted z-40", 
                 "fixed bottom-16 left-0 right-0 p-0", 
-                "md:sticky md:bottom-0 md:p-3 md:z-auto" 
+                "md:sticky md:bottom-0 md:p-3 md:z-auto"
               )}
             >
                 <div className={cn(
