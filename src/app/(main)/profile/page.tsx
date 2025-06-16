@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { UserProfile, Event as EventType } from "@/types";
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users, FileText, Gavel, UserPlaceholderIcon } from "lucide-react";
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users, FileText, Gavel, Contact as UserPlaceholderIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -607,6 +607,8 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
+    
+
     
 
     
