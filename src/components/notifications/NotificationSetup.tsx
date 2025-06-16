@@ -16,44 +16,61 @@ export function NotificationSetup() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      if (window.location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
         console.warn(
-          'Push notifications require a secure context (HTTPS) or localhost. ' +
+          '[NotificationSetup] Push notifications require a secure context (HTTPS) or localhost. ' +
           'If testing on a mobile device, use a service like ngrok to serve your local environment over HTTPS.'
         );
-        // Optionally, inform the user via UI if not on HTTPS and not localhost
         // toast({
-        //   title: "Warning: Insecure Context",
-        //   description: "Push notifications may not work correctly as this page is not served over HTTPS.",
-        //   variant: "default", // Or "warning" if you add that variant
+        //   title: "אזהרה: הקשר לא מאובטח",
+        //   description: "התראות דחיפה עשויות לא לעבוד כראוי מכיוון שהעמוד אינו מוגש בפרוטוקול HTTPS.",
+        //   variant: "default",
         //   duration: 10000,
         // });
+      } else {
+        console.log('[NotificationSetup] Context is secure (HTTPS or localhost).');
       }
 
       if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration().then(registration => {
+          if (registration) {
+            console.log('[NotificationSetup] Service Worker registration found:', registration);
+            if (registration.active) {
+              console.log('[NotificationSetup] Active Service Worker on load:', registration.active);
+            }
+          } else {
+            console.warn('[NotificationSetup] No Service Worker registration found on initial load.');
+          }
+        }).catch(error => {
+          console.error('[NotificationSetup] Error getting Service Worker registration on load:', error);
+        });
+
         navigator.serviceWorker.ready.then(registration => {
           console.log('[NotificationSetup] Service Worker is ready: ', registration);
           if (registration.active) {
-            console.log('[NotificationSetup] Active Service Worker: ', registration.active);
+            console.log('[NotificationSetup] Active Service Worker (via ready): ', registration.active);
           } else {
             console.warn('[NotificationSetup] No active Service Worker found by navigator.serviceWorker.ready');
           }
         }).catch(error => {
           console.error('[NotificationSetup] Service Worker registration failed or not ready: ', error);
         });
+
       } else {
         console.warn('[NotificationSetup] Service workers are not supported in this browser.');
       }
     }
 
-
     const unsubscribeAuth = firebaseAuthInstance.onAuthStateChanged(async (user: FirebaseUser | null) => {
       if (user) {
         console.log("[NotificationSetup] User authenticated, attempting to set up notifications for:", user.uid);
-        // Small delay to ensure service worker might have had a chance to register via Firebase SDK
+        // Small delay to ensure service worker might have had a chance to register
+        // This might not be strictly necessary if navigator.serviceWorker.ready is awaited in requestPermission...
         setTimeout(async () => {
             await requestNotificationPermissionAndSaveToken(user.uid);
-        }, 1000);
+        }, 1500); // Increased delay slightly
+      } else {
+        console.log("[NotificationSetup] No user authenticated, notifications setup skipped.");
       }
     });
 
@@ -84,6 +101,8 @@ export function NotificationSetup() {
             </ToastAction>
           ) : undefined,
         });
+      } else if (messagePayload === null) {
+        console.log('[NotificationSetup] Foreground message listener resolved with null (messaging not supported or not in browser).');
       }
     }).catch(err => console.error("[NotificationSetup] Error setting up foreground message listener:", err));
 
@@ -94,4 +113,3 @@ export function NotificationSetup() {
 
   return null;
 }
-
