@@ -102,9 +102,8 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   return (
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
-        {/* CardContent uses justify-start which aligns items to the right in RTL */}
-        <CardContent className="p-3 sm:p-4 flex items-start justify-start space-x-3 rtl:space-x-reverse">
-          {/* Block 1: Text content (name, message, timestamp, unread) - Will appear on the VISUAL RIGHT in RTL */}
+        <CardContent className="p-3 sm:p-4 flex flex-row-reverse items-center justify-evenly">
+          {/* Block 1: Text content (name, message, timestamp, unread) */}
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="flex justify-between items-start">
               <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
@@ -132,9 +131,8 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             )}
           </div>
 
-          {/* Block 2: Avatar and Status Badge - Will appear on the VISUAL LEFT in RTL */}
-          {/* This is the element the user wants to change */}
-          <div className="flex flex-col items-end justify-center flex-shrink-0">
+          {/* Block 2: Avatar and Status Badge */}
+          <div className="flex flex-col items-center justify-center flex-shrink-0">
             <div
               onClick={avatarLink ? handleAvatarClick : undefined}
               onKeyDown={(e) => {
@@ -144,7 +142,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                 }
               }}
               className={cn(
-                "w-full flex justify-center", // Ensures the avatar itself is centered within this div
+                "w-full flex justify-center", 
                 avatarLink && "cursor-pointer"
               )}
               role={avatarLink ? "link" : undefined}
@@ -153,7 +151,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             >
               <AvatarContent />
             </div>
-            <div className="mt-0.5"> {/* Wrapper for the badge */}
+            <div className="mt-1.5"> {/* Adjusted margin for badge */}
                 <Badge
                     variant={statusDisplay.variant}
                     className={cn(
