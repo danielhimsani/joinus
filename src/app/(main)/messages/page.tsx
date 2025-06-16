@@ -7,10 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle as ShadAlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle, Filter, ListFilter, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash } from "lucide-react"; // Added ListFilter
+import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle, Filter, ListFilter, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash, Search } from "lucide-react"; // Added ListFilter & Search
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input"; // Added Input
 import {
   Dialog,
   DialogContent,
@@ -45,10 +46,12 @@ const statusFilterOptions: { value: ChatStatusFilter; label: string; icon?: Reac
 
 const defaultChatTimeFilter: ChatTimeFilter = 'future';
 const defaultChatStatusFilter: ChatStatusFilter = 'all';
+const defaultSimpleSearchQuery: string = "";
 
 const countActiveMessageFilters = (
   timeFilter: ChatTimeFilter,
   statusFilter: ChatStatusFilter
+  // simpleSearchQuery is not counted here as it has its own visual cue
 ): number => {
   let count = 0;
   if (timeFilter !== defaultChatTimeFilter) count++;
@@ -66,6 +69,7 @@ export default function MessagesPage() {
   const [activeTab, setActiveTab] = useState<string>("requested");
   
   // Filter states
+  const [simpleSearchQuery, setSimpleSearchQuery] = useState(defaultSimpleSearchQuery);
   const [chatTimeFilter, setChatTimeFilter] = useState<ChatTimeFilter>(defaultChatTimeFilter);
   const [chatStatusFilter, setChatStatusFilter] = useState<ChatStatusFilter>(defaultChatStatusFilter);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
@@ -163,13 +167,23 @@ export default function MessagesPage() {
     if (!currentUser) return { displayOwnedChats: [], displayRequestedChats: [] };
 
     const now = new Date();
-    let filteredChats = allFetchedChats;
+    let filteredChats = [...allFetchedChats]; // Start with a copy
+
+    // Filter by simple search query
+    if (simpleSearchQuery.trim()) {
+      const queryText = simpleSearchQuery.toLowerCase().trim();
+      filteredChats = filteredChats.filter(chat =>
+        (chat.eventInfo?.name?.toLowerCase() || '').includes(queryText) ||
+        (chat.guestInfo?.name?.toLowerCase() || '').includes(queryText) ||
+        (chat.lastMessageText?.toLowerCase() || '').includes(queryText) 
+      );
+    }
 
     // Filter by time
     if (chatTimeFilter !== 'all') {
         filteredChats = filteredChats.filter(chat => {
             const eventDateTime = eventDetailsMap.get(chat.eventId)?.dateTime;
-            if (!eventDateTime) return chatTimeFilter === 'all'; // Include if filter is 'all' and no date
+            if (!eventDateTime) return chatTimeFilter === 'all'; 
             if (chatTimeFilter === 'future') return eventDateTime >= now;
             if (chatTimeFilter === 'past') return eventDateTime < now;
             return true;
@@ -192,22 +206,25 @@ export default function MessagesPage() {
       }
     });
     return { displayOwnedChats: owned, displayRequestedChats: requested };
-  }, [allFetchedChats, eventDetailsMap, chatTimeFilter, chatStatusFilter, currentUser]);
+  }, [allFetchedChats, eventDetailsMap, chatTimeFilter, chatStatusFilter, simpleSearchQuery, currentUser]);
 
 
   const renderChatList = (chats: EventChat[], type: 'owned' | 'guest') => {
     if (chats.length === 0) {
       let noChatsMessage = HEBREW_TEXT.chat.noChatsFound; 
-        if (type === 'owned') {
-            noChatsMessage = HEBREW_TEXT.chat.noChatsFoundOwner;
-        } else { 
-            noChatsMessage = HEBREW_TEXT.chat.noChatsFoundGuest;
-        }
+      if (simpleSearchQuery.trim() || chatTimeFilter !== defaultChatTimeFilter || chatStatusFilter !== defaultChatStatusFilter) {
+        // Filters are active, so message should reflect that
+        noChatsMessage = HEBREW_TEXT.chat.noChatsFound;
+      } else if (type === 'owned') {
+        noChatsMessage = HEBREW_TEXT.chat.noChatsFoundOwner;
+      } else { 
+        noChatsMessage = HEBREW_TEXT.chat.noChatsFoundGuest;
+      }
       return (
         <div className="text-center py-10">
           <Inbox className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <p className="text-muted-foreground text-lg">{noChatsMessage}</p>
-          <p className="text-sm text-muted-foreground/80 mt-1">נסה לשנות את אפשרויות הסינון.</p>
+          <p className="text-sm text-muted-foreground/80 mt-1">נסה לשנות את אפשרויות החיפוש והסינון.</p>
         </div>
       );
     }
@@ -238,6 +255,7 @@ export default function MessagesPage() {
   );
 
   const handleClearFilters = () => {
+    setSimpleSearchQuery(defaultSimpleSearchQuery);
     setChatTimeFilter(defaultChatTimeFilter);
     setChatStatusFilter(defaultChatStatusFilter);
   };
@@ -270,12 +288,22 @@ export default function MessagesPage() {
             </TabsTrigger>
           </TabsList>
           
-          <div className="flex justify-start mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none rtl:right-3 rtl:left-auto" />
+                <Input
+                    type="search"
+                    placeholder={HEBREW_TEXT.general.search + "..."}
+                    className="w-full pl-10 pr-3 h-9 rtl:pr-10 rtl:pl-3"
+                    value={simpleSearchQuery}
+                    onChange={(e) => setSimpleSearchQuery(e.target.value)}
+                    disabled={isLoading}
+                />
+            </div>
             <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant={filtersApplied ? "secondary" : "outline"} size="sm">
-                  <FilterButtonIcon className="ml-1.5 h-4 w-4" />
-                  {filtersApplied ? `סינון (${activeFilterCount})` : "סינון"}
+                <Button variant={filtersApplied ? "secondary" : "outline"} size="icon" className="h-9 w-9 flex-shrink-0" aria-label={HEBREW_TEXT.event.filters}>
+                  <FilterButtonIcon className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
@@ -318,7 +346,7 @@ export default function MessagesPage() {
                                 {statusFilterOptions.map(option => (
                                     <SelectItem key={option.value} value={option.value}>
                                         <div className="flex items-center">
-                                            {option.icon && <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
+                                            {option.icon && <option.icon className="mr-2 h-4 w-4 text-muted-foreground rtl:ml-2 rtl:mr-0" />}
                                             {option.label}
                                         </div>
                                     </SelectItem>
