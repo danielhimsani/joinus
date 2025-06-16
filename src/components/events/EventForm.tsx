@@ -867,6 +867,7 @@ export function EventForm({
                         onValueChange={field.onChange}
                         value={field.value}
                         className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-4 rtl:md:space-x-reverse pt-2"
+                        dir="rtl"
                         >
                         {paymentOptions.map(option => (
                             <div key={option.value} className="flex items-center space-x-2 rtl:space-x-reverse">
