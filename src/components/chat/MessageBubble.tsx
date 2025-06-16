@@ -37,6 +37,7 @@ const MessageBubbleComponent = ({ message, currentUser }: MessageBubbleProps) =>
 
   return (
     <div
+      dir="rtl" // Added for explicit RTL direction
       className={cn(
         "flex items-end gap-2 max-w-[85%] sm:max-w-[75%] my-2",
         isCurrentUserSender ? "self-end flex-row-reverse" : "self-start"
