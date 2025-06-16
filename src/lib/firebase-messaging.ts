@@ -10,8 +10,8 @@ export const requestNotificationPermissionAndSaveToken = async (userId: string):
   console.log('[FCM Setup] Firebase Messaging isSupported():', messagingSupported);
 
   if (!messagingSupported) {
-    console.warn('[FCM Setup] Firebase Messaging is not supported in this browser.');
-    alert('Firebase Messaging is not supported in this browser.');
+    console.warn('[FCM Setup] Firebase Messaging is not supported in this browser environment.');
+    // No alert here, the UI component (NotificationSetup) will handle user feedback.
     return null;
   }
 
@@ -19,25 +19,12 @@ export const requestNotificationPermissionAndSaveToken = async (userId: string):
     try {
       console.log('[FCM Setup] Browser supports Notification and ServiceWorker.');
 
-      // Log current service worker status
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (registration) {
-        console.log('[FCM Setup] ServiceWorker registration found:', registration);
-        if (registration.active) {
-          console.log('[FCM Setup] Active ServiceWorker:', registration.active);
-        } else if (registration.waiting) {
-          console.log('[FCM Setup] Waiting ServiceWorker:', registration.waiting);
-        } else if (registration.installing) {
-          console.log('[FCM Setup] Installing ServiceWorker:', registration.installing);
-        }
-      } else {
-        console.warn('[FCM Setup] No ServiceWorker registration found yet. This might be an issue if it persists.');
-      }
-      
-      // Wait for the service worker to be ready and active
-      console.log('[FCM Setup] Waiting for service worker to be ready...');
       const swRegistration = await navigator.serviceWorker.ready;
-      console.log('[FCM Setup] Service worker is ready and active:', swRegistration.active);
+      console.log('[FCM Setup] Service worker is ready and active:', swRegistration.active?.scriptURL);
+      if (!swRegistration.active) {
+        console.error('[FCM Setup] Service worker is ready but not active. This is unexpected. Cannot get token.');
+        return null;
+      }
 
       const messaging = getMessaging(app);
       const permission = await Notification.requestPermission();
@@ -48,21 +35,20 @@ export const requestNotificationPermissionAndSaveToken = async (userId: string):
         const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
         if (!vapidKey) {
           console.error("[FCM Setup] VAPID key is not defined. Push notifications will not work. Define NEXT_PUBLIC_FIREBASE_VAPID_KEY in your .env.local file.");
-          alert("VAPID key is not configured. Notifications will not work.");
-          return permission; 
+          return permission;
         }
 
-        console.log('[FCM Setup] Attempting to get FCM token...');
+        console.log('[FCM Setup] Attempting to get FCM token with VAPID key and SW registration...');
         const currentToken = await getToken(messaging, {
           vapidKey: vapidKey,
-          serviceWorkerRegistration: swRegistration // Explicitly pass the registration
+          serviceWorkerRegistration: swRegistration,
         });
 
         if (currentToken) {
           console.log('[FCM Setup] FCM Token obtained:', currentToken);
           // Log the token for easy testing
           console.log('FCM Token (for testing):', currentToken);
-          alert('Notification token registered: ' + currentToken.substring(0, 10) + "...");
+          // alert('Notification token registered: ' + currentToken.substring(0, 10) + "..."); // Removed alert
 
           const tokenRef = doc(db, 'users', userId, 'fcmTokens', currentToken);
           await setDoc(tokenRef, {
@@ -72,43 +58,44 @@ export const requestNotificationPermissionAndSaveToken = async (userId: string):
           }, { merge: true });
           console.log('[FCM Setup] FCM token saved/updated in Firestore for user:', userId);
         } else {
-          console.warn('[FCM Setup] No registration token available after permission grant. This usually indicates a problem with the service worker or VAPID key.');
-          alert('Could not get notification token. Ensure permissions are granted and the service worker is active. Check console for details.');
+          console.warn('[FCM Setup] No registration token available after permission grant. This usually indicates a problem with the service worker, VAPID key, or API permissions.');
         }
       } else {
         console.warn('[FCM Setup] Unable to get permission to notify. Status:', permission);
-        alert('Notification permission was not granted. Status: ' + permission);
       }
       return permission;
     } catch (error) {
-      console.error('[FCM Setup] An error occurred: ', error);
-      alert('Error setting up notifications: ' + (error instanceof Error ? error.message : String(error)));
+      console.error('[FCM Setup] An error occurred while requesting permission or token: ', error);
       if (error instanceof Error) {
         if (error.name === 'FirebaseError' && (error as any).code === 'messaging/failed-serviceworker-registration') {
           console.error("[FCM Setup] Failed to register service worker. Ensure 'firebase-messaging-sw.js' is in the public folder and correctly configured.");
-        } else if (error.message.includes("no active Service Worker")) {
-           console.error("[FCM Setup] getToken failed because there's no active Service Worker. Ensure HTTPS and SW is correctly registered and activated.");
+        } else if (error.message.includes("no active Service Worker") || error.message.includes("Subscription failed")) {
+           console.error("[FCM Setup] getToken failed, likely because there's no active Service Worker or subscription failed. Ensure HTTPS and SW is correctly registered and activated.");
         }
       }
     }
   } else {
-    console.warn('[FCM Setup] Push notifications or service workers not supported/available in this browser window context.');
-    alert('Push notifications or service workers not supported in this browser.');
+    console.warn('[FCM Setup] Push notifications or service workers not supported/available in this browser window context (window.Notification or window.navigator.serviceWorker missing).');
   }
   return null;
 };
 
 export const onForegroundMessageListener = () =>
-  new Promise((resolve) => {
-    isSupported().then(supported => {
-      if (supported && typeof window !== 'undefined') {
+  new Promise(async (resolve) => { // Make it async to use await for isSupported
+    const supported = await isSupported();
+    if (supported && typeof window !== 'undefined' && 'serviceWorker' in navigator && window.Notification) {
+      try {
         const messaging = getMessaging(app);
         onMessage(messaging, (payload) => {
           console.log('[FCM Setup] Foreground message received. ', payload);
           resolve(payload);
         });
-      } else {
-        resolve(null); // Resolve with null if not supported or not in browser
+      } catch (error) {
+        console.error('[FCM Setup] Error initializing foreground message listener:', error);
+        resolve(null);
       }
-    });
+    } else {
+      console.log('[FCM Setup] Foreground messages not supported or not in a suitable browser environment.');
+      resolve(null);
+    }
   });
