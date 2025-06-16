@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { ThemeInitializer } from '@/components/layout/ThemeInitializer';
-// Removed import for GlobalSettingsDialog: import { GlobalSettingsDialog } from '@/components/layout/GlobalSettingsDialog'; 
+// Removed import for GlobalSettingsDialog
 
 const rubik = Rubik({
   subsets: ['latin', 'hebrew'],
@@ -31,7 +31,7 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased', rubik.variable)}>
         <ThemeInitializer />
-        {/* Removed GlobalSettingsDialog instance: <GlobalSettingsDialog /> */}
+        {/* Removed GlobalSettingsDialog instance */}
         {children}
         <Toaster />
       </body>
