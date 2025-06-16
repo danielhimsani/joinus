@@ -6,7 +6,7 @@ import Image from 'next/image'; // Added for PNG logo
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
-import { LogIn, LogOut, Menu, UserCircle, Search, PlusSquare, MessageSquare } from 'lucide-react';
+import { LogIn, LogOut, Menu, UserCircle, Search, PlusSquare, MessageSquare, Contact as UserPlaceholderIcon } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -21,7 +21,6 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth"; // Firebase Auth
 import { auth as firebaseAuthInstance } from "@/lib/firebase"; // Firebase Auth Instance
-import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 // Navigation items for Desktop Top Bar
 const desktopNavItems = [
@@ -73,15 +72,18 @@ export default function Header() {
     }
     if (!firebaseUser) return null;
 
-    const userInitial = getDisplayInitial(firebaseUser.displayName || firebaseUser.email) || "U";
-
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 w-10 rounded-full">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={firebaseUser.photoURL || undefined} alt={firebaseUser.displayName || "User"} data-ai-hint="profile picture" />
-              <AvatarFallback>{userInitial}</AvatarFallback>
+              {firebaseUser.photoURL ? (
+                <AvatarImage src={firebaseUser.photoURL} alt={firebaseUser.displayName || "User"} data-ai-hint="profile picture" />
+              ) : (
+                <AvatarFallback className="bg-muted">
+                    <UserPlaceholderIcon className="h-6 w-6 text-muted-foreground" />
+                </AvatarFallback>
+              )}
             </Avatar>
           </Button>
         </DropdownMenuTrigger>

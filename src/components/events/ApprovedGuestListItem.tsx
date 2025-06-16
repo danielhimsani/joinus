@@ -8,7 +8,6 @@ import { Card } from "@/components/ui/card";
 import { Contact as UserPlaceholderIcon, MessageCircle } from "lucide-react";
 import type { ApprovedGuestData } from '@/app/(main)/events/[id]/page'; // Import the shared type
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
-import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 interface ApprovedGuestListItemProps {
   guest: ApprovedGuestData;
@@ -17,7 +16,6 @@ interface ApprovedGuestListItemProps {
 export function ApprovedGuestListItem({ guest }: ApprovedGuestListItemProps) {
   const guestName = guest.guestInfo?.name || HEBREW_TEXT.chat.guest;
   const guestProfileImageUrl = guest.guestInfo?.profileImageUrl;
-  const displayInitial = getDisplayInitial(guestName);
 
   return (
     <Card className="p-3 shadow-sm hover:shadow-md transition-shadow">
@@ -29,7 +27,7 @@ export function ApprovedGuestListItem({ guest }: ApprovedGuestListItemProps) {
                 <AvatarImage src={guestProfileImageUrl} alt={guestName} data-ai-hint="guest avatar"/>
               ) : (
                 <AvatarFallback className="bg-muted">
-                  {displayInitial || <UserPlaceholderIcon className="h-6 w-6 text-muted-foreground" />}
+                  <UserPlaceholderIcon className="h-6 w-6 text-muted-foreground" />
                 </AvatarFallback>
               )}
             </Avatar>

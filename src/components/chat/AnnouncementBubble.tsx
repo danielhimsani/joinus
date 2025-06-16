@@ -6,10 +6,9 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { Megaphone } from 'lucide-react';
+import { Megaphone, Contact as UserPlaceholderIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
-import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 interface AnnouncementBubbleProps {
   announcement: EventAnnouncement;
@@ -21,7 +20,6 @@ export function AnnouncementBubble({ announcement }: AnnouncementBubbleProps) {
     : '';
 
   const ownerName = announcement.ownerName || "בעל אירוע";
-  const displayInitial = getDisplayInitial(ownerName);
 
   return (
     <div className="my-4 w-full flex justify-center px-2">
@@ -42,8 +40,8 @@ export function AnnouncementBubble({ announcement }: AnnouncementBubbleProps) {
                     {announcement.ownerProfileImageUrl ? (
                         <AvatarImage src={announcement.ownerProfileImageUrl} alt={ownerName} data-ai-hint="owner avatar"/>
                     ) : (
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                            {displayInitial || 'A'}
+                        <AvatarFallback className="text-xs bg-muted">
+                           <UserPlaceholderIcon className="h-4 w-4 text-muted-foreground" />
                         </AvatarFallback>
                     )}
                 </Avatar>

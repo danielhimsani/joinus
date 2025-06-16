@@ -45,7 +45,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle as ShadAlertDialogTitle, // Using alias for Shadcn's title
 } from "@/components/ui/alert-dialog";
-import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 
 const GUESTS_PER_PAGE = 10;
@@ -377,18 +376,19 @@ export default function ManageEventGuestsPage() {
               </div>
               {approvedGuests.length > 0 ? (
                 <div className="space-y-3">
-                  {paginatedGuests.map(guest => {
-                    const guestInitialDisplay = getDisplayInitial(guest.name);
-                    return (
+                  {paginatedGuests.map(guest => (
                       <Card key={guest.id} className="p-3 shadow-sm">
                         <div className="flex items-center justify-between space-x-3 rtl:space-x-reverse">
                           <div className="flex items-center space-x-3 rtl:space-x-reverse flex-1 min-w-0">
                             <Link href={`/profile/${guest.firebaseUid}`} passHref>
                               <Avatar className="h-10 w-10 border cursor-pointer">
-                                <AvatarImage src={guest.profileImageUrl} alt={guest.name} data-ai-hint="guest avatar" />
-                                <AvatarFallback className="bg-muted">
-                                  {guestInitialDisplay || <UserPlaceholderIcon className="h-6 w-6 text-muted-foreground"/>}
-                                </AvatarFallback>
+                                {guest.profileImageUrl ? (
+                                  <AvatarImage src={guest.profileImageUrl} alt={guest.name} data-ai-hint="guest avatar" />
+                                ) : (
+                                  <AvatarFallback className="bg-muted">
+                                    <UserPlaceholderIcon className="h-6 w-6 text-muted-foreground"/>
+                                  </AvatarFallback>
+                                )}
                               </Avatar>
                             </Link>
                             <Link href={`/profile/${guest.firebaseUid}`} passHref className="flex-1 min-w-0">
@@ -422,8 +422,7 @@ export default function ManageEventGuestsPage() {
                           </div>
                         </div>
                       </Card>
-                    );
-                  })}
+                    ))}
                    {totalGuestPages > 1 && (
                     <div className="flex justify-center items-center space-x-2 rtl:space-x-reverse mt-6">
                         <Button
@@ -485,16 +484,19 @@ export default function ManageEventGuestsPage() {
                 {announcements.length > 0 ? (
                   <ScrollArea className="h-72 pr-3">
                     <div className="space-y-4">
-                      {announcements.map(ann => {
-                        const announcerInitial = getDisplayInitial(ann.ownerDisplayName);
-                        return (
+                      {announcements.map(ann => (
                           <Card key={ann.id} className="p-3 shadow-sm">
                             <p className="text-sm text-foreground whitespace-pre-line" dir="rtl">{ann.messageText}</p>
                             <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
                               <div className='flex items-center text-xs text-muted-foreground'>
                                   <Avatar className="h-6 w-6 ml-1.5 border">
-                                      <AvatarImage src={ann.ownerDisplayImage} alt={ann.ownerDisplayName} data-ai-hint="owner avatar" />
-                                      <AvatarFallback className="text-xs">{announcerInitial || "A"}</AvatarFallback>
+                                      {ann.ownerDisplayImage ? (
+                                          <AvatarImage src={ann.ownerDisplayImage} alt={ann.ownerDisplayName} data-ai-hint="owner avatar" />
+                                      ) : (
+                                          <AvatarFallback className="text-xs bg-muted">
+                                            <UserPlaceholderIcon className="h-4 w-4 text-muted-foreground" />
+                                          </AvatarFallback>
+                                      )}
                                   </Avatar>
                                   {ann.ownerDisplayName || HEBREW_TEXT.event.eventOwner}
                               </div>
@@ -508,8 +510,7 @@ export default function ManageEventGuestsPage() {
                               </Tooltip>
                             </div>
                           </Card>
-                        );
-                      })}
+                        ))}
                     </div>
                   </ScrollArea>
                 ) : (

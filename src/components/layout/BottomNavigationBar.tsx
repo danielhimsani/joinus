@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Search, PlusSquare, MessageSquare, UserCircle } from 'lucide-react';
+import { Search, PlusSquare, MessageSquare, UserCircle, Contact as UserPlaceholderIcon } from 'lucide-react';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -12,7 +12,6 @@ import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; // Added db
 import { collection, query, where, onSnapshot, type DocumentData } from "firebase/firestore"; // Firebase imports
 import type { EventChat } from '@/types'; // Import EventChat type
-import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 // Updated order: Events, Requests (Messages), Create Event, Profile
 const navItemsConfig = [
@@ -92,13 +91,20 @@ export default function BottomNavigationBar() {
           const DefaultIcon = item.icon;
 
           if (item.isProfile) {
-            const userInitial = getDisplayInitial(firebaseUser?.displayName || firebaseUser?.email) || "U";
             IconElement = isLoadingAuth ? (
               <UserCircle className={cn("w-6 h-6 mb-1", currentItemIsActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground/80")} />
             ) : firebaseUser && firebaseUser.photoURL ? (
               <Avatar className={cn("w-6 h-6 mb-1 rounded-full", currentItemIsActive && "ring-2 ring-primary ring-offset-1 ring-offset-background")}>
                 <AvatarImage src={firebaseUser.photoURL} alt={firebaseUser.displayName || "User"} data-ai-hint="profile picture bottomnav" />
-                <AvatarFallback className="text-xs">{userInitial}</AvatarFallback>
+                <AvatarFallback className="text-xs bg-muted">
+                  <UserPlaceholderIcon className="h-4 w-4 text-muted-foreground" />
+                </AvatarFallback>
+              </Avatar>
+            ) : firebaseUser ? (
+               <Avatar className={cn("w-6 h-6 mb-1 rounded-full", currentItemIsActive && "ring-2 ring-primary ring-offset-1 ring-offset-background")}>
+                  <AvatarFallback className="text-xs bg-muted">
+                      <UserPlaceholderIcon className="h-4 w-4 text-muted-foreground" />
+                  </AvatarFallback>
               </Avatar>
             ) : ( 
               <UserCircle className={cn("w-6 h-6 mb-1", currentItemIsActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground/80")} />

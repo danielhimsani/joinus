@@ -14,6 +14,7 @@ import { he } from 'date-fns/locale';
 import { MessageSquareText, Hash, Contact as UserPlaceholderIcon, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
+import { getDisplayInitial } from '@/lib/textUtils';
 
 interface ChatListItemProps {
   chat: EventChat;
@@ -83,11 +84,11 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   const AvatarContent = () => (
     <Avatar className="h-12 w-12 border">
         {avatarImageUrl ? (
-        <AvatarImage src={avatarImageUrl} alt={avatarAltText} data-ai-hint={avatarHint} />
+          <AvatarImage src={avatarImageUrl} alt={avatarAltText} data-ai-hint={avatarHint} />
         ) : (
-        <AvatarFallback className="bg-muted flex items-center justify-center">
+          <AvatarFallback className="bg-muted flex items-center justify-center">
             <UserPlaceholderIcon className="h-7 w-7 text-muted-foreground" />
-        </AvatarFallback>
+          </AvatarFallback>
         )}
     </Avatar>
   );

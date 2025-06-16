@@ -7,13 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Search, UserPlus } from 'lucide-react';
+import { Loader2, Search, UserPlus, Contact as UserPlaceholderIcon } from 'lucide-react';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import type { UserProfile } from '@/types';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 interface AddOwnerModalProps {
   isOpen: boolean;
@@ -144,8 +143,13 @@ export function AddOwnerModal({ isOpen, onOpenChange, onOwnerAdded, currentOwner
               <div key={user.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md">
                 <div className="flex items-center space-x-3 rtl:space-x-reverse">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={user.profileImageUrl} alt={user.name} data-ai-hint="user avatar" />
-                    <AvatarFallback>{getDisplayInitial(user.name) || "U"}</AvatarFallback>
+                    {user.profileImageUrl ? (
+                      <AvatarImage src={user.profileImageUrl} alt={user.name} data-ai-hint="user avatar" />
+                    ) : (
+                      <AvatarFallback className="bg-muted">
+                        <UserPlaceholderIcon className="h-6 w-6 text-muted-foreground" />
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                   <div>
                     <p className="font-medium">{user.name}</p>

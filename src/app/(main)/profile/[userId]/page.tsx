@@ -16,7 +16,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { UserProfile, Event as EventType } from "@/types";
-import { CalendarDays, MapPin, ShieldCheck, User as UserIcon, AlertCircle, ChevronLeft, Cake } from "lucide-react";
+import { CalendarDays, MapPin, ShieldCheck, User as UserIconLucide, AlertCircle, ChevronLeft, Cake, Contact as UserPlaceholderIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -33,7 +33,6 @@ import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate } from '@/lib/dateUtils';
 import type { User as FirebaseUser } from "firebase/auth";
-import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 const calculateAge = (birthDateString?: string): number | null => {
   if (!birthDateString) return null;
@@ -92,7 +91,7 @@ export default function UserProfilePage() {
           firebaseUid: data.firebaseUid || userId,
           name: data.name || "משתמש",
           email: data.email, 
-          profileImageUrl: data.profileImageUrl || `https://placehold.co/150x150.png?text=${(data.name || "U").charAt(0)}`,
+          profileImageUrl: data.profileImageUrl,
           bio: data.bio || "",
           birthday: data.birthday, 
           isVerified: data.isVerified || false,
@@ -179,7 +178,7 @@ export default function UserProfilePage() {
     return (
       <div className="container mx-auto px-4 py-12 text-center">
         <Alert variant="default" className="max-w-lg mx-auto">
-            <UserIcon className="h-5 w-5" />
+            <UserIconLucide className="h-5 w-5" />
             <ShadAlertTitle className="font-headline">{HEBREW_TEXT.event.noUsersFound}</ShadAlertTitle>
             <AlertDescription>המשתמש שחיפשת לא נמצא.</AlertDescription>
         </Alert>
@@ -201,15 +200,20 @@ export default function UserProfilePage() {
           {isViewingOwnProfile && (
             <Button asChild variant="outline" size="sm" className="absolute top-4 right-4">
                 <Link href="/profile">
-                    <UserIcon className="ml-2 h-4 w-4" />
+                    <UserIconLucide className="ml-2 h-4 w-4" />
                     {HEBREW_TEXT.profile.editProfile}
                 </Link>
             </Button>
            )}
             <div className="relative inline-block mb-4 mt-8 sm:mt-0">
               <Avatar className="h-32 w-32 border-4 border-primary shadow-md">
-                <AvatarImage src={profileData.profileImageUrl} alt={profileData.name} data-ai-hint="profile picture public"/>
-                <AvatarFallback className="text-4xl">{getDisplayInitial(profileData.name) || "U"}</AvatarFallback>
+                {profileData.profileImageUrl ? (
+                  <AvatarImage src={profileData.profileImageUrl} alt={profileData.name} data-ai-hint="profile picture public"/>
+                ) : (
+                  <AvatarFallback className="text-4xl bg-muted">
+                    <UserPlaceholderIcon className="h-16 w-16 text-muted-foreground" />
+                  </AvatarFallback>
+                )}
               </Avatar>
             </div>
             <CardTitle className="font-headline text-3xl">{profileData.name}</CardTitle>

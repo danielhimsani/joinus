@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2, MessageCircleMore, ListChecks, Share2, FileText, ShieldCheck, Heart } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2, MessageCircleMore, ListChecks, Share2, FileText, ShieldCheck, Heart, Contact as UserPlaceholderIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -41,7 +41,6 @@ import { ref as storageRef, deleteObject } from "firebase/storage";
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { safeToDate } from '@/lib/dateUtils';
-import { getDisplayInitial } from '@/lib/textUtils'; // Import the helper
 
 
 const getFoodTypeLabel = (foodType: FoodType | undefined) => {
@@ -442,8 +441,13 @@ export default function EventDetailPage() {
                             <TooltipTrigger asChild>
                               <Link href={`/profile/${owner.uid}`} passHref>
                                 <Avatar className="h-10 w-10 border cursor-pointer hover:ring-2 hover:ring-primary transition-all">
-                                  <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="organizer avatar"/>
-                                  <AvatarFallback>{getDisplayInitial(owner.name) || "U"}</AvatarFallback>
+                                  {owner.profileImageUrl ? (
+                                    <AvatarImage src={owner.profileImageUrl} alt={owner.name} data-ai-hint="organizer avatar"/>
+                                  ) : (
+                                    <AvatarFallback className="bg-muted">
+                                      <UserPlaceholderIcon className="h-6 w-6 text-muted-foreground" />
+                                    </AvatarFallback>
+                                  )}
                                 </Avatar>
                               </Link>
                             </TooltipTrigger>
