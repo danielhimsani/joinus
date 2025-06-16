@@ -303,8 +303,11 @@ export default function MessagesPage() {
             </div>
             <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant={filtersApplied ? "secondary" : "outline"} size="icon" className="h-9 w-9 flex-shrink-0" aria-label={HEBREW_TEXT.event.filters}>
+                <Button variant={filtersApplied ? "secondary" : "outline"} size="icon" className="h-9 w-9 flex-shrink-0 relative" aria-label={HEBREW_TEXT.event.filters}>
                   <FilterButtonIcon className="h-4 w-4" />
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-1 ring-background" />
+                  )}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
