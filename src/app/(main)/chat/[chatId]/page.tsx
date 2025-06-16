@@ -378,12 +378,12 @@ export default function ChatPage() {
         {/* Chat Header */}
         <CardHeader 
           className={cn(
-            "border-b bg-background backdrop-blur-sm z-30 p-0",
+            "border-b bg-background backdrop-blur-sm z-30 p-0", // Removed padding from CardHeader
             "fixed top-0 left-0 right-0",
             "md:sticky md:top-0" 
           )}
         >
-          <div className="flex items-center justify-between w-full max-w-3xl mx-auto p-0"> {/* Removed padding here */}
+          <div className="flex items-center justify-between w-full max-w-3xl mx-auto p-2 md:px-3 md:py-2"> {/* Added padding here */}
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
                  <Button variant="ghost" size="icon" onClick={() => router.back()} className="md:hidden mr-1 h-8 w-8">
                     <ChevronLeft className="h-5 w-5" />
