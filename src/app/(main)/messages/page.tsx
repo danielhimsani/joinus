@@ -258,8 +258,19 @@ export default function MessagesPage() {
   return (
     <div className="container mx-auto px-2 sm:px-4 py-8 md:py-12">
       <Card className="max-w-3xl mx-auto shadow-lg">
-        <CardHeader className="border-b p-3 md:p-4">
-          <div className="flex justify-start"> {/* Changed justify-end to justify-start */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full p-2 sm:p-4 md:p-6">
+          <TabsList className="grid w-full grid-cols-2 mb-4 h-12">
+            <TabsTrigger value="owned" className="py-2.5 text-sm sm:text-base font-body flex flex-row-reverse">
+              <Briefcase className="mr-1.5 h-4 w-4 sm:h-5 sm:w-5" />
+              {HEBREW_TEXT.chat.eventsInMyOwnership}
+            </TabsTrigger>
+            <TabsTrigger value="requested" className="py-2.5 text-sm sm:text-base font-body flex flex-row-reverse">
+              <Inbox className="mr-1.5 h-4 w-4 sm:h-5 sm:w-5" />
+              {HEBREW_TEXT.chat.myRequests}
+            </TabsTrigger>
+          </TabsList>
+          
+          <div className="flex justify-start mb-4">
             <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant={filtersApplied ? "secondary" : "outline"} size="sm">
@@ -329,20 +340,7 @@ export default function MessagesPage() {
               </DialogContent>
             </Dialog>
           </div>
-        </CardHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full p-2 sm:p-4 md:p-6">
-          <TabsList className="grid w-full grid-cols-2 mb-4 h-12"> {/* Changed h-10 to h-12 */}
-            <TabsTrigger value="owned" className="py-2.5 text-sm sm:text-base font-body flex flex-row-reverse">
-              <Briefcase className="mr-1.5 h-4 w-4 sm:h-5 sm:w-5" />
-              {HEBREW_TEXT.chat.eventsInMyOwnership}
-            </TabsTrigger>
-            <TabsTrigger value="requested" className="py-2.5 text-sm sm:text-base font-body flex flex-row-reverse">
-              <Inbox className="mr-1.5 h-4 w-4 sm:h-5 sm:w-5" />
-              {HEBREW_TEXT.chat.myRequests}
-            </TabsTrigger>
-          </TabsList>
-          
           {error && (
             <Alert variant="destructive" className="my-4">
               <AlertCircle className="h-5 w-5" />
