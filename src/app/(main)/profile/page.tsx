@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { UserProfile, Event as EventType } from "@/types";
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users, FileText, Gavel, Contact as UserPlaceholderIcon } from "lucide-react";
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users, FileText, Gavel, Contact as UserPlaceholderIcon, BellRing } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -43,6 +43,7 @@ import { format as formatDate } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
 import { getDisplayInitial } from '@/lib/textUtils';
+import { requestNotificationPermissionAndSaveToken } from '@/lib/firebase-messaging'; // Import the function
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
@@ -276,6 +277,15 @@ export default function ProfilePage() {
     }
   };
 
+  const handleEnableNotifications = async () => {
+    if (!firebaseUser) {
+      toast({ title: HEBREW_TEXT.general.error, description: "עליך להיות מחובר כדי לאפשר התראות.", variant: "destructive" });
+      return;
+    }
+    toast({ title: "מאפשר התראות...", description: "אנא אשר את בקשת ההרשאה מהדפדפן." });
+    await requestNotificationPermissionAndSaveToken(firebaseUser.uid);
+  };
+
   if (isLoading || !user) {
     return (
       <div className="container mx-auto px-4 py-12">
@@ -479,7 +489,7 @@ export default function ProfilePage() {
                                             <Skeleton className="h-5 w-3/4" />
                                             <Skeleton className="h-4 w-1/2" />
                                         </div>
-                                        <Skeleton className="h-8 w-8 rounded-md" /> 
+                                        <Skeleton className="h-8 w-8 rounded-md" />
                                     </div>
                                 </Card>
                             ))}
@@ -543,7 +553,7 @@ export default function ProfilePage() {
 
                 <div>
                   <h3 className="font-headline text-xl font-semibold mb-4">{HEBREW_TEXT.profile.settings}</h3>
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center justify-between p-4 border rounded-lg mb-4">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                        {isDarkMode ? <Moon className="h-5 w-5 text-primary" /> : <Sun className="h-5 w-5 text-primary" />}
                        <Label htmlFor="dark-mode-switch" className="text-base">
@@ -557,6 +567,14 @@ export default function ProfilePage() {
                       aria-label={isDarkMode ? `העבר ל${HEBREW_TEXT.profile.lightMode}` : `העבר ל${HEBREW_TEXT.profile.darkMode}`}
                     />
                   </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleEnableNotifications}
+                    className="w-full justify-start p-3 text-base mb-4"
+                  >
+                    <BellRing className="ml-3 h-5 w-5 text-muted-foreground" />
+                    אפשר התראות דחיפה
+                  </Button>
                 </div>
                 
                 <Separator className="my-8" />
@@ -612,3 +630,4 @@ export default function ProfilePage() {
     
 
     
+
