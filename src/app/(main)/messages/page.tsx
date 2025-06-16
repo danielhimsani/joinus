@@ -320,11 +320,12 @@ export default function MessagesPage() {
                             value={chatTimeFilter} 
                             onValueChange={(value) => setChatTimeFilter(value as ChatTimeFilter)}
                             disabled={isLoading}
+                            dir="rtl"
                         >
-                            <SelectTrigger id="chat-time-filter" className="w-full">
+                            <SelectTrigger id="chat-time-filter" className="w-full" dir="rtl">
                                 <SelectValue placeholder={HEBREW_TEXT.chat.chatTimeFilter} />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent dir="rtl">
                                 <SelectItem value="future">{HEBREW_TEXT.chat.futureEventChats}</SelectItem>
                                 <SelectItem value="past">{HEBREW_TEXT.chat.pastEventChats}</SelectItem>
                                 <SelectItem value="all">{HEBREW_TEXT.chat.allChats}</SelectItem>
@@ -339,11 +340,12 @@ export default function MessagesPage() {
                             value={chatStatusFilter}
                             onValueChange={(value) => setChatStatusFilter(value as ChatStatusFilter)}
                             disabled={isLoading}
+                            dir="rtl"
                         >
-                            <SelectTrigger id="chat-status-filter" className="w-full">
+                            <SelectTrigger id="chat-status-filter" className="w-full" dir="rtl">
                                 <SelectValue placeholder={HEBREW_TEXT.chat.chatStatusFilter} />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent dir="rtl">
                                 {statusFilterOptions.map(option => (
                                     <SelectItem key={option.value} value={option.value}>
                                         <div className="flex items-center">
