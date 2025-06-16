@@ -291,20 +291,20 @@ export default function ChatPage() {
   let headerLink: string | undefined;
 
   if (isLoadingChat && !chatDetails) {
-      headerTitleElement = <div className="font-headline text-base md:text-lg leading-tight">{HEBREW_TEXT.chat.loadingChatDetails}</div>;
+      headerTitleElement = <div className="font-semibold tracking-tight font-headline text-base md:text-lg leading-tight">{HEBREW_TEXT.chat.loadingChatDetails}</div>;
       headerImage = undefined;
   } else if (chatDetails) {
       if (isCurrentUserOwner) {
-          headerTitleElement = <div className="font-headline text-base md:text-lg leading-tight">{`${HEBREW_TEXT.chat.chatWith} ${chatDetails.guestInfo?.name || HEBREW_TEXT.chat.guest}`}</div>;
+          headerTitleElement = <div className="font-semibold tracking-tight font-headline text-base md:text-lg leading-tight">{`${HEBREW_TEXT.chat.chatWith} ${chatDetails.guestInfo?.name || HEBREW_TEXT.chat.guest}`}</div>;
           headerImage = chatDetails.guestInfo?.profileImageUrl;
           headerLink = `/profile/${chatDetails.guestUid}`;
       } else {
-          headerTitleElement = <div className="font-headline text-base md:text-lg leading-tight">{`${HEBREW_TEXT.event.eventName}: ${chatDetails.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}`}</div>;
+          headerTitleElement = <div className="font-semibold tracking-tight font-headline text-base md:text-lg leading-tight">{`${HEBREW_TEXT.event.eventName}: ${chatDetails.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}`}</div>;
           headerImage = chatDetails.eventInfo?.imageUrl;
           headerLink = `/events/${chatDetails.eventId}`;
       }
   } else {
-       headerTitleElement = <div className="font-headline text-base md:text-lg leading-tight">{HEBREW_TEXT.chat.chatPageTitle}</div>;
+       headerTitleElement = <div className="font-semibold tracking-tight font-headline text-base md:text-lg leading-tight">{HEBREW_TEXT.chat.chatPageTitle}</div>;
   }
 
 
@@ -317,7 +317,7 @@ export default function ChatPage() {
             <CardHeader className="border-b p-2 md:p-3">
                 <div className="flex items-center space-x-3 rtl:space-x-reverse">
                     <Skeleton className="h-8 w-8 rounded-full" />
-                    <div className="font-headline text-base md:text-lg leading-tight"><Skeleton className="h-5 w-32" /></div>
+                    <div className="font-semibold tracking-tight font-headline text-base md:text-lg leading-tight"><Skeleton className="h-5 w-32" /></div>
                 </div>
             </CardHeader>
             <CardContent className="flex-1 p-3 md:p-4 overflow-y-auto">
@@ -378,12 +378,12 @@ export default function ChatPage() {
         {/* Chat Header */}
         <CardHeader 
           className={cn(
-            "border-b bg-background backdrop-blur-sm z-30 p-0", // Removed padding from CardHeader
+            "border-b bg-background backdrop-blur-sm z-30",
             "fixed top-0 left-0 right-0",
             "md:sticky md:top-0" 
           )}
         >
-          <div className="flex items-center justify-between w-full max-w-3xl mx-auto p-2 md:px-3 md:py-2"> {/* Added padding here */}
+          <div className="flex items-center justify-between p-2 md:p-3 w-full max-w-3xl mx-auto">
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
                  <Button variant="ghost" size="icon" onClick={() => router.back()} className="md:hidden mr-1 h-8 w-8">
                     <ChevronLeft className="h-5 w-5" />
@@ -458,7 +458,7 @@ export default function ChatPage() {
 
         {/* Messages Area */}
         <ScrollArea ref={scrollAreaRef} className="flex-1 bg-background/70">
-          <div className="px-3 pt-[60px] pb-36 md:p-4 md:pt-4 flex flex-col space-y-1"> {/* Adjusted mobile top padding */}
+          <div className="px-3 pt-[60px] pb-36 md:p-4 md:pt-4 flex flex-col space-y-1">
             {showOwnerActionBlock && (
                 <div className="my-3 p-3 bg-muted/60 dark:bg-muted/40 rounded-lg shadow-sm w-full self-center max-w-md mx-auto">
                   <div className="flex gap-3 justify-center">
@@ -530,6 +530,15 @@ export default function ChatPage() {
                 "max-w-3xl mx-auto p-2 bg-background", 
                 "md:max-w-none md:mx-0 md:p-0" 
               )}>
+                <Button 
+                    type="button" 
+                    size="icon" 
+                    onClick={handleSendMessage} 
+                    disabled={isSendingMessage || !newMessage.trim()}
+                >
+                  {isSendingMessage ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                  <span className="sr-only">{HEBREW_TEXT.chat.sendMessage}</span>
+                </Button>
                 <Textarea
                   placeholder={HEBREW_TEXT.chat.typeYourMessage}
                   value={newMessage}
@@ -544,10 +553,6 @@ export default function ChatPage() {
                   className="min-h-[40px] max-h-[100px] resize-none"
                   disabled={isSendingMessage}
                 />
-                <Button type="button" size="icon" onClick={handleSendMessage} disabled={isSendingMessage || !newMessage.trim()}>
-                  {isSendingMessage ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-                  <span className="sr-only">{HEBREW_TEXT.chat.sendMessage}</span>
-                </Button>
               </div>
             </CardFooter>
         ) : (
