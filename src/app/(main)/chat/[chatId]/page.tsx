@@ -291,20 +291,20 @@ export default function ChatPage() {
   let headerLink: string | undefined;
 
   if (isLoadingChat && !chatDetails) {
-      headerTitleElement = <CardTitle className="font-headline text-lg md:text-xl leading-tight">{HEBREW_TEXT.chat.loadingChatDetails}</CardTitle>;
+      headerTitleElement = <CardTitle className="font-headline text-base md:text-lg leading-tight">{HEBREW_TEXT.chat.loadingChatDetails}</CardTitle>;
       headerImage = undefined;
   } else if (chatDetails) {
       if (isCurrentUserOwner) {
-          headerTitleElement = <CardTitle className="font-headline text-lg md:text-xl leading-tight">{`${HEBREW_TEXT.chat.chatWith} ${chatDetails.guestInfo?.name || HEBREW_TEXT.chat.guest}`}</CardTitle>;
+          headerTitleElement = <CardTitle className="font-headline text-base md:text-lg leading-tight">{`${HEBREW_TEXT.chat.chatWith} ${chatDetails.guestInfo?.name || HEBREW_TEXT.chat.guest}`}</CardTitle>;
           headerImage = chatDetails.guestInfo?.profileImageUrl;
           headerLink = `/profile/${chatDetails.guestUid}`;
       } else {
-          headerTitleElement = <CardTitle className="font-headline text-lg md:text-xl leading-tight">{`${HEBREW_TEXT.event.eventName}: ${chatDetails.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}`}</CardTitle>;
+          headerTitleElement = <CardTitle className="font-headline text-base md:text-lg leading-tight">{`${HEBREW_TEXT.event.eventName}: ${chatDetails.eventInfo?.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}`}</CardTitle>;
           headerImage = chatDetails.eventInfo?.imageUrl;
           headerLink = `/events/${chatDetails.eventId}`;
       }
   } else {
-       headerTitleElement = <CardTitle className="font-headline text-lg md:text-xl leading-tight">{HEBREW_TEXT.chat.chatPageTitle}</CardTitle>;
+       headerTitleElement = <CardTitle className="font-headline text-base md:text-lg leading-tight">{HEBREW_TEXT.chat.chatPageTitle}</CardTitle>;
   }
 
 
@@ -314,10 +314,10 @@ export default function ChatPage() {
     return (
       <div className="container mx-auto px-0 md:px-4 py-0 md:py-8 h-screen md:h-auto flex flex-col">
         <Card className="flex-1 flex flex-col max-w-3xl mx-auto w-full shadow-lg relative">
-            <CardHeader className="border-b p-3 md:p-4">
+            <CardHeader className="border-b p-2 md:p-3">
                 <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="font-headline text-lg md:text-xl leading-tight"><Skeleton className="h-6 w-40" /></div>
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <div className="font-headline text-base md:text-lg leading-tight"><Skeleton className="h-5 w-32" /></div>
                 </div>
             </CardHeader>
             <CardContent className="flex-1 p-3 md:p-4 overflow-y-auto">
@@ -367,8 +367,8 @@ export default function ChatPage() {
   }
 
   const HeaderAvatar = () => (
-    <Avatar className="h-10 w-10 border">
-      {headerImage ? <AvatarImage src={headerImage} alt="Chat participant" data-ai-hint="chat participant"/> : <AvatarFallback><UserPlaceholderIcon className="h-6 w-6 text-muted-foreground" /></AvatarFallback>}
+    <Avatar className="h-8 w-8 border">
+      {headerImage ? <AvatarImage src={headerImage} alt="Chat participant" data-ai-hint="chat participant"/> : <AvatarFallback><UserPlaceholderIcon className="h-5 w-5 text-muted-foreground" /></AvatarFallback>}
     </Avatar>
   );
 
@@ -382,10 +382,10 @@ export default function ChatPage() {
             "fixed top-0 left-0 right-0 md:sticky md:top-0" 
           )}
         >
-          <div className="flex items-center justify-between p-3 md:p-4 w-full max-w-3xl mx-auto">
-            <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                 <Button variant="ghost" size="icon" onClick={() => router.back()} className="md:hidden mr-1">
-                    <ChevronLeft className="h-6 w-6" />
+          <div className="flex items-center justify-between p-2 md:p-3 w-full max-w-3xl mx-auto">
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                 <Button variant="ghost" size="icon" onClick={() => router.back()} className="md:hidden mr-1 h-8 w-8">
+                    <ChevronLeft className="h-5 w-5" />
                  </Button>
               {headerLink ? (
                 <Link href={headerLink} passHref>
@@ -419,7 +419,7 @@ export default function ChatPage() {
             {isCurrentUserOwner && chatDetails.status !== 'closed' && chatDetails.status !== 'request_rejected' && (
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
                             <MoreVertical className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </DropdownMenuTrigger>
@@ -457,7 +457,7 @@ export default function ChatPage() {
 
         {/* Messages Area */}
         <ScrollArea ref={scrollAreaRef} className="flex-1 bg-background/70">
-          <div className="px-3 pt-20 pb-36 md:p-4 flex flex-col space-y-1"> {/* Adjusted padding */}
+          <div className="px-3 pt-[60px] pb-36 md:p-4 md:pt-4 flex flex-col space-y-1"> {/* Adjusted padding */}
             {showOwnerActionBlock && (
                 <div className="my-3 p-3 bg-muted/60 dark:bg-muted/40 rounded-lg shadow-sm w-full self-center max-w-md mx-auto">
                   <div className="flex gap-3 justify-center">
@@ -521,12 +521,12 @@ export default function ChatPage() {
               className={cn(
                 "border-t bg-background z-40", // Common classes
                 "fixed bottom-16 left-0 right-0 p-0", // Mobile: fixed, above main nav, no padding on CardFooter
-                "md:sticky md:bottom-0 md:p-4 md:z-auto" // Desktop: sticky, standard padding
+                "md:sticky md:bottom-0 md:p-3 md:z-auto" // Desktop: sticky, standard padding
               )}
             >
               <div className={cn(
                 "w-full flex items-center space-x-2 rtl:space-x-reverse", // Common classes for inner div
-                "max-w-3xl mx-auto p-3 bg-background", // Mobile: constrained width & padding
+                "max-w-3xl mx-auto p-2 bg-background", // Mobile: constrained width & padding
                 "md:max-w-none md:mx-0 md:p-0" // Desktop: full width of CardFooter, no extra padding
               )}>
                 <Textarea
@@ -559,7 +559,7 @@ export default function ChatPage() {
             >
                 <div className={cn(
                   "w-full text-center",
-                  "max-w-3xl mx-auto p-3", // Mobile: constrained width & padding
+                  "max-w-3xl mx-auto p-2", // Mobile: constrained width & padding
                   "md:max-w-none md:mx-0 md:p-0" // Desktop
                 )}>
                     <p className="text-sm text-muted-foreground">
@@ -573,6 +573,8 @@ export default function ChatPage() {
     </div>
   );
 }
-
-
-
+    
+    
+    
+    
+    
