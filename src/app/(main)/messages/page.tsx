@@ -298,6 +298,7 @@ export default function MessagesPage() {
                     value={simpleSearchQuery}
                     onChange={(e) => setSimpleSearchQuery(e.target.value)}
                     disabled={isLoading}
+                    dir="rtl"
                 />
             </div>
             <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
