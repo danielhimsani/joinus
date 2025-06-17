@@ -4,33 +4,34 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Light Theme with Pink/Purple Primary */
+    --background: 0 0% 100%; /* White */
+    --foreground: 222.2 84% 4.9%; /* Dark Navy Text */
+    --muted: 220 30% 96%; /* Very Light Gray */
+    --muted-foreground: 220 10% 40%; /* Medium Gray Text */
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --ring: 215 20.2% 65.1%;
+    --border: 220 20% 90%; /* Light Gray Border */
+    --input: 220 20% 90%;
+    --primary: 326 79% 50%; /* Pink/Purple - #D62E8B */
+    --primary-foreground: 0 0% 100%; /* White */
+    --secondary: 220 30% 96%; /* Light Gray for secondary button bg */
+    --secondary-foreground: 222.2 84% 4.9%; /* Dark Navy for secondary button text */
+    --accent: 326 79% 50%; /* Pink/Purple */
+    --accent-foreground: 0 0% 100%; /* White */
+    --destructive: 0 84.2% 60.2%; /* Standard Red */
+    --destructive-foreground: 0 0% 100%; /* White */
+    --ring: 326 79% 60%; /* Lighter Pink/Purple for focus ring */
     --radius: 0.5rem;
 
     /* Default Chart Colors for Light Theme */
-    --chart-1: 221 83% 53%; /* blue-600 */
-    --chart-2: 10 83% 53%;  /* orange-600 */
-    --chart-3: 142 71% 45%; /* green-600 */
-    --chart-4: 262 71% 45%; /* violet-600 */
-    --chart-5: 341 71% 45%; /* rose-600 */
+    --chart-1: 221 83% 53%;
+    --chart-2: 10 83% 53%;
+    --chart-3: 142 71% 45%;
+    --chart-4: 262 71% 45%;
+    --chart-5: 341 71% 45%;
 
     /* Default Sidebar Colors for Light Theme (derived from main theme) */
     --sidebar-background: var(--background);
@@ -44,32 +45,33 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    /* Dark Theme with Pink/Purple Primary - Matching Screenshot */
+    --background: 222.2 84% 4.9%; /* Dark Navy Blue - #0A192F */
+    --foreground: 210 40% 98%; /* Light Text - #F8F9FA */
+    --muted: 222.2 74% 10.9%; /* Slightly Lighter Navy - #112240 */
+    --muted-foreground: 210 30% 70%; /* Lighter Gray - #A8B2D1 */
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 74% 10.9%; /* Using muted for card background for subtle difference */
     --card-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --ring: 216 12.2% 83.9%;
+    --border: 222.2 64% 15.9%; /* A bit lighter navy for borders - #1D2D50 */
+    --input: 222.2 64% 15.9%;
+    --primary: 326 79% 57%; /* Pink/Purple - #E63995 */
+    --primary-foreground: 0 0% 100%; /* White */
+    --secondary: 222.2 74% 10.9%; /* Using muted color for secondary button background */
+    --secondary-foreground: 210 40% 98%; /* Using light text for secondary button text */
+    --accent: 326 79% 57%; /* Pink/Purple */
+    --accent-foreground: 0 0% 100%; /* White */
+    --destructive: 0 62.8% 30.6%; /* Standard Dark Red */
+    --destructive-foreground: 210 40% 98%; /* Light Text */
+    --ring: 326 79% 67%; /* Lighter Pink/Purple for focus ring */
 
     /* Default Chart Colors for Dark Theme */
-    --chart-1: 211 83% 63%; /* blue-500 */
-    --chart-2: 20 83% 63%;  /* orange-500 */
-    --chart-3: 152 71% 55%; /* green-500 */
-    --chart-4: 272 71% 55%; /* violet-500 */
-    --chart-5: 351 71% 55%; /* rose-500 */
+    --chart-1: 211 83% 63%;
+    --chart-2: 20 83% 63%;
+    --chart-3: 152 71% 55%;
+    --chart-4: 272 71% 55%;
+    --chart-5: 351 71% 55%;
 
     /* Default Sidebar Colors for Dark Theme (derived from main theme) */
     --sidebar-background: var(--background);
