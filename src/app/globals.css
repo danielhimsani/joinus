@@ -4,111 +4,82 @@
 
 @layer base {
   :root {
-    /* App Colors:
-      Primary: #87CEEB (Light Sky Blue) -> hsl(197, 71%, 73%)
-      Background: #F0F0F0 (Muted Light Gray) -> hsl(0, 0%, 94%)
-      Accent: #D8BFD8 (Light Muted Violet / Thistle) -> hsl(283, 26%, 79%)
-    */
-    --background: 0 0% 94%; /* Muted Light Gray - #F0F0F0 */
-    --foreground: 222 47% 11%; /* Default dark desaturated blue for text */
-
-    --muted: 210 40% 90%; /* Slightly darker than new background for muted elements */
-    --muted-foreground: 215 20% 50%; /* Softer gray for muted text */
-
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-
+    --popover-foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-
-    --border: 214 20% 85%; /* Softer border */
-    --input: 214 20% 90%; /* Slightly lighter input background */
-
-    --primary: 197 71% 73%; /* Light Sky Blue - #87CEEB */
-    --primary-foreground: 222 47% 11%; /* Dark text for good contrast on light blue */
-
-    --secondary: 283 26% 70%; /* Slightly adjusted Light Muted Violet for secondary, a bit darker for UI elements */
-    --secondary-foreground: 222 47% 11%; /* Dark text for contrast on violet */
-
-    --accent: 283 26% 79%; /* Light Muted Violet / Thistle - #D8BFD8 */
-    --accent-foreground: 222 47% 11%; /* Dark for contrast on accent */
-
+    --card-foreground: 222.2 84% 4.9%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-
-    --ring: 197 71% 68%; /* Derived from primary */
-
+    --destructive-foreground: 210 40% 98%;
+    --ring: 215 20.2% 65.1%;
     --radius: 0.5rem;
 
-    /* Chart colors can remain or be updated based on the new palette */
-    --chart-1: 197 71% 73%; /* Primary */
-    --chart-2: 283 26% 79%; /* Accent */
-    --chart-3: 205 75% 65%; 
-    --chart-4: 35 100% 75%; 
-    --chart-5: 215 50% 55%;
+    /* Default Chart Colors for Light Theme */
+    --chart-1: 221 83% 53%; /* blue-600 */
+    --chart-2: 10 83% 53%;  /* orange-600 */
+    --chart-3: 142 71% 45%; /* green-600 */
+    --chart-4: 262 71% 45%; /* violet-600 */
+    --chart-5: 341 71% 45%; /* rose-600 */
 
-    /* Sidebar colors to match the new theme */
-    --sidebar-background: 0 0% 96%; /* Slightly off-white, very close to main background */
-    --sidebar-foreground: 222 47% 15%;
-    --sidebar-primary: 197 71% 73%; 
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 283 26% 79%; 
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 20% 80%;
-    --sidebar-ring: 197 71% 68%;
+    /* Default Sidebar Colors for Light Theme (derived from main theme) */
+    --sidebar-background: var(--background);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
   }
 
   .dark {
-    /* Dark Theme App Colors:
-      Background: A dark gray, e.g., hsl(220, 13%, 18%) - #292E33
-      Primary (Dark): A slightly desaturated version of the light primary, e.g., hsl(197, 50%, 60%) - #7AB8D9
-      Accent (Dark): A slightly desaturated or deeper violet, e.g., hsl(283, 20%, 65%) - #9F8CAE
-    */
-    --background: 220 13% 18%; /* Dark Gray - #292E33 */
-    --foreground: 0 0% 94%; /* Light Gray (original light background) for text */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --ring: 216 12.2% 83.9%;
 
-    --muted: 220 13% 22%; /* Slightly lighter than dark background */
-    --muted-foreground: 215 15% 65%; 
+    /* Default Chart Colors for Dark Theme */
+    --chart-1: 211 83% 63%; /* blue-500 */
+    --chart-2: 20 83% 63%;  /* orange-500 */
+    --chart-3: 152 71% 55%; /* green-500 */
+    --chart-4: 272 71% 55%; /* violet-500 */
+    --chart-5: 351 71% 55%; /* rose-500 */
 
-    --popover: 220 13% 15%;
-    --popover-foreground: 0 0% 94%;
-
-    --card: 220 13% 15%;
-    --card-foreground: 0 0% 94%;
-
-    --border: 217 33% 25%; 
-    --input: 217 33% 20%; 
-
-    --primary: 197 50% 60%; /* Adjusted Light Sky Blue for dark mode */
-    --primary-foreground: 222 47% 11%; /* Dark text for contrast */
-
-    --secondary: 283 20% 55%; /* Adjusted Dark Muted Violet for secondary */
-    --secondary-foreground: 0 0% 96%; /* Light text for contrast */
-
-    --accent: 283 20% 65%; /* Adjusted Light Muted Violet for dark mode */
-    --accent-foreground: 0 0% 98%; /* Light text for contrast */
-
-    --destructive: 0 62.8% 50.6%;
-    --destructive-foreground: 0 0% 98%;
-
-    --ring: 197 50% 55%; /* Derived from dark primary */
-    
-    /* Chart colors for dark theme */
-    --chart-1: 197 50% 60%;
-    --chart-2: 283 20% 65%;
-    --chart-3: 205 65% 70%; 
-    --chart-4: 35 90% 75%; 
-    --chart-5: 215 40% 65%;
-
-    /* Sidebar colors for dark theme */
-    --sidebar-background: 220 13% 16%;
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 197 50% 60%; 
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 283 20% 65%; 
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 217 33% 22%;
-    --sidebar-ring: 197 50% 55%;
+    /* Default Sidebar Colors for Dark Theme (derived from main theme) */
+    --sidebar-background: var(--background);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
   }
 }
 
