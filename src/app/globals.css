@@ -52,7 +52,7 @@
     --muted-foreground: 210 30% 70%; /* Lighter Gray - #A8B2D1 */
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --card: 222.2 74% 10.9%; /* Using muted for card background for subtle difference */
+    --card: 222.2 84% 4.9%; /* Card background same as main background in dark mode */
     --card-foreground: 210 40% 98%;
     --border: 222.2 64% 15.9%; /* A bit lighter navy for borders - #1D2D50 */
     --input: 222.2 64% 15.9%;
