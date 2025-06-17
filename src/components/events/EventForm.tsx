@@ -177,7 +177,7 @@ export function EventForm({
 
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'app-google-maps-script', // Standardized ID
+    id: 'app-google-maps-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries,
     language: 'iw',
@@ -833,7 +833,6 @@ export function EventForm({
                 )}
             />
 
-
             {isEditMode && initialEventData?.imageUrl && !imageFile && (
                 <FormField
                     control={form.control}
@@ -841,6 +840,7 @@ export function EventForm({
                     render={({ field }) => <input type="hidden" {...field} value={initialEventData.imageUrl} />}
                 />
             )}
+
             <div className="grid md:grid-cols-2 gap-8">
               <FormField
                 control={form.control}
@@ -855,34 +855,73 @@ export function EventForm({
                   </FormItem>
                 )}
               />
-               <FormField
-                control={form.control}
-                name="paymentOption"
-                render={({ field }) => (
-                    <FormItem className="space-y-3" data-fieldname="paymentOption">
-                    <FormLabel className="text-right">{HEBREW_TEXT.event.paymentOptions}</FormLabel>
-                    <FormControl>
-                        <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-4 rtl:md:space-x-reverse pt-2"
-                        dir="rtl"
+              {isLoaded && (
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{HEBREW_TEXT.event.location}</FormLabel>
+                      <FormControl>
+                        <Autocomplete
+                          onLoad={onAutocompleteLoad}
+                          onPlaceChanged={handlePlaceChanged}
+                          options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location", "photos"] }}
                         >
-                        {paymentOptions.map(option => (
-                            <div key={option.value} className="flex items-center space-x-2 rtl:space-x-reverse">
-                                <RadioGroupItem value={option.value} id={`paymentOption-${option.value}`} />
-                                <label htmlFor={`paymentOption-${option.value}`} className="font-normal cursor-pointer">
-                                    {option.label}
-                                </label>
-                            </div>
-                        ))}
-                        </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
+                          <Input
+                              placeholder="התחל להקליד כתובת או שם מקום..."
+                              {...field}
+                              ref={(e) => {
+                                  field.ref(e);
+                                  locationInputRef.current = e;
+                              }}
+                              onChange={(e) => {
+                                  field.onChange(e);
+                                  if (trueFormattedAddress || latitude || longitude) {
+                                      setTrueFormattedAddress(null);
+                                      setLatitude(null);
+                                      setLongitude(null);
+                                  }
+                                  form.setValue("locationDisplayName", e.target.value, { shouldValidate: false });
+                              }}
+                              data-fieldname="location"
+                          />
+                        </Autocomplete>
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
-                )}
-            />
+                  )}
+                />
+              )}
             </div>
+            
+            <FormField
+              control={form.control}
+              name="paymentOption"
+              render={({ field }) => (
+                  <FormItem className="space-y-3" data-fieldname="paymentOption">
+                  <FormLabel className="text-right">{HEBREW_TEXT.event.paymentOptions}</FormLabel>
+                  <FormControl>
+                      <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-4 rtl:md:space-x-reverse pt-2"
+                      dir="rtl"
+                      >
+                      {paymentOptions.map(option => (
+                          <div key={option.value} className="flex items-center space-x-2 rtl:space-x-reverse">
+                              <RadioGroupItem value={option.value} id={`paymentOption-${option.value}`} />
+                              <label htmlFor={`paymentOption-${option.value}`} className="font-normal cursor-pointer">
+                                  {option.label}
+                              </label>
+                          </div>
+                      ))}
+                      </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                  </FormItem>
+              )}
+            />
 
             {paymentOptionValue === 'fixed' && (
                  <FormField
@@ -915,45 +954,6 @@ export function EventForm({
                     </FormItem>
                     )}
                 />
-            )}
-
-            {isLoaded && (
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{HEBREW_TEXT.event.location}</FormLabel>
-                    <FormControl>
-                      <Autocomplete
-                        onLoad={onAutocompleteLoad}
-                        onPlaceChanged={handlePlaceChanged}
-                        options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location", "photos"] }}
-                      >
-                        <Input
-                            placeholder="התחל להקליד כתובת או שם מקום..."
-                            {...field}
-                            ref={(e) => {
-                                field.ref(e);
-                                locationInputRef.current = e;
-                            }}
-                            onChange={(e) => {
-                                field.onChange(e);
-                                if (trueFormattedAddress || latitude || longitude) {
-                                    setTrueFormattedAddress(null);
-                                    setLatitude(null);
-                                    setLongitude(null);
-                                }
-                                form.setValue("locationDisplayName", e.target.value, { shouldValidate: false });
-                            }}
-                            data-fieldname="location"
-                        />
-                      </Autocomplete>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             )}
 
             <FormField
@@ -1094,5 +1094,4 @@ export function EventForm({
     </>
   );
 }
-
     
