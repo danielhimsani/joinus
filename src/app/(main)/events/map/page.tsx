@@ -28,10 +28,10 @@ export default function FullMapPage() {
 
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [isFetchingLocation, setIsFetchingLocation] = useState(true); // Start true
+  const [isFetchingLocation, setIsFetchingLocation] = useState(true); 
 
   const { isLoaded: isMapsApiLoaded, loadError: mapsApiLoadError } = useJsApiLoader({
-    id: 'full-map-page-google-map-script',
+    id: 'app-google-maps-script', // Standardized ID
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries,
     language: 'iw',
@@ -68,12 +68,12 @@ export default function FullMapPage() {
     setFetchError(null);
     try {
       const eventsCollectionRef = collection(db, "events");
-      const q = query(eventsCollectionRef, orderBy("dateTime", "asc")); // Consider if ordering is needed for map markers
+      const q = query(eventsCollectionRef, orderBy("dateTime", "asc")); 
       const querySnapshot = await getDocs(q);
       
       const fetchedEventsData: Event[] = querySnapshot.docs.map(docSnap => {
         const data = docSnap.data();
-        // Simplified mapping for map, assuming owners are not directly displayed in InfoWindow for now
+        
         return {
           id: docSnap.id,
           ...data,
@@ -84,7 +84,7 @@ export default function FullMapPage() {
           locationDisplayName: data.locationDisplayName || "",
           latitude: data.latitude || null,
           longitude: data.longitude || null,
-          imageUrl: data.imageUrl, // Keep image for potential future use in rich markers
+          imageUrl: data.imageUrl, 
         } as Event;
       });
       setAllEvents(fetchedEventsData);
@@ -100,7 +100,7 @@ export default function FullMapPage() {
   useEffect(() => {
     fetchAllEventsForMap();
 
-    // Fetch current location
+    
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -115,14 +115,14 @@ export default function FullMapPage() {
           console.error("Error getting location for map:", error);
           setLocationError(HEBREW_TEXT.map.locationError);
           setIsFetchingLocation(false);
-          // Default to a central location in IL if user location fails
+          
           setCurrentLocation({ lat: 31.7683, lng: 35.2137 }); 
         }
       );
     } else {
       setLocationError(HEBREW_TEXT.map.geolocationNotSupported);
       setIsFetchingLocation(false);
-      // Default to a central location in IL if geolocation not supported
+      
       setCurrentLocation({ lat: 31.7683, lng: 35.2137 });
     }
   }, [fetchAllEventsForMap]);
@@ -206,7 +206,7 @@ export default function FullMapPage() {
             center={currentLocation}
             mapContainerStyle={{ width: '100%', height: '100%', borderRadius: '0' }}
             eventLocations={mapEventLocations}
-            zoom={locationError ? 8 : 12} // Zoom out more if current location failed
+            zoom={locationError ? 8 : 12} 
           />
         )}
          {!fetchError && !currentLocation && !isLoading && isMapsApiLoaded && (
@@ -222,3 +222,5 @@ export default function FullMapPage() {
     </div>
   );
 }
+
+    

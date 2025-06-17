@@ -142,9 +142,9 @@ export function EventForm({
       locationDisplayName: "",
       description: "",
       ageRange: [18, 55],
-      foodType: "meat", // Default as per user request
-      kashrut: "kosher", // Default as per user request
-      weddingType: "traditional", // Default as per user request
+      foodType: "meat", 
+      kashrut: "kosher", 
+      weddingType: "traditional", 
       imageUrl: "",
       dateTime: undefined,
     },
@@ -177,7 +177,7 @@ export function EventForm({
 
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
+    id: 'app-google-maps-script', // Standardized ID
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries,
     language: 'iw',
@@ -196,13 +196,13 @@ export function EventForm({
 
   useEffect(() => {
     if (isEditMode && initialEventData) {
-      // Data migration for old foodType values
+      
       let migratedFoodType: FoodType = initialEventData.foodType;
-      let migratedKashrut: KashrutType = initialEventData.kashrut; // Assume new field might exist
+      let migratedKashrut: KashrutType = initialEventData.kashrut; 
 
-      const oldFoodType = (initialEventData as any).foodType_old || initialEventData.foodType; // Check for a temporary old field or use current
+      const oldFoodType = (initialEventData as any).foodType_old || initialEventData.foodType; 
 
-      if (!initialEventData.kashrut && oldFoodType !== "kosherParve") { // If kashrut isn't set, infer from old foodType, unless it's kosherParve
+      if (!initialEventData.kashrut && oldFoodType !== "kosherParve") { 
           switch(oldFoodType) {
               case 'kosherMeat':
                   migratedFoodType = 'meat';
@@ -212,17 +212,16 @@ export function EventForm({
                   migratedFoodType = 'dairy';
                   migratedKashrut = 'kosher';
                   break;
-              case 'kosherParve': // This case is now handled by new FoodType
+              case 'kosherParve': 
                   migratedFoodType = 'kosherParve';
-                  migratedKashrut = 'kosher'; // kosherParve implies kosher
+                  migratedKashrut = 'kosher'; 
                   break;
               case 'notKosher':
-                  migratedFoodType = 'meatAndDairy'; // Default if not kosher
+                  migratedFoodType = 'meatAndDairy'; 
                   migratedKashrut = 'notKosher';
                   break;
               default:
-                  // If it's already one of the new FoodType values, keep it
-                  // and assume kashrut was set or default to 'kosher'
+                  
                   migratedFoodType = initialEventData.foodType as FoodType;
                   migratedKashrut = initialEventData.kashrut || 'kosher';
           }
@@ -245,7 +244,7 @@ export function EventForm({
         ageRange: initialEventData.ageRange,
         foodType: migratedFoodType,
         kashrut: migratedKashrut,
-        weddingType: initialEventData.weddingType || (initialEventData as any).religionStyle || 'traditional', // Map old religionStyle
+        weddingType: initialEventData.weddingType || (initialEventData as any).religionStyle || 'traditional', 
         imageUrl: initialEventData.imageUrl || "",
       });
       if (initialEventData.imageUrl) {
@@ -425,7 +424,7 @@ export function EventForm({
         return;
     }
 
-    let finalImageUrl: string | undefined = "/onboarding/slide-2.png"; // Default image
+    let finalImageUrl: string | undefined = "/onboarding/slide-2.png"; 
 
     if (imageFile) {
       setIsUploadingImage(true);
@@ -463,7 +462,7 @@ export function EventForm({
     } else if (values.imageUrl && values.imageUrl.startsWith('http')) {
       finalImageUrl = values.imageUrl;
     } else if (isEditMode && initialEventData?.imageUrl) {
-        finalImageUrl = initialEventData.imageUrl; // Keep existing image if not changed
+        finalImageUrl = initialEventData.imageUrl; 
     }
 
 
@@ -483,7 +482,7 @@ export function EventForm({
         weddingType: values.weddingType,
         updatedAt: serverTimestamp(),
     };
-    // Remove religionStyle if it exists from old schema, weddingType is used now
+    
     delete (eventDataPayload as any).religionStyle;
 
 
@@ -492,7 +491,7 @@ export function EventForm({
 
       if (isEditMode && initialEventData?.id) {
         const eventDocRef = doc(db, "events", initialEventData.id);
-        const { createdAt, ...updatePayload } = eventDataPayload; // Don't include createdAt in updates
+        const { createdAt, ...updatePayload } = eventDataPayload; 
         await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
         toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" עודכן בהצלחה!` });
         router.push(`/events/${initialEventData.id}`);
@@ -1096,3 +1095,4 @@ export function EventForm({
   );
 }
 
+    
