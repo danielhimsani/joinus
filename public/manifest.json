@@ -1,5 +1,5 @@
 {
-  "name": "Mechuzarim (Reconnected)",
+  "name": "Mechuzarim",
   "short_name": "Mechuzarim",
   "description": "פלטפורמת ניהול אורחים לחתונה והזמנת מקומות ברגע האחרון.",
   "icons": [
@@ -16,9 +16,10 @@
       "purpose": "any maskable"
     }
   ],
-  "theme_color": "#F0F0F0",
-  "background_color": "#FFFFFF",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait"
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "scope": "/",
+  "orientation": "portrait-primary"
 }
