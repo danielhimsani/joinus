@@ -44,26 +44,34 @@
   }
 
   .dark {
-    /* Dark Theme with Pink/Purple Primary - Matching Screenshot */
-    --background: 222.2 84% 4.9%; /* Dark Navy Blue - #0A192F */
-    --foreground: 210 40% 98%; /* Light Text - #F8F9FA */
-    --muted: 222.2 74% 10.9%; /* Slightly Lighter Navy - #112240 */
-    --muted-foreground: 210 30% 70%; /* Lighter Gray - #A8B2D1 */
-    --popover: 222.2 84% 4.9%;
+    --background: 222 47% 11%; /* Dark desaturated blue */
+    --foreground: 210 40% 98%; /* Light gray/white text */
+
+    --muted: 222 40% 15%; /* Darker muted blue-gray */
+    --muted-foreground: 215 15% 65%; /* Lighter gray for muted text */
+
+    --popover: 222 45% 9%;
     --popover-foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%; /* Card background same as main background in dark mode */
+
+    --card: 222 45% 9%;
     --card-foreground: 210 40% 98%;
-    --border: 222.2 64% 15.9%; /* A bit lighter navy for borders - #1D2D50 */
-    --input: 222.2 64% 15.9%;
-    --primary: 326 79% 57%; /* Pink/Purple - #E63995 */
-    --primary-foreground: 0 0% 100%; /* White */
-    --secondary: 222.2 74% 10.9%; /* Using muted color for secondary button background */
-    --secondary-foreground: 210 40% 98%; /* Using light text for secondary button text */
-    --accent: 326 79% 57%; /* Pink/Purple */
-    --accent-foreground: 0 0% 100%; /* White */
-    --destructive: 0 62.8% 30.6%; /* Standard Dark Red */
-    --destructive-foreground: 210 40% 98%; /* Light Text */
-    --ring: 326 79% 67%; /* Lighter Pink/Purple for focus ring */
+
+    --border: 217 33% 25%; /* Darker border */
+    --input: 217 33% 20%; /* Darker input */
+
+    --primary: 339 70% 60%; /* Adjusted new primary for dark mode */
+    --primary-foreground: 222 47% 11%; /* Dark blue for contrast on new dark primary */
+
+    --secondary: 331 80% 35%; /* Adjusted new secondary for dark mode (lighter) */
+    --secondary-foreground: 210 40% 98%; /* Light gray/white text for contrast */
+
+    --accent: 35 90% 65%; /* Slightly lighter orange for dark mode */
+    --accent-foreground: 222 47% 11%; /* Dark for contrast */
+
+    --destructive: 0 70% 50%; /* Adjusted destructive for dark mode */
+    --destructive-foreground: 0 0% 98%;
+
+    --ring: 339 65% 65%; /* Derived from new dark primary */
 
     /* Default Chart Colors for Dark Theme */
     --chart-1: 211 83% 63%;

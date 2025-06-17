@@ -1,6 +1,6 @@
 
 import type { Metadata, Viewport } from 'next';
-import { Rubik } from 'next/font/google'; 
+import { Rubik } from 'next/font/google';
 import { Toaster } from "@/components/ui/toaster";
 import './globals.css';
 import { cn } from '@/lib/utils';
@@ -16,7 +16,7 @@ const rubik = Rubik({
 export const metadata: Metadata = {
   title: 'Mechuzarim (Reconnected)',
   description: 'פלטפורמת ניהול אורחים לחתונה והזמנת מקומות ברגע האחרון.',
-  manifest: '/manifest.json', 
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
-    { media: '(prefers-color-scheme: dark)', color: '#0A192F' },
+    { media: '(prefers-color-scheme: dark)', color: '#0F172A' },
   ],
   width: 'device-width',
   initialScale: 1,
