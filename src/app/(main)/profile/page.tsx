@@ -535,7 +535,7 @@ export default function ProfilePage() {
                         ))}
                         </div>
                     ) : (
-                        <p className="text-muted-foreground">{HEBREW_TEXT.profile.noFutureEventsOwned.replace('{name}', 'לך')}</p>
+                        <p className="text-muted-foreground">{HEBREW_TEXT.profile.noFutureEventsOwnedSelf}</p>
                     )}
                 </div>
 
@@ -630,4 +630,5 @@ export default function ProfilePage() {
     
 
     
+
 

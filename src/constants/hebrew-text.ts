@@ -178,6 +178,7 @@ export const HEBREW_TEXT = {
     nameMinLengthError: "שם חייב להכיל לפחות 2 תווים.",
     birthdayRequiredError: "תאריך לידה הוא שדה חובה.",
     noFutureEventsOwned: "ל{name} אין אירועים עתידיים בבעלותו כרגע.",
+    noFutureEventsOwnedSelf: "לך אין אירועים עתידיים בבעלותך כרגע.",
     legalInformationSectionTitle: "מידע משפטי",
     termsOfUseLink: "תנאי שימוש",
     privacyPolicyLink: "מדיניות פרטיות",
