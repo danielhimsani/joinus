@@ -6,7 +6,7 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 const withPWA = withPWAInit({
   dest: 'public',
-  disable: isDev, // Disable PWA in development for faster builds and to avoid caching issues
+  disable: false, // PWA is now enabled in development and production
   register: true,
   skipWaiting: true, // Automatically activate new service worker
   // fallbacks: { // Optional: define fallbacks for offline
