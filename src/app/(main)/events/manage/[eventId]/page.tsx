@@ -338,21 +338,27 @@ export default function ManageEventGuestsPage() {
     <TooltipProvider>
       <div className="container mx-auto px-4 py-12">
         <Card className="max-w-4xl mx-auto shadow-lg">
-          <CardHeader className="border-b">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-              <div>
-                <CardTitle className="font-headline text-2xl md:text-3xl">{event.name}</CardTitle>
-                <CardDescription className="flex items-center mt-1">
-                  <CalendarDays className="ml-1.5 h-4 w-4 text-muted-foreground" />
-                  {format(event.dateTime, 'PPPPp', { locale: he })}
-                </CardDescription>
-              </div>
-              <Button asChild variant="outline">
-                <Link href={`/events/edit/${event.id}`}>
-                  <Edit3 className="ml-2 h-4 w-4" />
-                  {HEBREW_TEXT.event.editEvent}
-                </Link>
-              </Button>
+          <CardHeader className="border-b relative"> {/* Default padding is p-6 */}
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              className="absolute top-4 right-4 z-10" // Visually top-left in RTL, within p-4 (adjust if CardHeader padding changes)
+              title={HEBREW_TEXT.event.editEvent}
+            >
+              <Link href={`/events/edit/${event.id}`}>
+                <Edit3 className="h-5 w-5" />
+              </Link>
+            </Button>
+
+            <div className="flex flex-col items-center text-center">
+              <CardTitle className="font-headline text-2xl md:text-3xl">
+                {event.name}
+              </CardTitle>
+              <CardDescription className="flex items-center mt-1">
+                <CalendarDays className="ml-1.5 h-4 w-4 text-muted-foreground" />
+                {format(event.dateTime, 'PPPP', { locale: he })} {/* Changed date format */}
+              </CardDescription>
             </div>
           </CardHeader>
 
