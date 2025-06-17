@@ -2,7 +2,7 @@
 import type {NextConfig} from 'next';
 import withPWAInit from 'next-pwa';
 
-const isDev = process.env.NODE_ENV !== 'production';
+// const isDev = process.env.NODE_ENV !== 'production'; // Keep PWA enabled for dev as per previous request
 
 const withPWA = withPWAInit({
   dest: 'public',
@@ -23,10 +23,10 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false, // Enforce TypeScript error checks
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false, // Enforce ESLint error checks
   },
   images: {
     remotePatterns: [
