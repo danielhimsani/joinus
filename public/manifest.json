@@ -1,6 +1,6 @@
 {
-  "name": "Mechuzarim (Reconnected)",
-  "short_name": "Mechuzarim",
+  "name": "JoinUs",
+  "short_name": "Joinus",
   "description": "פלטפורמת ניהול אורחים לחתונה והזמנת מקומות ברגע האחרון.",
   "start_url": "/",
   "display": "standalone",

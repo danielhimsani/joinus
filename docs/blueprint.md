@@ -1,4 +1,4 @@
-# **App Name**: Mechuzarim (Reconnected)
+# **App Name**: JoinUs (Reconnected)
 
 ## Core Features:
 

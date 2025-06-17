@@ -14,21 +14,21 @@ const rubik = Rubik({
 });
 
 export const metadata: Metadata = {
-  title: 'Mechuzarim (Reconnected)',
+  title: 'Join Us',
   description: 'פלטפורמת ניהול אורחים לחתונה והזמנת מקומות ברגע האחרון.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Mechuzarim',
-    // startUpImage: [], // You can add startup images for iOS here
+    title: 'Join us',
+    startupImage: "https://studio--join-us-p1u7f.us-central1.hosted.app/join_us_192.png", // You can add startup images for iOS here
   },
   formatDetection: {
     telephone: false,
   },
   icons: {
-    icon: 'https://placehold.co/192x192.png?text=M', // Default icon
-    apple: 'https://placehold.co/180x180.png?text=M', // Apple touch icon
+    icon: 'https://studio--join-us-p1u7f.us-central1.hosted.app/join_us_192.png', // Default icon
+    apple: 'https://studio--join-us-p1u7f.us-central1.hosted.app/join_us_192.png', // Apple touch icon
   },
 };
 

@@ -30,7 +30,7 @@ const slides: SlideContent[] = [
   },
   {
     title: HEBREW_TEXT.general.forCouples,
-    description: "יש לכם מקומות פנויים בחתונה? אל תתנו להם להתבזבז! פרסמו את האירוע שלכם במחוברים ומצאו אורחים שישמחו להצטרף ולכסות את העלויות.",
+    description: "יש לכם מקומות פנויים בחתונה? אל תתנו להם להתבזבז! פרסמו את האירוע שלכם ב Join us ומצאו אורחים שישמחו להצטרף ולכסות את העלויות.",
     imageUrl: "/onboarding/slide-2.png",
     imageHint: "wedding couple",
   },
