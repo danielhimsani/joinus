@@ -87,9 +87,9 @@ export default function Header() {
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuContent className="w-56" align="end" forceMount dir="rtl">
           <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1">
+            <div className="flex flex-col space-y-1 text-center">
               <p className="text-sm font-medium leading-none">{firebaseUser.displayName || "משתמש"}</p>
               {firebaseUser.email && (
                 <p className="text-xs leading-none text-muted-foreground">
