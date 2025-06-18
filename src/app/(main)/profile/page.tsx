@@ -44,7 +44,7 @@ import { format as formatDate } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
 import { getDisplayInitial } from '@/lib/textUtils';
-import { requestNotificationPermissionAndSaveToken } from '@/lib/firebase-messaging'; 
+import { requestNotificationPermissionAndSaveToken, type NotificationSetupResult } from '@/lib/firebase-messaging'; 
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
@@ -307,8 +307,47 @@ export default function ProfilePage() {
       toast({ title: HEBREW_TEXT.general.error, description: "עליך להיות מחובר כדי לאפשר התראות.", variant: "destructive" });
       return;
     }
-    toast({ title: "מאפשר התראות...", description: "אנא אשר את בקשת ההרשאה מהדפדפן." });
-    await requestNotificationPermissionAndSaveToken(firebaseUser.uid);
+    
+    const initialToast = toast({ 
+      title: "מאפשר התראות...", 
+      description: "אנא אשר את בקשת ההרשאה מהדפדפן.",
+      duration: 10000 // Give user time to interact with browser prompt
+    });
+
+    const result: NotificationSetupResult = await requestNotificationPermissionAndSaveToken(firebaseUser.uid);
+
+    initialToast.dismiss(); // Dismiss the optimistic toast
+
+    switch (result.status) {
+      case 'granted':
+        if (result.token) {
+          toast({ title: "התראות הופעלו!", description: "תקבל עדכונים חשובים כאן ובהתראות דחיפה.", variant: "default", duration: 5000 });
+        } else {
+          toast({ title: "שגיאה בהפעלת התראות", description: "הרשאה ניתנה אך לא הונפק טוקן ייחודי. נסה שוב או בדוק הגדרות דפדפן.", variant: "destructive", duration: 7000 });
+        }
+        break;
+      case 'denied':
+        toast({ title: "התראות נדחו", description: "לא אישרת קבלת התראות. ניתן לשנות זאת בהגדרות הדפדפן.", variant: "default", duration: 7000 });
+        break;
+      case 'default': 
+        toast({ title: "התראות לא הופעלו", description: "לא בוצעה פעולה לגבי התראות, או שהבקשה נדחתה בעבר.", variant: "default", duration: 7000 });
+        break;
+      case 'not-supported':
+        toast({ title: "התראות לא נתמכות", description: "הדפדפן שלך או המכשיר אינם תומכים באופן מלא בהתראות דחיפה.", variant: "default", duration: 7000 });
+        break;
+      case 'sw-inactive':
+        toast({ title: "שגיאת שירות התראות", description: "בעיה טכנית מונעת הפעלת התראות (SW). נסה לרענן את הדף.", variant: "destructive", duration: 7000 });
+        break;
+      case 'vapid-key-missing':
+        toast({ title: "שגיאת תצורת התראות", description: "התראות אינן מוגדרות כראוי בצד השרת (VAPID).", variant: "destructive", duration: 7000 });
+        break;
+      case 'error':
+        console.error("Notification setup error from profile page:", result.error);
+        toast({ title: "שגיאה כללית בהתראות", description: "אירעה שגיאה לא צפויה בהפעלת ההתראות. נסה שוב מאוחר יותר.", variant: "destructive", duration: 7000 });
+        break;
+      default:
+        toast({ title: "סטטוס לא ידוע", description: "התקבלה תגובה לא צפויה לגבי הגדרת התראות.", variant: "destructive", duration: 7000 });
+    }
   };
   
   const getManagedByProviderText = () => {
@@ -668,4 +707,5 @@ export default function ProfilePage() {
     
 
     
+
 
