@@ -158,11 +158,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             
             {/* Timestamp and Status Badge Row */}
             <div className="flex justify-between items-center mt-1.5">
-              {displayTimestamp && (
-                <p className="text-xs text-muted-foreground/90 whitespace-nowrap">{displayTimestamp}</p>
-              )}
-              {!displayTimestamp && <div className="flex-grow"></div>} {/* Spacer to push badge left if no timestamp */}
-              <div> 
+              <div> {/* Status Badge Container - now first for RTL positioning */}
                 <Badge
                     variant={statusDisplay.variant}
                     className={cn(
@@ -174,6 +170,9 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                     {statusDisplay.text}
                 </Badge>
               </div>
+              {displayTimestamp && (
+                <p className="text-xs text-muted-foreground/90 whitespace-nowrap">{displayTimestamp}</p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -181,4 +180,3 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     </Link>
   );
 }
-
