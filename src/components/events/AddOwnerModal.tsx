@@ -11,7 +11,7 @@ import { Loader2, Search, UserPlus, Contact as UserPlaceholderIcon } from 'lucid
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import type { UserProfile } from '@/types';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, orderBy, type QuerySnapshot, type DocumentData } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 interface AddOwnerModalProps {
@@ -29,32 +29,65 @@ export function AddOwnerModal({ isOpen, onOpenChange, onOwnerAdded, currentOwner
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const executeSearch = useCallback(async (currentSearchTerm: string) => {
-    if (!currentSearchTerm.trim()) {
+  const executeSearch = useCallback(async (rawSearchTerm: string) => {
+    const currentSearchTerm = rawSearchTerm.trim();
+    if (!currentSearchTerm) {
       setSearchResults([]);
-      setIsLoading(false); // Ensure loading is false if search term is cleared
+      setIsLoading(false);
       return;
     }
     setIsLoading(true);
     try {
       const usersRef = collection(db, "users");
-      const nameQuery = query(
-        usersRef,
-        where("name", ">=", currentSearchTerm.trim()),
-        where("name", "<=", currentSearchTerm.trim() + "\uf8ff"),
-        orderBy("name"),
-        limit(10)
-      );
+      const searchPromises: Promise<QuerySnapshot<DocumentData, DocumentData>>[] = [];
+
+      // Create different casings for the search term
+      const termsToSearch: string[] = [currentSearchTerm]; // Original term
+      const lowerCaseTerm = currentSearchTerm.toLowerCase();
+      if (lowerCaseTerm !== currentSearchTerm) {
+          termsToSearch.push(lowerCaseTerm);
+      }
+      const capitalizedTerm = lowerCaseTerm.charAt(0).toUpperCase() + lowerCaseTerm.slice(1);
+      if (capitalizedTerm !== currentSearchTerm && capitalizedTerm !== lowerCaseTerm) {
+          termsToSearch.push(capitalizedTerm);
+      }
+      // Consider adding all uppercase if needed: const upperCaseTerm = currentSearchTerm.toUpperCase();
+
+      const uniqueTerms = [...new Set(termsToSearch)]; // Ensure unique terms to avoid redundant queries
+
+      for (const term of uniqueTerms) {
+          const q = query(
+              usersRef,
+              where("name", ">=", term),
+              where("name", "<=", term + "\uf8ff"),
+              orderBy("name"),
+              limit(10) // Limit each query to keep results manageable
+          );
+          searchPromises.push(getDocs(q));
+      }
+
+      const querySnapshots = await Promise.all(searchPromises);
       
-      const querySnapshot = await getDocs(nameQuery);
-      const users: UserProfile[] = [];
-      querySnapshot.forEach((doc) => {
-        const userData = doc.data() as UserProfile;
-        if (userData.firebaseUid && !currentOwnerUids.includes(userData.firebaseUid)) {
-          users.push({ ...userData, id: doc.id });
-        }
+      const usersMap = new Map<string, UserProfile>(); // Use Map to handle de-duplication by document ID
+      querySnapshots.forEach(snapshot => {
+          snapshot.forEach((doc) => {
+              const userData = doc.data() as Omit<UserProfile, 'id'>; // Assume UserProfile from types doesn't always have 'id' from data()
+              // Ensure firebaseUid exists and is not already a current owner, and not already added to map
+              if (userData.firebaseUid && !currentOwnerUids.includes(userData.firebaseUid) && !usersMap.has(doc.id)) {
+                  usersMap.set(doc.id, { ...userData, id: doc.id });
+              }
+          });
       });
-      setSearchResults(users);
+
+      const mergedUsers = Array.from(usersMap.values());
+      
+      // Optional: Sort merged results by name again if strict alphabetical order is critical for the combined list
+      // mergedUsers.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      // Optional: Limit the final merged list to a specific number, e.g., 10 overall
+      // const finalResults = mergedUsers.slice(0, 10); 
+
+      setSearchResults(mergedUsers);
+
     } catch (error) {
       console.error("Error searching users:", error);
       toast({
@@ -84,9 +117,6 @@ export function AddOwnerModal({ isOpen, onOpenChange, onOwnerAdded, currentOwner
       } else if (searchTerm.trim() !== "") {
         executeSearch(searchTerm);
       } else {
-         // if search term is empty and results are already empty, do nothing
-         // Or if it became empty and results were not empty, it's handled above.
-         // This also ensures loading is false if search term is initially empty.
          setIsLoading(false);
       }
     }, DEBOUNCE_DELAY);
