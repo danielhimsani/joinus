@@ -888,6 +888,19 @@ export function EventForm({
             )}
 
             <div className="grid md:grid-cols-2 gap-8 items-start">
+                 <FormField
+                control={form.control}
+                name="numberOfGuests"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{HEBREW_TEXT.event.numberOfGuests}</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="50" {...field} data-fieldname="numberOfGuests" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="paymentOption"
@@ -956,19 +969,6 @@ export function EventForm({
                           </div>
                         ))}
                       </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="numberOfGuests"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{HEBREW_TEXT.event.numberOfGuests}</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="50" {...field} data-fieldname="numberOfGuests" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
