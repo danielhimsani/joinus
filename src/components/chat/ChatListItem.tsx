@@ -132,8 +132,8 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
           {/* Details Wrapper: Contains all text, timestamp, and status badge. */}
           <div className="flex-1 min-w-0 flex flex-col text-right">
             {/* Primary Title and Unread Badge Row */}
-            <div className="flex items-center justify-between"> {/* Ensures title on right, badge on left */}
-              <p className="text-md font-semibold truncate text-foreground" dir="rtl">{primaryTitle}</p>
+            <div className="flex items-center justify-between" dir="rtl"> {/* dir="rtl" added to parent div */}
+              <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
               {unreadMessages > 0 && (
                 <Badge variant="destructive" className="text-xs px-1.5 py-0.5 leading-none h-5 shrink-0">
                   {unreadMessages}
