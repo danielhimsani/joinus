@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import { ListFilter, Search, Users, ShieldCheck, Heart } from "lucide-react";
+import { ListFilter, Search, Users, ShieldCheck, Heart, Trash2 } from "lucide-react"; // Added Trash2
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
@@ -33,7 +33,6 @@ interface EventFiltersProps {
 
 const priceRanges = [
     { value: "any", label: "כל מחיר" },
-    // { value: "free", label: HEBREW_TEXT.event.free }, // Removed "free"
     { value: "0-100", label: "₪0 - ₪100" },
     { value: "100-200", label: "₪100 - ₪200" },
     { value: "200+", label: "₪200+" },
@@ -222,16 +221,17 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
                 </div>
             </div>
         </div>
-        <DialogFooter className="pt-6 border-t mt-2">
-            <Button type="button" variant="ghost" onClick={handleClearFilters}>
-                {HEBREW_TEXT.general.clearFilters}
-            </Button>
+        <DialogFooter className="pt-6 border-t mt-2 sm:justify-between">
             <DialogClose asChild>
                  <Button type="submit" className="font-body">
                     <Search className="ml-2 h-4 w-4" />
                     {HEBREW_TEXT.event.applyFilters}
                 </Button>
             </DialogClose>
+            <Button type="button" variant="ghost" onClick={handleClearFilters}>
+                <Trash2 className="ml-2 h-4 w-4" />
+                {HEBREW_TEXT.general.clearFilters}
+            </Button>
         </DialogFooter>
     </form>
   );
