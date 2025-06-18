@@ -21,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import { Chrome, Loader2, Phone } from "lucide-react"; // Removed Apple from lucide-react
+import { Chrome, Loader2, Phone } from "lucide-react"; 
 import { useToast } from "@/hooks/use-toast";
 import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; 
 import { useState, useEffect, useRef } from "react";
@@ -450,10 +450,9 @@ export function SignUpForm() {
                     onClick={() => { 
                         setIsOtpSent(false); 
                         otpForm.reset(); 
-                        phoneForm.reset(); 
+                        phoneForm.reset({phoneNumber: "05", name: persistedNameForOtp, birthday: persistedBirthdayForOtp }); 
                         setConfirmationResult(null); 
-                        setPersistedNameForOtp(""); 
-                        setPersistedBirthdayForOtp("");
+                        // No need to reset persistedNameForOtp/persistedBirthdayForOtp here, they are still needed if the user goes back to phone input.
                         if (recaptchaVerifierRef.current) {
                             recaptchaVerifierRef.current.clear();
                             recaptchaVerifierRef.current = null;
@@ -498,10 +497,9 @@ export function SignUpForm() {
                         setSignUpMethod('email'); 
                         setIsOtpSent(false); 
                         otpForm.reset();
-                        phoneForm.reset();
+                        phoneForm.reset({phoneNumber: "05", name: persistedNameForOtp, birthday: persistedBirthdayForOtp});
                         setConfirmationResult(null);
-                        setPersistedNameForOtp("");
-                        setPersistedBirthdayForOtp("");
+                        // Persisted name/birthday remain for potential re-entry
                         if (recaptchaVerifierRef.current) {
                             recaptchaVerifierRef.current.clear();
                             recaptchaVerifierRef.current = null;
@@ -530,7 +528,7 @@ export function SignUpForm() {
                   className="mr-2 h-4 w-4"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  <path d="M17.57,15.32a4.39,4.39,0,0,1,1.88-3.3,4.68,4.68,0,0,0-3.45-2A4.75,4.75,0,0,0,12.31,6.5a5.44,5.44,0,0,0-3.75,1.74,5.11,5.11,0,0,0-1.69,4.08,6,6,0,0,0,2.55,4.92A5.22,5.22,0,0,0,11,19.44a5.07,5.07,0,0,0,3.42-1.34,1.37,1.37,0,0,0,.47-.9A3.61,3.61,0,0,1,17.57,15.32ZM12.57,6A2.61,2.61,0,0,1,14,3.57,2.8,2.8,0,0,0,11.22,2,2.74,2.74,0,0,0,9.5,4.47,2.56,2.56,0,0,1,12.57,6Z" />
+                  <path d="M12 6.038C10.15 6.038 8.82 7.488 8.82 9.362c0 1.425.825 2.213 1.912 2.213.975 0 1.5-.6 2.213-.6.712 0 1.35.6 2.212.6.975 0 1.913-.788 1.913-2.213-.075-1.875-1.35-3.325-3.188-3.325zm3.608 11.037c-.75.975-1.575 1.5-2.512 1.5-.938 0-1.275-.525-2.213-.525-.937 0-1.275.525-2.212.525-.938 0-1.725-.525-2.438-1.5-1.5-2.025-2.625-5.625-2.625-8.963 0-3.525 2.025-5.25 4.725-5.25 1.875 0 3.075 1.05 3.975 1.05.9 0 2.25-1.05 4.05-1.05 2.775 0 4.725 1.725 4.725 5.25 0 3.338-1.125 6.938-2.7 8.963z"/>
                 </svg>
               )}
               Apple
