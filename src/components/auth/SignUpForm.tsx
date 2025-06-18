@@ -94,6 +94,10 @@ export function SignUpForm() {
 
   const setupRecaptcha = () => {
     if (!recaptchaVerifierRef.current && typeof window !== 'undefined') {
+      const container = document.getElementById(recaptchaContainerId);
+      if (container) {
+        container.innerHTML = ''; // Explicitly clear the container
+      }
       const verifier = new RecaptchaVerifier(firebaseAuthInstance, recaptchaContainerId, {
         size: 'invisible',
         'callback': (response: any) => console.log("reCAPTCHA (signup) solved:", response),
@@ -393,7 +397,7 @@ export function SignUpForm() {
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.auth.phoneNumber}</FormLabel>
                         <FormControl>
-                          <Input type="tel" placeholder="05X-XXXXXXX" {...field} disabled={isLoading} dir="ltr" value={phoneNumberForOtp} onChange={(e) => {setPhoneNumberForOtp(e.target.value); field.onChange(e);}} />
+                          <Input type="tel" placeholder={HEBREW_TEXT.auth.phoneNumber} {...field} disabled={isLoading} dir="ltr" value={phoneNumberForOtp} onChange={(e) => {setPhoneNumberForOtp(e.target.value); field.onChange(e);}} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -505,4 +509,3 @@ export function SignUpForm() {
     </Card>
   );
 }
-

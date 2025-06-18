@@ -88,6 +88,10 @@ export function SignInForm() {
 
   const setupRecaptcha = () => {
     if (!recaptchaVerifierRef.current && typeof window !== 'undefined') {
+      const container = document.getElementById(recaptchaContainerId);
+      if (container) {
+        container.innerHTML = ''; // Explicitly clear the container
+      }
       const verifier = new RecaptchaVerifier(firebaseAuthInstance, recaptchaContainerId, {
         size: 'invisible',
         'callback': (response: any) => {
@@ -154,7 +158,7 @@ export function SignInForm() {
       title: HEBREW_TEXT.general.success,
       description: HEBREW_TEXT.auth.phoneSignInSuccess,
     });
-    router.push("/"); 
+    router.push("/events"); 
   };
 
   const handleAuthError = (error: any, method: string) => {
@@ -348,7 +352,7 @@ export function SignInForm() {
                         <FormControl>
                           <Input 
                             type="tel" 
-                            placeholder="05X-XXXXXXX" 
+                            placeholder={HEBREW_TEXT.auth.phoneNumber}
                             {...field} 
                             disabled={isLoading} 
                             dir="ltr"
@@ -482,4 +486,3 @@ export function SignInForm() {
     </Card>
   );
 }
-
