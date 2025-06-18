@@ -34,10 +34,9 @@ const emailPasswordSchema = z.object({
 });
 
 const phoneSchema = z.object({
-  phoneNumber: z.string().refine(val => /^\+972\d{9}$/.test(val), { message: HEBREW_TEXT.auth.invalidPhoneNumber }),
-  // For phone sign-up, name and birthday are optional here for simplicity, can be added later
-  name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }).optional(),
-  birthday: z.string().optional(),
+  phoneNumber: z.string().refine(val => /^05\d{8}$/.test(val), { message: HEBREW_TEXT.auth.invalidIsraeliPhoneNumber }),
+  name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
+  birthday: z.string().min(1, { message: HEBREW_TEXT.profile.birthdayRequiredError }),
 });
 
 const otpSchema = z.object({
@@ -58,9 +57,9 @@ export function SignUpForm() {
   const [isSubmittingApple, setIsSubmittingApple] = useState(false);
 
   // Phone Auth states
-  const [phoneNumberForOtp, setPhoneNumberForOtp] = useState("+972");
-  const [nameForPhoneSignUp, setNameForPhoneSignUp] = useState(""); // To capture name during phone sign-up
-  const [birthdayForPhoneSignUp, setBirthdayForPhoneSignUp] = useState(""); // To capture birthday
+  const [phoneNumberForOtp, setPhoneNumberForOtp] = useState("05");
+  const [nameForPhoneSignUp, setNameForPhoneSignUp] = useState(""); 
+  const [birthdayForPhoneSignUp, setBirthdayForPhoneSignUp] = useState(""); 
   const [otpCode, setOtpCode] = useState("");
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
@@ -77,7 +76,7 @@ export function SignUpForm() {
 
   const phoneForm = useForm<z.infer<typeof phoneSchema>>({
     resolver: zodResolver(phoneSchema),
-    defaultValues: { phoneNumber: "+972", name: "", birthday: "" },
+    defaultValues: { phoneNumber: "05", name: "", birthday: "" },
   });
   
   const otpForm = useForm<z.infer<typeof otpSchema>>({
@@ -124,7 +123,7 @@ export function SignUpForm() {
       updatedAt: serverTimestamp(),
     };
     if (birthday) userData.birthday = birthday;
-    if (user.phoneNumber) userData.phone = user.phoneNumber;
+    if (user.phoneNumber) userData.phone = user.phoneNumber; // Firebase phone number is E.164
     if (!user.email) userData.email = null; // Explicitly null for phone-only users
 
     try {
@@ -177,7 +176,7 @@ export function SignUpForm() {
             description = "סוג הרשמה זה אינו מאופשר כרגע.";
             break;
         case 'auth/invalid-phone-number':
-            description = HEBREW_TEXT.auth.invalidPhoneNumber;
+            description = HEBREW_TEXT.auth.invalidIsraeliPhoneNumber;
             break;
         case 'auth/captcha-check-failed':
             description = HEBREW_TEXT.auth.recaptchaError;
@@ -217,6 +216,7 @@ export function SignUpForm() {
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(firebaseAuthInstance, provider);
+      // For Google sign-up, birthday isn't typically provided by Google, so we pass an empty string or handle it in profile completion.
       await handleSignUpSuccess(result.user, { name: result.user.displayName || "משתמש גוגל", birthday: "" });
     } catch (error: any) {
       handleAuthError(error, "Google");
@@ -230,13 +230,14 @@ export function SignUpForm() {
     toast({ title: "הרשמה עם אפל", description: "תהליך הרשמה עם אפל מופעל (דמה)..." });
     await new Promise(resolve => setTimeout(resolve, 1000)); 
     const mockUser = { uid: 'mock-apple-uid-' + Date.now(), displayName: 'משתמש אפל', email: 'apple-user@example.com', photoURL: `https://placehold.co/150x150.png?text=A`} as User; 
+    // For Apple sign-up, birthday isn't typically provided, so we pass an empty string.
     await handleSignUpSuccess(mockUser, { name: 'משתמש אפל', birthday: "" });
     setIsSubmittingApple(false);
   };
 
   const onSendOtp = async (data: z.infer<typeof phoneSchema>) => {
     setIsSendingOtp(true);
-    setNameForPhoneSignUp(data.name || ""); // Store name and birthday for later
+    setNameForPhoneSignUp(data.name || ""); 
     setBirthdayForPhoneSignUp(data.birthday || "");
     try {
       firebaseAuthInstance.languageCode = 'he';
@@ -244,10 +245,16 @@ export function SignUpForm() {
       if (!verifier) {
           throw new Error("RecaptchaVerifier not initialized for signup");
       }
-      const result = await signInWithPhoneNumber(firebaseAuthInstance, data.phoneNumber, verifier);
+      
+      let firebasePhoneNumber = data.phoneNumber;
+      if (firebasePhoneNumber.startsWith('0')) {
+        firebasePhoneNumber = '+972' + firebasePhoneNumber.substring(1);
+      }
+
+      const result = await signInWithPhoneNumber(firebaseAuthInstance, firebasePhoneNumber, verifier);
       setConfirmationResult(result);
       setIsOtpSent(true);
-      setPhoneNumberForOtp(data.phoneNumber); // Store the number for which OTP was sent
+      setPhoneNumberForOtp(data.phoneNumber); 
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.auth.otpSent });
     } catch (error: any) {
       handleAuthError(error, "Phone OTP Send (SignUp)");
@@ -265,7 +272,6 @@ export function SignUpForm() {
     setIsVerifyingOtp(true);
     try {
       const userCredential = await confirmationResult.confirm(data.otpCode);
-      // Pass stored name and birthday for new user creation
       await handleSignUpSuccess(userCredential.user, { name: nameForPhoneSignUp || `משתמש ${phoneNumberForOtp.slice(-4)}`, birthday: birthdayForPhoneSignUp });
     } catch (error: any) {
       handleAuthError(error, "Phone OTP Verify (SignUp)");
@@ -387,13 +393,13 @@ export function SignUpForm() {
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.auth.phoneNumber}</FormLabel>
                         <FormControl>
-                          <Input type="tel" placeholder="+972501234567" {...field} disabled={isLoading} dir="ltr" value={phoneNumberForOtp} onChange={(e) => {setPhoneNumberForOtp(e.target.value); field.onChange(e);}} />
+                          <Input type="tel" placeholder="05X-XXXXXXX" {...field} disabled={isLoading} dir="ltr" value={phoneNumberForOtp} onChange={(e) => {setPhoneNumberForOtp(e.target.value); field.onChange(e);}} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full font-body" disabled={isLoading || !phoneNumberForOtp.match(/^\+972\d{9}$/) || !nameForPhoneSignUp || !birthdayForPhoneSignUp}>
+                  <Button type="submit" className="w-full font-body" disabled={isLoading || !phoneNumberForOtp.match(/^05\d{8}$/) || !nameForPhoneSignUp || !birthdayForPhoneSignUp}>
                     {isSendingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {HEBREW_TEXT.auth.sendOtp}
                   </Button>

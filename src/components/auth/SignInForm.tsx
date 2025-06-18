@@ -32,7 +32,7 @@ const emailPasswordSchema = z.object({
 });
 
 const phoneSchema = z.object({
-  phoneNumber: z.string().refine(val => /^\+972\d{9}$/.test(val), { message: HEBREW_TEXT.auth.invalidPhoneNumber }),
+  phoneNumber: z.string().refine(val => /^05\d{8}$/.test(val), { message: HEBREW_TEXT.auth.invalidIsraeliPhoneNumber }),
 });
 
 const otpSchema = z.object({
@@ -53,7 +53,7 @@ export function SignInForm() {
   const [isSubmittingApple, setIsSubmittingApple] = useState(false); // Apple sign-in remains mock
 
   // Phone Auth states
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("05");
   const [otpCode, setOtpCode] = useState("");
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
@@ -69,7 +69,7 @@ export function SignInForm() {
 
   const phoneForm = useForm<z.infer<typeof phoneSchema>>({
     resolver: zodResolver(phoneSchema),
-    defaultValues: { phoneNumber: "+972" },
+    defaultValues: { phoneNumber: "05" },
   });
   
   const otpForm = useForm<z.infer<typeof otpSchema>>({
@@ -119,7 +119,7 @@ export function SignInForm() {
       profileImageUrl: user.photoURL || `https://placehold.co/150x150.png?text=${(name || user.displayName || "U").charAt(0)}`,
       updatedAt: serverTimestamp(),
     };
-    if (user.phoneNumber) {
+    if (user.phoneNumber) { // Firebase phone number is E.164
         userData.phone = user.phoneNumber;
     }
 
@@ -180,7 +180,7 @@ export function SignInForm() {
             description = "סוג התחברות זה אינו מאופשר כרגע.";
             break;
         case 'auth/invalid-phone-number':
-            description = HEBREW_TEXT.auth.invalidPhoneNumber;
+            description = HEBREW_TEXT.auth.invalidIsraeliPhoneNumber;
             break;
         case 'auth/missing-phone-number':
             description = "מספר טלפון חסר.";
@@ -247,7 +247,13 @@ export function SignInForm() {
       if (!verifier) {
           throw new Error("RecaptchaVerifier not initialized");
       }
-      const result = await signInWithPhoneNumber(firebaseAuthInstance, data.phoneNumber, verifier);
+      
+      let firebasePhoneNumber = data.phoneNumber;
+      if (firebasePhoneNumber.startsWith('0')) {
+        firebasePhoneNumber = '+972' + firebasePhoneNumber.substring(1);
+      }
+
+      const result = await signInWithPhoneNumber(firebaseAuthInstance, firebasePhoneNumber, verifier);
       setConfirmationResult(result);
       setIsOtpSent(true);
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.auth.otpSent });
@@ -342,7 +348,7 @@ export function SignInForm() {
                         <FormControl>
                           <Input 
                             type="tel" 
-                            placeholder="+972501234567" 
+                            placeholder="05X-XXXXXXX" 
                             {...field} 
                             disabled={isLoading} 
                             dir="ltr"
@@ -357,7 +363,7 @@ export function SignInForm() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full font-body" disabled={isLoading || !phoneNumber.match(/^\+972\d{9}$/)}>
+                  <Button type="submit" className="w-full font-body" disabled={isLoading || !phoneNumber.match(/^05\d{8}$/)}>
                     {isSendingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {HEBREW_TEXT.auth.sendOtp}
                   </Button>

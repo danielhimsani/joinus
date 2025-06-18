@@ -11,7 +11,7 @@ export const HEBREW_TEXT = {
     signInWithApple: "התחבר עם אפל",
     signInWithPhone: "התחבר עם מספר טלפון",
     signUpWithPhone: "הירשם עם מספר טלפון",
-    phoneNumber: "מספר טלפון (+972)",
+    phoneNumber: "מספר טלפון (לדוגמה 0501234567)",
     sendOtp: "שלח קוד",
     otpCode: "קוד אימות",
     verifyOtp: "אמת קוד",
@@ -24,7 +24,8 @@ export const HEBREW_TEXT = {
     passwordMinLengthError: "סיסמה חייבת להכיל לפחות 6 תווים.",
     emailInUseError: "כתובת אימייל זו כבר רשומה.",
     weakPasswordError: "הסיסמה חלשה מדי. נסה סיסמה חזקה יותר.",
-    invalidPhoneNumber: "מספר טלפון לא תקין. אנא השתמש בפורמט +972XXXXXXXXX.",
+    invalidPhoneNumber: "מספר טלפון לא תקין. אנא השתמש בפורמט +972XXXXXXXXX.", // Kept for general reference if needed, but new one is primary
+    invalidIsraeliPhoneNumber: "מספר טלפון ישראלי לא תקין. אנא השתמש בפורמט 05XXXXXXXX (10 ספרות).",
     otpSent: "קוד אימות נשלח למספר הטלפון שלך.",
     otpError: "שגיאה בשליחת קוד האימות. אנא נסה שוב.",
     invalidOtp: "קוד האימות שגוי. אנא נסה שוב.",
