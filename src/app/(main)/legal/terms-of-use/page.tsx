@@ -87,7 +87,7 @@ export default function TermsOfUsePage() {
 
           <div>
             <h2 className="text-xl font-semibold mt-4 mb-3 font-headline">8. יצירת קשר</h2>
-            <p>לשאלות או פניות, ניתן ליצור קשר במייל: <a href="mailto:steven.danishevski@gmail.com" className="text-primary hover:underline">steven.danishevski@gmail.com</a></p>
+            <p>לשאלות או פניות, ניתן ליצור קשר במייל: <a href="mailto:join.us.wed@gmail.com" className="text-primary hover:underline">join.us.wed@gmail.com</a></p>
           </div>
           
           <Separator />

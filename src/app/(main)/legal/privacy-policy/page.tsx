@@ -25,7 +25,6 @@ export default function PrivacyPolicyPage() {
               <li><strong>פרטים אישיים:</strong> שם, כתובת דוא"ל, מספר טלפון (אם נמסר), תאריך לידה (לצורך אימות גיל משתמשים מעל 18), תמונת פרופיל (לבחירת המשתמש).</li>
               <li><strong>מיקום גיאוגרפי:</strong> נאסף רק בעת חיפוש אירועים בקרבת מקום, לאחר קבלת אישור.</li>
               <li><strong>גישה לגלריה:</strong> מתבצעת רק כאשר המשתמש מעלה תמונה.</li>
-              <li><strong>מידע טכני:</strong> דגם מכשיר, מערכת הפעלה, גרסת אפליקציה ועוד.</li>
             </ul>
           </div>
 
@@ -64,7 +63,7 @@ export default function PrivacyPolicyPage() {
 
           <div>
             <h2 className="text-xl font-semibold mt-4 mb-3 font-headline">5. זכויות המשתמש</h2>
-            <p>ניתן לבקש לעיין, לעדכן או למחוק את המידע האישי שלך בפנייה למייל: <a href="mailto:steven.danishevski@gmail.com" className="text-primary hover:underline">steven.danishevski@gmail.com</a></p>
+            <p>ניתן לבקש לעיין, לעדכן או למחוק את המידע האישי שלך בפנייה למייל: <a href="mailto:join.us.wed@gmail.com" className="text-primary hover:underline">join.us.wed@gmail.com</a></p>
           </div>
 
           <Separator />
