@@ -279,11 +279,11 @@ export default function MessagesPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full p-2 sm:p-4 md:p-6">
           <TabsList className="grid w-full grid-cols-2 mb-4 h-12">
             <TabsTrigger value="owned" className="py-2.5 text-sm sm:text-base font-body flex flex-row-reverse">
-              <Briefcase className="mr-1.5 h-4 w-4 sm:h-5 sm:w-5" />
+              <Briefcase className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
               {HEBREW_TEXT.chat.eventsInMyOwnership}
             </TabsTrigger>
             <TabsTrigger value="requested" className="py-2.5 text-sm sm:text-base font-body flex flex-row-reverse">
-              <Inbox className="mr-1.5 h-4 w-4 sm:h-5 sm:w-5" />
+              <Inbox className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
               {HEBREW_TEXT.chat.myRequests}
             </TabsTrigger>
           </TabsList>
@@ -293,7 +293,7 @@ export default function MessagesPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none rtl:right-3 rtl:left-auto" />
                 <Input
                     type="search"
-                    placeholder={HEBREW_TEXT.general.search + "..."}
+                    placeholder={HEBREW_TEXT.general.search}
                     className="w-full pl-10 pr-3 h-9 rtl:pr-10 rtl:pl-3"
                     value={simpleSearchQuery}
                     onChange={(e) => setSimpleSearchQuery(e.target.value)}
@@ -400,4 +400,3 @@ export default function MessagesPage() {
     </div>
   );
 }
-

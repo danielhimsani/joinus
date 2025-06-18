@@ -229,6 +229,7 @@ export const HEBREW_TEXT = {
     requestAccepted: "הבקשה אושרה!",
     requestDeclined: "הבקשה נדחתה.",
     statusPending: "ממתין לאישור בעלי האירוע",
+    statusPendingShortGuest: "ממתינה",
     statusActive: "פעיל",
     statusApproved: "הבקשה אושרה",
     statusRejected: "הבקשה נדחתה",
@@ -299,7 +300,7 @@ export const HEBREW_TEXT = {
     success: "הפעולה בוצעה בהצלחה",
     close: "סגור",
     optional: "אופציונלי",
-    search: "חיפוש...",
+    search: "חיפוש",
     searchEventsSimplePlaceholder: "חיפוש חופשי (שם, מקום, תיאור...)",
     searchEventsSpecificPlaceholder: "יוגה, פילאטיס, מסאז'...",
     actions: "פעולות",
@@ -358,5 +359,3 @@ export const HEBREW_TEXT = {
     termsOfUseTitle: "תנאי שימוש",
   }
 };
-
-    

@@ -24,7 +24,7 @@ interface ChatListItemProps {
 const getChatStatusDisplay = (status: EventChat['status'], isOwner: boolean, guestName?: string): { text: string; variant: BadgeProps['variant'] } => {
   switch (status) {
     case 'pending_request':
-      return { text: isOwner ? HEBREW_TEXT.chat.statusPendingDisplayOwner : HEBREW_TEXT.chat.statusPendingDisplayGuest, variant: 'warning' };
+      return { text: isOwner ? HEBREW_TEXT.chat.statusPendingDisplayOwner : HEBREW_TEXT.chat.statusPendingShortGuest, variant: 'warning' };
     case 'request_approved':
       return { text: HEBREW_TEXT.chat.statusApprovedDisplay, variant: 'success' };
     case 'request_rejected':
