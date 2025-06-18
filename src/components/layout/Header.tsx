@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import Image from 'next/image'; // Added for PNG logo
+import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
@@ -19,8 +19,10 @@ import {
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth"; // Firebase Auth
-import { auth as firebaseAuthInstance } from "@/lib/firebase"; // Firebase Auth Instance
+import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
+import { auth as firebaseAuthInstance, db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import type { EventChat } from '@/types';
 
 // Navigation items for Desktop Top Bar
 const desktopNavItems = [
@@ -35,7 +37,7 @@ const sheetNavItems = [
   { href: '/events', label: HEBREW_TEXT.navigation.events, icon: <Search className="ml-2 h-5 w-5" /> },
   { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: <PlusSquare className="ml-2 h-5 w-5" /> },
   { href: '/messages', label: HEBREW_TEXT.navigation.messages, icon: <MessageSquare className="ml-2 h-5 w-5" /> },
-  { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: <UserCircle className="ml-2 h-5 w-5" /> }, // Profile link remains in sheet for direct access
+  { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: <UserCircle className="ml-2 h-5 w-5" /> },
 ];
 
 
@@ -44,31 +46,65 @@ export default function Header() {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+  const [isLoadingUnread, setIsLoadingUnread] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
+    const unsubscribeAuth = onAuthStateChanged(firebaseAuthInstance, (user) => {
       setFirebaseUser(user);
       setIsLoadingAuth(false);
+      if (!user) {
+        setTotalUnreadCount(0);
+        setIsLoadingUnread(false);
+      }
     });
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
+
+  useEffect(() => {
+    if (!firebaseUser) {
+      setTotalUnreadCount(0);
+      setIsLoadingUnread(false);
+      return;
+    }
+
+    setIsLoadingUnread(true);
+    const chatsRef = collection(db, "eventChats");
+    const q = query(chatsRef, where("participants", "array-contains", firebaseUser.uid));
+
+    const unsubscribeChats = onSnapshot(q, (querySnapshot) => {
+      let unreadSum = 0;
+      querySnapshot.forEach((doc) => {
+        const chatData = doc.data() as EventChat;
+        if (chatData.unreadCount && chatData.unreadCount[firebaseUser.uid]) {
+          unreadSum += chatData.unreadCount[firebaseUser.uid];
+        }
+      });
+      setTotalUnreadCount(unreadSum);
+      setIsLoadingUnread(false);
+    }, (error) => {
+      console.error("Error fetching unread messages count for header:", error);
+      setTotalUnreadCount(0);
+      setIsLoadingUnread(false);
+    });
+
+    return () => unsubscribeChats();
+  }, [firebaseUser]);
 
   const handleSignOut = async () => {
     try {
       await firebaseAuthInstance.signOut();
-      // Clear any local mock auth state if it was used before full Firebase integration
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('userName');
-      router.push('/'); // Redirect to home page after sign out
+      router.push('/');
     } catch (error) {
       console.error("Error signing out: ", error);
-      // Optionally, show a toast message for sign-out error
     }
   };
 
   const UserNav = () => {
     if (isLoadingAuth) {
-      return <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />; // Skeleton for avatar
+      return <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />;
     }
     if (!firebaseUser) return null;
 
@@ -118,32 +154,35 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
-        {/* Left side: Logo and Desktop Nav */}
-        <div className="flex items-center space-x-4 rtl:space-x-reverse"> {/* Added space-x-4 for padding */}
-          <Link href="/" className="flex items-center"> {/* Removed internal space-x from Link */}
+        <div className="flex items-center space-x-4 rtl:space-x-reverse">
+          <Link href="/" className="flex items-center">
             <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={100} height={30} className="h-auto" data-ai-hint="app logo" />
           </Link>
-
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center space-x-1 rtl:space-x-reverse"> {/* Removed ml-6 */}
-            {desktopNavItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                  (pathname === item.href || (item.href === '/events' && pathname.startsWith('/events/') && pathname !== '/events/create'))
-                    ? "text-primary bg-primary/10"
-                    : "text-foreground/70 hover:text-foreground hover:bg-muted/50",
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
+          <nav className="hidden md:flex items-center space-x-1 rtl:space-x-reverse">
+            {desktopNavItems.map((item) => {
+              const isActive = pathname === item.href || (item.href === '/events' && pathname.startsWith('/events/') && pathname !== '/events/create');
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5", // Added flex and gap
+                    isActive
+                      ? "text-primary bg-primary/10"
+                      : "text-foreground/70 hover:text-foreground hover:bg-muted/50",
+                  )}
+                >
+                  {item.label}
+                  {item.href === '/messages' && totalUnreadCount > 0 && !isLoadingUnread && (
+                    <span className="text-xs bg-primary text-primary-foreground rounded-full h-5 min-w-[1.25rem] flex items-center justify-center px-1.5">
+                      {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </nav>
         </div>
-
-        {/* Right side: Auth buttons / UserNav / Mobile Menu Trigger */}
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
           {!isLoadingAuth && (firebaseUser ? (
             <UserNav />
@@ -157,7 +196,7 @@ export default function Header() {
               </Button>
             </>
           ))}
-          <div className="md:hidden"> {/* This ensures SheetTrigger is only for mobile */}
+          <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon">
@@ -173,24 +212,34 @@ export default function Header() {
                   <SheetTitle className="text-center text-lg font-normal text-muted-foreground">{HEBREW_TEXT.navigation.mobileMenuTitle}</SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col space-y-2 mt-4">
-                  {sheetNavItems.map(link => (
-                    <Button
-                        variant="ghost"
-                        asChild
-                        key={link.href}
-                        className={cn(
-                            "w-full justify-start p-3 text-base",
-                            (pathname === link.href || (link.href === '/events' && pathname.startsWith('/events/') && pathname !== '/events/create'))
-                            ? "text-primary bg-primary/10"
-                            : "text-foreground/80 hover:text-foreground"
-                        )}
-                    >
-                        <Link href={link.href} className="flex items-center">
-                        {link.icon}
-                        {link.label}
-                        </Link>
-                    </Button>
-                  ))}
+                  {sheetNavItems.map(link => {
+                    const isActive = pathname === link.href || (link.href === '/events' && pathname.startsWith('/events/') && pathname !== '/events/create');
+                    return (
+                      <Button
+                          variant="ghost"
+                          asChild
+                          key={link.href}
+                          className={cn(
+                              "w-full justify-start p-3 text-base",
+                              isActive
+                              ? "text-primary bg-primary/10"
+                              : "text-foreground/80 hover:text-foreground"
+                          )}
+                      >
+                          <Link href={link.href} className="flex items-center justify-between w-full">
+                              <div className="flex items-center">
+                                {link.icon}
+                                {link.label}
+                              </div>
+                              {link.href === '/messages' && totalUnreadCount > 0 && !isLoadingUnread && (
+                                <span className="text-xs bg-primary text-primary-foreground rounded-full h-5 min-w-[1.25rem] flex items-center justify-center px-1.5">
+                                  {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
+                                </span>
+                              )}
+                          </Link>
+                      </Button>
+                    );
+                  })}
                   <DropdownMenuSeparator className="my-2"/>
                   {!isLoadingAuth && !firebaseUser && (
                     <>
