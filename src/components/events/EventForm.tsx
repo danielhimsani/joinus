@@ -383,13 +383,12 @@ export function EventForm({
       if (place && place.geometry && (place.name || place.formatted_address)) {
         const displayName = place.name || place.formatted_address?.split(',')[0] || "מיקום לא ידוע";
         const formattedAddress = place.formatted_address || displayName;
-        const placeIdValue = place.place_id || null;
+        const placeIdValue = place.place_id || "";
 
         form.setValue("location", displayName, { shouldValidate: true });
         form.setValue("locationDisplayName", displayName, { shouldValidate: false });
-        if (placeIdValue) {
-          form.setValue("placeId", placeIdValue, { shouldValidate: false });
-        }
+        form.setValue("placeId", placeIdValue, { shouldValidate: false });
+        
 
         setTrueFormattedAddress(formattedAddress);
         setCurrentPlaceId(placeIdValue);
@@ -406,7 +405,7 @@ export function EventForm({
       } else {
         const currentLocationValue = locationInputRef.current?.value || form.getValues("location");
         form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false });
-        form.setValue("placeId", "", { shouldValidate: false }); // Clear placeId if no valid place selected
+        form.setValue("placeId", "", { shouldValidate: false }); 
         setTrueFormattedAddress(currentLocationValue);
         setCurrentPlaceId(null);
         setLatitude(null);
@@ -418,6 +417,10 @@ export function EventForm({
   const onAutocompleteLoad = (autocompleteInstance: google.maps.places.Autocomplete) => {
     autocompleteRef.current = autocompleteInstance;
   };
+
+  const onAutocompleteUnmount = useCallback(() => {
+    autocompleteRef.current = null;
+  }, []);
 
   const onSubmit = async (values: FormSchemaType) => {
     setIsSubmitting(true);
@@ -691,7 +694,7 @@ export function EventForm({
                 control={form.control}
                 name="location"
                 render={({ field }) => (
-                  <FormItem className="mt-3">
+                  <FormItem className="mt-1">
                     <FormControl>
                       <div className="flex items-center text-white">
                         <MapPin className="ml-1.5 h-4 w-4 flex-shrink-0" />
@@ -699,36 +702,55 @@ export function EventForm({
                           <Autocomplete
                             onLoad={onAutocompleteLoad}
                             onPlaceChanged={handlePlaceChanged}
+                            onUnmount={onAutocompleteUnmount}
                             options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location", "photos", "place_id"] }}
                           >
                             <Input
                               ref={(e) => { field.ref(e); locationInputRef.current = e; }}
                               placeholder={HEBREW_TEXT.event.pickLocation}
-                              defaultValue={field.value} // Use defaultValue for Autocomplete controlled by external value
-                              name={field.name} // Keep name for form context
-                              className="text-sm md:text-base bg-transparent border-0 p-0 h-auto text-white placeholder-white/70 flex-grow focus:ring-0 focus-visible:ring-0 focus-visible:outline-none"
+                              defaultValue={field.value} 
+                              name={field.name} 
+                              className="text-sm md:text-base bg-transparent border-0 focus:ring-0 p-0 h-auto text-white placeholder-white/70 flex-grow focus-visible:ring-0 focus-visible:outline-none"
                               data-fieldname="location"
                               onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault();}}
-                              onChange={field.onChange} // Important: Allow RHF to track changes
-                              onBlur={field.onBlur} // Important: Allow RHF to track blur
+                              onChange={(e) => {
+                                field.onChange(e.target.value); 
+                                form.setValue("locationDisplayName", e.target.value, { shouldValidate: false }); 
+                                if (currentPlaceId) {
+                                    form.setValue("placeId", "", { shouldValidate: false });
+                                    setCurrentPlaceId(null);
+                                    setLatitude(null);
+                                    setLongitude(null);
+                                    setTrueFormattedAddress(null);
+                                }
+                              }}
+                              onBlur={field.onBlur}
                             />
                           </Autocomplete>
                         )}
+                        {!isLoaded && (
+                           <Input
+                            placeholder={HEBREW_TEXT.event.pickLocation}
+                            className="text-sm md:text-base bg-transparent border-0 focus:ring-0 p-0 h-auto text-white placeholder-white/70 flex-grow focus-visible:ring-0 focus-visible:outline-none"
+                            disabled
+                          />
+                        )}
                       </div>
                     </FormControl>
-                    {form.formState.errors.location && (
+                     {form.formState.errors.location && (
                         <p className="text-destructive text-xs mt-1 bg-black/50 p-1 rounded">{form.formState.errors.location.message}</p>
                     )}
                   </FormItem>
                 )}
               />
 
+
               <Popover open={isDateTimePopoverOpen} onOpenChange={setIsDateTimePopoverOpen}>
                 <PopoverTrigger asChild>
                     <button
                         type="button"
                         className={cn(
-                            "mt-3 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center w-full text-left p-0 bg-transparent border-0 text-white focus-visible:outline-none focus-visible:ring-0",
+                            "mt-1 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center w-full text-left p-0 bg-transparent border-0 text-white focus-visible:outline-none focus-visible:ring-0",
                              form.formState.errors.dateTime && "text-destructive"
                         )}
                         title="לחץ לעריכת תאריך ושעה"
@@ -1122,4 +1144,3 @@ export function EventForm({
     </>
   );
 }
-
