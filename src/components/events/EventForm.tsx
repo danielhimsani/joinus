@@ -34,7 +34,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle as ShadCardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle as ShadDialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { PaymentOption, FoodType, KashrutType, WeddingType, Event as EventType, UserProfile } from "@/types";
 import { cn } from "@/lib/utils";
@@ -81,7 +80,7 @@ const formSchema = z.object({
   locationDisplayName: z.string().optional(),
   dateTime: z.date({ required_error: HEBREW_TEXT.event.dateTimeRequiredError })
     .refine(date => {
-      if (!date) return true; // Will be caught by required_error if not set
+      if (!date) return true; 
       return date > new Date();
     }, { message: HEBREW_TEXT.event.dateTimeInFutureError }),
   description: z.string().min(10, { message: "תיאור חייב להכיל לפחות 10 תווים." }),
@@ -163,6 +162,7 @@ export function EventForm({
   const [isEditingName, setIsEditingName] = useState(!isEditMode);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const locationInputRef = useRef<HTMLInputElement | null>(null);
 
   const [ownerProfileDetails, setOwnerProfileDetails] = useState<UserProfile[]>([]);
   const [isLoadingOwnerDetails, setIsLoadingOwnerDetails] = useState(false);
@@ -170,11 +170,8 @@ export function EventForm({
   const [ownerToRemove, setOwnerToRemove] = useState<UserProfile | null>(null);
 
   const [isDateTimePopoverOpen, setIsDateTimePopoverOpen] = useState(false);
-  const [isLocationPickerDialogOpen, setIsLocationPickerDialogOpen] = useState(false);
-
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const locationDialogInputRef = useRef<HTMLInputElement | null>(null);
 
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -222,7 +219,6 @@ export function EventForm({
                   migratedKashrut = 'notKosher';
                   break;
               default:
-
                   migratedFoodType = initialEventData.foodType as FoodType;
                   migratedKashrut = initialEventData.kashrut || 'kosher';
           }
@@ -230,11 +226,10 @@ export function EventForm({
           migratedFoodType = 'kosherParve';
           migratedKashrut = 'kosher';
       }
-
+      
       const validPaymentOption = initialEventData.paymentOption === "free"
         ? "payWhatYouWant"
         : initialEventData.paymentOption;
-
 
       form.reset({
         name: initialEventData.name,
@@ -337,7 +332,6 @@ export function EventForm({
   const paymentOptionValue = form.watch("paymentOption");
   const eventNameValue = form.watch("name");
   const eventDateTimeValue = form.watch("dateTime");
-  const locationDisplayNameValue = form.watch("locationDisplayName");
 
   const pageTitleToDisplay = propPageTitle || (isEditMode ? `${HEBREW_TEXT.event.editEvent}${initialEventData?.name ? `: ${initialEventData.name}` : ''}` : HEBREW_TEXT.event.createEventTitle);
   const submitButtonTextToDisplay = propSubmitButtonText || (isEditMode ? HEBREW_TEXT.profile.saveChanges : HEBREW_TEXT.event.createEventButton);
@@ -348,12 +342,6 @@ export function EventForm({
       nameInputRef.current.focus();
     }
   }, [isEditingName]);
-
-  useEffect(() => {
-    if (isLocationPickerDialogOpen && locationDialogInputRef.current) {
-      setTimeout(() => locationDialogInputRef.current?.focus(), 100);
-    }
-  }, [isLocationPickerDialogOpen]);
 
   const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -403,11 +391,10 @@ export function EventForm({
                 form.setValue("imageUrl", photoUrl, { shouldValidate: true });
             }
         }
-        setIsLocationPickerDialogOpen(false);
       } else {
-        setTrueFormattedAddress(null);
-        const currentLocationValue = locationDialogInputRef.current?.value || form.getValues("location");
-        form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false });
+        const currentLocationValue = locationInputRef.current?.value || form.getValues("location");
+        form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false }); // Keep what user typed
+        setTrueFormattedAddress(currentLocationValue); // Store what user typed if no selection
         setLatitude(null);
         setLongitude(null);
       }
@@ -476,7 +463,6 @@ export function EventForm({
     } else if (isEditMode && initialEventData?.imageUrl) {
         finalImageUrl = initialEventData.imageUrl;
     }
-
 
     const eventDataPayload = {
         ...values,
@@ -686,21 +672,40 @@ export function EventForm({
                   <p className="text-destructive text-xs mt-1 bg-black/50 p-1 rounded">{form.formState.errors.name.message}</p>
               )}
 
-                <button
-                    type="button"
-                    onClick={() => setIsLocationPickerDialogOpen(true)}
-                    className={cn(
-                        "mt-3 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center w-full text-left bg-transparent text-white p-0 h-auto focus:ring-0 focus:outline-none",
-                        !locationDisplayNameValue && "text-white/70"
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem className="mt-3">
+                    <FormControl>
+                      <div className="flex items-center text-white">
+                        <MapPin className="ml-1.5 h-4 w-4 flex-shrink-0" />
+                        {isLoaded && (
+                          <Autocomplete
+                            onLoad={onAutocompleteLoad}
+                            onPlaceChanged={handlePlaceChanged}
+                            options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location", "photos"] }}
+                          >
+                            <Input
+                              ref={(e) => { field.ref(e); locationInputRef.current = e; }}
+                              placeholder={HEBREW_TEXT.event.pickLocation}
+                              defaultValue={field.value}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              className="text-lg md:text-xl bg-transparent border-0 border-b-2 border-white/50 focus:border-white focus:ring-0 p-0 h-auto text-white placeholder-white/70 flex-grow"
+                              data-fieldname="location"
+                              onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault();}}
+                            />
+                          </Autocomplete>
+                        )}
+                      </div>
+                    </FormControl>
+                    {form.formState.errors.location && (
+                        <p className="text-destructive text-xs mt-1 bg-black/50 p-1 rounded">{form.formState.errors.location.message}</p>
                     )}
-                    title={HEBREW_TEXT.event.pickLocation}
-                >
-                    <MapPin className="ml-1.5 h-4 w-4" />
-                    {locationDisplayNameValue || HEBREW_TEXT.event.pickLocation}
-                </button>
-                {form.formState.errors.location && (
-                    <p className="text-destructive text-xs mt-1 bg-black/50 p-1 rounded">{form.formState.errors.location.message}</p>
+                  </FormItem>
                 )}
+              />
 
               <Popover open={isDateTimePopoverOpen} onOpenChange={setIsDateTimePopoverOpen}>
                 <PopoverTrigger asChild>
@@ -1065,39 +1070,6 @@ export function EventForm({
         </Card>
       </form>
     </Form>
-
-    <Dialog open={isLocationPickerDialogOpen} onOpenChange={setIsLocationPickerDialogOpen}>
-        <DialogContent className="sm:max-w-[525px]">
-            <DialogHeader className="text-right">
-                <ShadDialogTitle>{HEBREW_TEXT.event.pickLocation}</ShadDialogTitle>
-                <DialogDescription>
-                    התחל להקליד כתובת או שם מקום ובחר מההצעות.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-                {isLoaded && (
-                     <Autocomplete
-                        onLoad={onAutocompleteLoad}
-                        onPlaceChanged={handlePlaceChanged}
-                        options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location", "photos"] }}
-                    >
-                        <Input
-                            ref={locationDialogInputRef}
-                            placeholder="הקלד שם מקום או כתובת..."
-                            defaultValue={form.getValues("locationDisplayName") || form.getValues("location")} // Display current value
-                            className="w-full"
-                            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault();}} // Prevent form submission on Enter
-                        />
-                    </Autocomplete>
-                )}
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsLocationPickerDialogOpen(false)}>
-                    {HEBREW_TEXT.general.close}
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
 
     {showAddOwnerModal && currentUser && (
         <AddOwnerModal
