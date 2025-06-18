@@ -133,12 +133,12 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
           <div className="flex-1 min-w-0 flex flex-col text-right">
             {/* Primary Title and Unread Badge Row */}
             <div className="flex items-center justify-between"> {/* Ensures title on right, badge on left */}
-              <p className="text-md font-semibold truncate text-foreground" dir="rtl">{primaryTitle}</p>
               {unreadMessages > 0 && (
                 <Badge variant="destructive" className="text-xs px-1.5 py-0.5 leading-none h-5 shrink-0">
                   {unreadMessages}
                 </Badge>
               )}
+              <p className="text-md font-semibold truncate text-foreground" dir="rtl">{primaryTitle}</p>
             </div>
 
             {/* Secondary Title (if exists) */}
@@ -159,7 +159,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             {/* Timestamp and Status Badge Row */}
             <div className="flex justify-between items-center mt-1.5">
                 {/* Status Badge: First in DOM for RTL right alignment */}
-                <div className="flex-shrink-0">
+                 <div className="flex-shrink-0">
                     <Badge
                         variant={statusDisplay.variant}
                         className={cn(
@@ -175,6 +175,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                 {displayTimestamp && (
                     <p className="text-xs text-muted-foreground/90 whitespace-nowrap">{displayTimestamp}</p>
                 )}
+                {!displayTimestamp && <div className="flex-grow"></div>}
             </div>
           </div>
         </CardContent>
