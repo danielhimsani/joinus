@@ -377,7 +377,7 @@ export function EventForm({
         const displayName = place.name || place.formatted_address?.split(',')[0] || "מיקום לא ידוע";
         const formattedAddress = place.formatted_address || displayName;
 
-        form.setValue("location", displayName, { shouldValidate: true });
+        form.setValue("location", displayName, { shouldValidate: true }); // Set RHF location field
         form.setValue("locationDisplayName", displayName, { shouldValidate: false });
         setTrueFormattedAddress(formattedAddress);
 
@@ -671,7 +671,7 @@ export function EventForm({
                {form.formState.errors.name && (
                   <p className="text-destructive text-xs mt-1 bg-black/50 p-1 rounded">{form.formState.errors.name.message}</p>
               )}
-
+              
               <FormField
                 control={form.control}
                 name="location"
@@ -692,7 +692,7 @@ export function EventForm({
                               defaultValue={field.value}
                               onBlur={field.onBlur}
                               name={field.name}
-                              className="text-lg md:text-xl bg-transparent border-0 border-b-2 border-white/50 focus:border-white focus:ring-0 p-0 h-auto text-white placeholder-white/70 flex-grow"
+                              className="text-sm md:text-base bg-transparent border-0 p-0 h-auto text-white placeholder-white/70 flex-grow focus:ring-0"
                               data-fieldname="location"
                               onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault();}}
                             />
@@ -1103,3 +1103,4 @@ export function EventForm({
     </>
   );
 }
+
