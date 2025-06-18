@@ -141,9 +141,9 @@ export function EventForm({
       locationDisplayName: "",
       description: "",
       ageRange: [18, 55],
-      foodType: "meat", 
-      kashrut: "kosher", 
-      weddingType: "traditional", 
+      foodType: "meat",
+      kashrut: "kosher",
+      weddingType: "traditional",
       imageUrl: "",
       dateTime: undefined,
     },
@@ -167,7 +167,7 @@ export function EventForm({
   const [isLoadingOwnerDetails, setIsLoadingOwnerDetails] = useState(false);
   const [showAddOwnerModal, setShowAddOwnerModal] = useState(false);
   const [ownerToRemove, setOwnerToRemove] = useState<UserProfile | null>(null);
-  
+
   const [isDateTimePopoverOpen, setIsDateTimePopoverOpen] = useState(false);
 
 
@@ -195,13 +195,13 @@ export function EventForm({
 
   useEffect(() => {
     if (isEditMode && initialEventData) {
-      
+
       let migratedFoodType: FoodType = initialEventData.foodType;
-      let migratedKashrut: KashrutType = initialEventData.kashrut; 
+      let migratedKashrut: KashrutType = initialEventData.kashrut;
 
-      const oldFoodType = (initialEventData as any).foodType_old || initialEventData.foodType; 
+      const oldFoodType = (initialEventData as any).foodType_old || initialEventData.foodType;
 
-      if (!initialEventData.kashrut && oldFoodType !== "kosherParve") { 
+      if (!initialEventData.kashrut && oldFoodType !== "kosherParve") {
           switch(oldFoodType) {
               case 'kosherMeat':
                   migratedFoodType = 'meat';
@@ -211,16 +211,16 @@ export function EventForm({
                   migratedFoodType = 'dairy';
                   migratedKashrut = 'kosher';
                   break;
-              case 'kosherParve': 
+              case 'kosherParve':
                   migratedFoodType = 'kosherParve';
-                  migratedKashrut = 'kosher'; 
+                  migratedKashrut = 'kosher';
                   break;
               case 'notKosher':
-                  migratedFoodType = 'meatAndDairy'; 
+                  migratedFoodType = 'meatAndDairy';
                   migratedKashrut = 'notKosher';
                   break;
               default:
-                  
+
                   migratedFoodType = initialEventData.foodType as FoodType;
                   migratedKashrut = initialEventData.kashrut || 'kosher';
           }
@@ -229,8 +229,8 @@ export function EventForm({
           migratedKashrut = 'kosher';
       }
 
-      const validPaymentOption = initialEventData.paymentOption === "free" 
-        ? "payWhatYouWant" 
+      const validPaymentOption = initialEventData.paymentOption === "free"
+        ? "payWhatYouWant"
         : initialEventData.paymentOption;
 
 
@@ -247,7 +247,7 @@ export function EventForm({
         ageRange: initialEventData.ageRange,
         foodType: migratedFoodType,
         kashrut: migratedKashrut,
-        weddingType: initialEventData.weddingType || (initialEventData as any).religionStyle || 'traditional', 
+        weddingType: initialEventData.weddingType || (initialEventData as any).religionStyle || 'traditional',
         imageUrl: initialEventData.imageUrl || "",
       });
       if (initialEventData.imageUrl) {
@@ -261,7 +261,7 @@ export function EventForm({
         if (currentUser && form.getValues("ownerUids").length === 0) {
             form.setValue("ownerUids", [currentUser.uid]);
         }
-        setIsEditingName(true); 
+        setIsEditingName(true);
         setImagePreviewUrl(null);
     }
   }, [isEditMode, initialEventData, form, currentUser]);
@@ -335,7 +335,7 @@ export function EventForm({
   const paymentOptionValue = form.watch("paymentOption");
   const eventNameValue = form.watch("name");
   const eventDateTimeValue = form.watch("dateTime");
-  
+
   const pageTitleToDisplay = propPageTitle || (isEditMode ? `${HEBREW_TEXT.event.editEvent}${initialEventData?.name ? `: ${initialEventData.name}` : ''}` : HEBREW_TEXT.event.createEventTitle);
   const submitButtonTextToDisplay = propSubmitButtonText || (isEditMode ? HEBREW_TEXT.profile.saveChanges : HEBREW_TEXT.event.createEventButton);
 
@@ -386,7 +386,7 @@ export function EventForm({
 
         setLatitude(place.geometry.location.lat());
         setLongitude(place.geometry.location.lng());
-        
+
         if (!imageFile && place.photos && place.photos.length > 0) {
             const photoUrl = place.photos[0].getUrl({ maxWidth: 800, maxHeight: 600 });
             if (photoUrl) {
@@ -427,7 +427,7 @@ export function EventForm({
         return;
     }
 
-    let finalImageUrl: string | undefined = "/onboarding/slide-2.png"; 
+    let finalImageUrl: string | undefined = "/onboarding/slide-2.png";
 
     if (imageFile) {
       setIsUploadingImage(true);
@@ -465,7 +465,7 @@ export function EventForm({
     } else if (values.imageUrl && values.imageUrl.startsWith('http')) {
       finalImageUrl = values.imageUrl;
     } else if (isEditMode && initialEventData?.imageUrl) {
-        finalImageUrl = initialEventData.imageUrl; 
+        finalImageUrl = initialEventData.imageUrl;
     }
 
 
@@ -485,7 +485,7 @@ export function EventForm({
         weddingType: values.weddingType,
         updatedAt: serverTimestamp(),
     };
-    
+
     delete (eventDataPayload as any).religionStyle;
 
 
@@ -494,7 +494,7 @@ export function EventForm({
 
       if (isEditMode && initialEventData?.id) {
         const eventDocRef = doc(db, "events", initialEventData.id);
-        const { createdAt, ...updatePayload } = eventDataPayload; 
+        const { createdAt, ...updatePayload } = eventDataPayload;
         await promiseWithTimeout(updateDoc(eventDocRef, updatePayload), 15000);
         toast({ title: HEBREW_TEXT.general.success, description: `אירוע "${values.name}" עודכן בהצלחה!` });
         router.push(`/events/${initialEventData.id}`);
@@ -525,14 +525,14 @@ export function EventForm({
       try {
         detailedErrors = JSON.stringify(errors, (key, value) => {
           if (key === 'ref' && value instanceof HTMLElement) return '[DOM Element]';
-          if (value instanceof Function) return '[Function]'; 
+          if (value instanceof Function) return '[Function]';
           return value;
         }, 2);
       } catch (e) {
         detailedErrors = "Could not stringify errors object (possibly due to circular references or unserializable content).";
       }
       console.error(`Form validation errors detected. Stringified details: ${detailedErrors}. Keys: ${Object.keys(errors).join(', ')}`);
-      
+
       toast({
         title: HEBREW_TEXT.general.error,
         description: HEBREW_TEXT.general.formValidationFailed,
@@ -560,7 +560,7 @@ export function EventForm({
       );
     }
   };
-  
+
   const handleCancelEdit = () => {
     if (isEditMode && initialEventData?.id) {
         router.push(`/events/${initialEventData.id}`);
@@ -581,7 +581,7 @@ export function EventForm({
     );
   }
   if (!isLoaded && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return <Card className="w-full max-w-3xl mx-auto p-6 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary mb-2" /><p>{HEBREW_TEXT.general.loading} רכיב המיקום...</p></Card>;
-  
+
   const currentImageToDisplay = imagePreviewUrl || (isEditMode && initialEventData?.imageUrl ? initialEventData.imageUrl : "/onboarding/slide-2.png");
   const headerTitleText = eventNameValue || (isEditingName || !isEditMode ? "" : HEBREW_TEXT.event.eventNameDisplayPlaceholder);
 
@@ -599,7 +599,7 @@ export function EventForm({
               objectFit="cover"
               className="transition-opacity duration-300 ease-in-out"
               data-ai-hint="event cover wedding"
-              key={currentImageToDisplay} 
+              key={currentImageToDisplay}
               priority={!isEditMode && !imagePreviewUrl}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
@@ -650,7 +650,7 @@ export function EventForm({
                       </div>
                     )}
                   />
-              ) : ( 
+              ) : (
                 <div className="flex items-center group/titleedit">
                     <h1
                         className={cn(
@@ -897,67 +897,83 @@ export function EventForm({
                 />
               )}
             </div>
-            
+
             <FormField
               control={form.control}
               name="paymentOption"
               render={({ field }) => (
-                  <FormItem className="space-y-3" data-fieldname="paymentOption">
-                  <FormLabel className="text-right">{HEBREW_TEXT.event.paymentOptions}</FormLabel>
+                <FormItem className="space-y-2" data-fieldname="paymentOption">
+                  <FormLabel className="text-base font-medium">{HEBREW_TEXT.event.paymentOptions}</FormLabel>
                   <FormControl>
-                      <RadioGroup
-                      onValueChange={field.onChange}
+                    <RadioGroup
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        if (value !== 'fixed') {
+                          form.setValue('pricePerGuest', undefined, { shouldValidate: true });
+                        } else if (form.getValues('pricePerGuest') === undefined){
+                          form.setValue('pricePerGuest', 200, { shouldValidate: true }); // Default price if switching to fixed
+                        }
+                      }}
                       value={field.value}
-                      className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-4 rtl:md:space-x-reverse pt-2"
+                      className="flex flex-col space-y-2 pt-1"
                       dir="rtl"
-                      >
-                      {paymentOptions.map(option => (
-                          <div key={option.value} className="flex items-center space-x-2 rtl:space-x-reverse">
-                              <RadioGroupItem value={option.value} id={`paymentOption-${option.value}`} />
-                              <label htmlFor={`paymentOption-${option.value}`} className="font-normal cursor-pointer">
-                                  {option.label}
-                              </label>
-                          </div>
+                    >
+                      {paymentOptions.map((option) => (
+                        <div key={option.value} className="flex items-center space-x-3 rtl:space-x-reverse">
+                          <RadioGroupItem value={option.value} id={`paymentOption-${option.value}`} />
+                          <label htmlFor={`paymentOption-${option.value}`} className="font-normal cursor-pointer flex-grow">
+                            {option.label}
+                          </label>
+                          {option.value === 'fixed' && paymentOptionValue === 'fixed' && (
+                            <div className="flex items-center ml-2 rtl:mr-2">
+                              <span className="mr-1 rtl:ml-1 text-sm text-muted-foreground">₪</span>
+                              <FormField
+                                control={form.control}
+                                name="pricePerGuest"
+                                render={({ field: priceField }) => (
+                                  <FormItem className="w-28"> {/* Adjusted width */}
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        placeholder="סכום"
+                                        className="h-9 px-2 text-sm"
+                                        value={priceField.value === undefined || priceField.value === null || isNaN(priceField.value as number) ? '' : String(priceField.value)}
+                                        onChange={e => {
+                                          const rawValue = e.target.value;
+                                          if (rawValue === '') {
+                                            priceField.onChange(undefined);
+                                          } else {
+                                            const num = parseFloat(rawValue);
+                                            priceField.onChange(isNaN(num) ? undefined : num);
+                                          }
+                                        }}
+                                        onBlur={priceField.onBlur}
+                                        ref={priceField.ref}
+                                        name={priceField.name}
+                                        data-fieldname="pricePerGuest"
+                                      />
+                                    </FormControl>
+                                    {/* Inline FormMessage for pricePerGuest, ensuring it appears if there's an error */}
+                                     {form.formState.errors.pricePerGuest && (
+                                        <FormMessage className="text-xs mt-0.5 absolute whitespace-nowrap">
+                                            {form.formState.errors.pricePerGuest.message}
+                                        </FormMessage>
+                                     )}
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          )}
+                        </div>
                       ))}
-                      </RadioGroup>
+                    </RadioGroup>
                   </FormControl>
+                  {/* Main FormMessage for paymentOption (e.g., if no option is selected) */}
                   <FormMessage />
-                  </FormItem>
+                </FormItem>
               )}
             />
 
-            {paymentOptionValue === 'fixed' && (
-                 <FormField
-                    control={form.control}
-                    name="pricePerGuest"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>{HEBREW_TEXT.event.pricePerGuest} (בש"ח)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="200"
-                            value={field.value === undefined || field.value === null || isNaN(field.value as number) ? '' : String(field.value)}
-                            onChange={e => {
-                              const rawValue = e.target.value;
-                              if (rawValue === '') {
-                                field.onChange(undefined);
-                              } else {
-                                const num = parseFloat(rawValue);
-                                field.onChange(isNaN(num) ? undefined : num);
-                              }
-                            }}
-                            onBlur={field.onBlur}
-                            ref={field.ref}
-                            name={field.name}
-                            data-fieldname="pricePerGuest"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-            )}
 
             <FormField
               control={form.control}
