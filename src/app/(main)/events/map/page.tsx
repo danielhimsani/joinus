@@ -7,7 +7,7 @@ import { GoogleMapComponent, type MapLocation } from "@/components/maps/GoogleMa
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, MapPin, AlertCircle, ChevronLeft } from "lucide-react";
+import { Loader2, MapPin, AlertCircle, ChevronRight } from "lucide-react"; // Changed ChevronLeft to ChevronRight
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, Timestamp, where, getCountFromServer } from "firebase/firestore";
@@ -152,7 +152,7 @@ export default function FullMapPage() {
           <AlertDescription>{HEBREW_TEXT.map.loadError}</AlertDescription>
         </Alert>
         <Button onClick={() => router.back()} className="mt-6">
-            <ChevronLeft className="ml-1 h-4 w-4"/>
+            <ChevronRight className="ml-1 h-4 w-4"/> 
             {HEBREW_TEXT.general.back}
         </Button>
       </div>
@@ -168,7 +168,7 @@ export default function FullMapPage() {
           <AlertDescription>{HEBREW_TEXT.map.apiKeyMissing}</AlertDescription>
         </Alert>
          <Button onClick={() => router.back()} className="mt-6">
-            <ChevronLeft className="ml-1 h-4 w-4"/>
+            <ChevronRight className="ml-1 h-4 w-4"/>
             {HEBREW_TEXT.general.back}
         </Button>
       </div>
@@ -180,7 +180,7 @@ export default function FullMapPage() {
     <div className="h-screen w-screen flex flex-col">
       <header className="bg-background border-b p-3 flex items-center justify-between shrink-0">
         <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label={HEBREW_TEXT.general.back}>
-          <ChevronLeft className="h-6 w-6" />
+          <ChevronRight className="h-6 w-6" />
         </Button>
         <h1 className="font-headline text-lg text-foreground">{HEBREW_TEXT.map.title}</h1>
         <div className="w-10"></div> {/* Spacer */}

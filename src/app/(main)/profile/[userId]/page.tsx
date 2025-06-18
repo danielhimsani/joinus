@@ -16,7 +16,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import type { UserProfile, Event as EventType } from "@/types";
-import { CalendarDays, MapPin, ShieldCheck, User as UserIconLucide, AlertCircle, ChevronLeft, Cake, Contact as UserPlaceholderIcon } from "lucide-react";
+import { CalendarDays, MapPin, ShieldCheck, User as UserIconLucide, AlertCircle, ChevronRight, Cake, Contact as UserPlaceholderIcon } from "lucide-react"; // Changed ChevronLeft to ChevronRight
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -167,7 +167,7 @@ export default function UserProfilePage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
         <Button onClick={() => router.back()} className="mt-6">
-            <ChevronLeft className="ml-1 h-4 w-4"/>
+            <ChevronRight className="ml-1 h-4 w-4"/>
             {HEBREW_TEXT.general.back}
         </Button>
       </div>
@@ -183,7 +183,7 @@ export default function UserProfilePage() {
             <AlertDescription>המשתמש שחיפשת לא נמצא.</AlertDescription>
         </Alert>
          <Button onClick={() => router.back()} className="mt-6">
-            <ChevronLeft className="ml-1 h-4 w-4"/>
+            <ChevronRight className="ml-1 h-4 w-4"/>
             {HEBREW_TEXT.general.back}
         </Button>
       </div>

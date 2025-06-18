@@ -28,7 +28,7 @@ import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, server
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
-import { Edit3, Users, FileText, Send, Loader2, AlertCircle, ChevronLeft, ChevronRight, Contact as UserPlaceholderIcon, MessageSquare, CalendarDays, MoreVertical, UserX } from 'lucide-react';
+import { Edit3, Users, FileText, Send, Loader2, AlertCircle, ChevronRight, Contact as UserPlaceholderIcon, MessageSquare, CalendarDays, MoreVertical, UserX } from 'lucide-react'; // Changed ChevronLeft to ChevronRight
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -316,7 +316,7 @@ export default function ManageEventGuestsPage() {
             <ShadAlertDescription>{fetchError}</ShadAlertDescription>
         </Alert>
          <Button onClick={() => router.push('/events')} className="mt-6">
-            <ChevronLeft className="ml-1 h-4 w-4"/>
+            <ChevronRight className="ml-1 h-4 w-4"/>
             {HEBREW_TEXT.navigation.events}
         </Button>
       </div>
@@ -448,7 +448,7 @@ export default function ManageEventGuestsPage() {
                         onClick={() => setCurrentPage(prev => Math.min(totalGuestPages, prev + 1))}
                         disabled={currentPage === totalGuestPages}
                         >
-                        <ChevronLeft className="h-4 w-4" />
+                        <ChevronRight className="h-4 w-4 transform scale-x-[-1]" /> {/* ChevronLeft visually */}
                         </Button>
                     </div>
                     )}
