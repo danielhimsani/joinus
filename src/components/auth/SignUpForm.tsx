@@ -425,7 +425,20 @@ export function SignUpForm() {
                     {isVerifyingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {HEBREW_TEXT.auth.verifyOtp}
                   </Button>
-                  <Button variant="link" onClick={() => { setIsOtpSent(false); setOtpCode(''); setConfirmationResult(null); }} className="w-full text-sm" disabled={isLoading}>
+                  <Button 
+                    variant="link" 
+                    onClick={() => { 
+                        setIsOtpSent(false); 
+                        setOtpCode(''); 
+                        setConfirmationResult(null); 
+                        if (recaptchaVerifierRef.current) {
+                            recaptchaVerifierRef.current.clear();
+                            recaptchaVerifierRef.current = null;
+                        }
+                    }} 
+                    className="w-full text-sm" 
+                    disabled={isLoading}
+                  >
                     שנה פרטים או שלח קוד מחדש
                   </Button>
                 </form>
@@ -454,7 +467,20 @@ export function SignUpForm() {
                 </Button>
             )}
             {signUpMethod === 'phone' && (
-                 <Button variant="outline" onClick={() => {setSignUpMethod('email'); setIsOtpSent(false); setOtpCode(''); setConfirmationResult(null);}} disabled={isLoading}>
+                 <Button 
+                    variant="outline" 
+                    onClick={() => {
+                        setSignUpMethod('email'); 
+                        setIsOtpSent(false); 
+                        setOtpCode(''); 
+                        setConfirmationResult(null);
+                        if (recaptchaVerifierRef.current) {
+                            recaptchaVerifierRef.current.clear();
+                            recaptchaVerifierRef.current = null;
+                        }
+                    }} 
+                    disabled={isLoading}
+                >
                     <Chrome className="mr-2 h-4 w-4" /> הרשמה עם אימייל וסיסמה
                 </Button>
             )}
