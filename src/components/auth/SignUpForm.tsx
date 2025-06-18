@@ -7,7 +7,7 @@ import * as z from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult, type User } from "firebase/auth";
-import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore"; 
+import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,16 +21,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import { Chrome, Loader2, Phone } from "lucide-react"; 
+import { Chrome, Loader2, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; 
+import { auth as firebaseAuthInstance, db } from "@/lib/firebase";
 import { useState, useEffect, useRef } from "react";
 
 const emailPasswordSchema = z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
   email: z.string().email({ message: HEBREW_TEXT.auth.emailInvalid }),
   password: z.string().min(6, { message: HEBREW_TEXT.auth.passwordMinLengthError }),
-  birthday: z.string().min(1, { message: HEBREW_TEXT.profile.birthdayRequiredError }), 
+  birthday: z.string().min(1, { message: HEBREW_TEXT.profile.birthdayRequiredError }),
 });
 
 const phoneSchema = z.object({
@@ -57,8 +57,8 @@ export function SignUpForm() {
   const [isSubmittingApple, setIsSubmittingApple] = useState(false);
 
   // Phone Auth states
-  const [persistedNameForOtp, setPersistedNameForOtp] = useState(""); 
-  const [persistedBirthdayForOtp, setPersistedBirthdayForOtp] = useState(""); 
+  const [persistedNameForOtp, setPersistedNameForOtp] = useState("");
+  const [persistedBirthdayForOtp, setPersistedBirthdayForOtp] = useState("");
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
@@ -76,7 +76,7 @@ export function SignUpForm() {
     resolver: zodResolver(phoneSchema),
     defaultValues: { phoneNumber: "05", name: "", birthday: "" },
   });
-  
+
   const otpForm = useForm<z.infer<typeof otpSchema>>({
     resolver: zodResolver(otpSchema),
     defaultValues: { otpCode: "" },
@@ -94,7 +94,7 @@ export function SignUpForm() {
     if (typeof window !== 'undefined') {
       const container = document.getElementById(recaptchaContainerId);
       if (container) {
-        container.innerHTML = ''; 
+        container.innerHTML = ''; // Explicitly clear the container
       }
       if (!recaptchaVerifierRef.current || (container && container.innerHTML === '')) {
         const verifier = new RecaptchaVerifier(firebaseAuthInstance, recaptchaContainerId, {
@@ -127,8 +127,8 @@ export function SignUpForm() {
       updatedAt: serverTimestamp(),
     };
     if (birthday) userData.birthday = birthday;
-    if (user.phoneNumber) userData.phone = user.phoneNumber; 
-    if (!user.email) userData.email = null; 
+    if (user.phoneNumber) userData.phone = user.phoneNumber;
+    if (!user.email) userData.email = null;
 
     try {
       await setDoc(userDocRef, userData);
@@ -146,16 +146,16 @@ export function SignUpForm() {
   const handleSignUpSuccess = async (user: User, formValues?: { name: string, birthday?: string }) => {
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userName', formValues?.name || user.displayName || user.email || user.phoneNumber || 'משתמש חדש');
-    
+
     await createUserDocument(user, formValues?.name, formValues?.birthday);
 
     toast({
       title: HEBREW_TEXT.general.success,
       description: HEBREW_TEXT.auth.phoneSignUpSuccess, // Generic success message
     });
-    router.push("/events"); 
+    router.push("/events");
   };
-  
+
   const handleAuthError = (error: any, method: string) => {
     console.error(`${method} Sign Up Error:`, error);
     let description = "שגיאה בהרשמה. נסה שוב.";
@@ -223,13 +223,14 @@ export function SignUpForm() {
       setIsSubmittingEmail(false);
     }
   };
-  
+
   const handleGoogleSignUp = async () => {
     setIsSubmittingGoogle(true);
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(firebaseAuthInstance, provider);
-      await handleSignUpSuccess(result.user, { name: result.user.displayName || "משתמש גוגל", birthday: "" });
+      // For Google Sign-Up, birthday is not available immediately. User can add it later.
+      await handleSignUpSuccess(result.user, { name: result.user.displayName || "משתמש גוגל" });
     } catch (error: any) {
       handleAuthError(error, "Google");
     } finally {
@@ -237,18 +238,23 @@ export function SignUpForm() {
     }
   };
 
-  const handleAppleSignUp = async () => { 
+  const handleAppleSignUp = async () => {
     setIsSubmittingApple(true);
-    toast({ title: "הרשמה עם אפל", description: "תהליך הרשמה עם אפל מופעל (דמה)..." });
-    await new Promise(resolve => setTimeout(resolve, 1000)); 
-    const mockUser = { uid: 'mock-apple-uid-' + Date.now(), displayName: 'משתמש אפל', email: 'apple-user@example.com', photoURL: `https://placehold.co/150x150.png?text=A`} as User; 
-    await handleSignUpSuccess(mockUser, { name: 'משתמש אפל', birthday: "" });
-    setIsSubmittingApple(false);
+    const providerPackage = await import("firebase/auth"); // Dynamically import
+    const provider = new providerPackage.OAuthProvider('apple.com');
+    try {
+      const result = await signInWithPopup(firebaseAuthInstance, provider);
+      await handleSignUpSuccess(result.user, { name: result.user.displayName || "משתמש אפל" });
+    } catch (error: any) {
+      handleAuthError(error, "Apple");
+    } finally {
+      setIsSubmittingApple(false);
+    }
   };
 
   const onSendOtp = async (data: z.infer<typeof phoneSchema>) => {
     setIsSendingOtp(true);
-    setPersistedNameForOtp(data.name); 
+    setPersistedNameForOtp(data.name);
     setPersistedBirthdayForOtp(data.birthday);
     try {
       firebaseAuthInstance.languageCode = 'he';
@@ -256,7 +262,7 @@ export function SignUpForm() {
       if (!verifier) {
           throw new Error("RecaptchaVerifier not initialized for signup");
       }
-      
+
       let firebasePhoneNumber = data.phoneNumber;
       if (firebasePhoneNumber.startsWith('0')) {
         firebasePhoneNumber = '+972' + firebasePhoneNumber.substring(1);
@@ -265,7 +271,7 @@ export function SignUpForm() {
       const result = await signInWithPhoneNumber(firebaseAuthInstance, firebasePhoneNumber, verifier);
       setConfirmationResult(result);
       setIsOtpSent(true);
-      otpForm.reset(); 
+      otpForm.reset(); // Clear previous OTP if any
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.auth.otpSent });
     } catch (error: any) {
       handleAuthError(error, "Phone OTP Send (SignUp)");
@@ -365,7 +371,7 @@ export function SignUpForm() {
             </form>
           </Form>
         )}
-        
+
         {signUpMethod === 'phone' && (
           <div className="space-y-6">
             {!isOtpSent ? (
@@ -404,7 +410,14 @@ export function SignUpForm() {
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.auth.phoneNumber}</FormLabel>
                         <FormControl>
-                          <Input type="tel" placeholder={HEBREW_TEXT.auth.phoneNumberPlaceholderShort} {...field} disabled={isLoadingOverall} dir="ltr" />
+                          <Input
+                            type="tel"
+                            placeholder={HEBREW_TEXT.auth.phoneNumberPlaceholderShort}
+                            {...field}
+                            disabled={isLoadingOverall}
+                            dir="ltr"
+                            maxLength={10}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -426,14 +439,14 @@ export function SignUpForm() {
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.auth.otpCode}</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="text" 
-                            inputMode="numeric" 
-                            maxLength={6} 
-                            placeholder="123456" 
-                            {...field} 
-                            disabled={isLoadingOverall} 
-                            dir="ltr" 
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="123456"
+                            {...field}
+                            disabled={isLoadingOverall}
+                            dir="ltr"
                             autoComplete="one-time-code"
                           />
                         </FormControl>
@@ -445,22 +458,21 @@ export function SignUpForm() {
                     {isVerifyingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {HEBREW_TEXT.auth.verifyOtp}
                   </Button>
-                  <Button 
-                    variant="link" 
-                    onClick={() => { 
-                        setIsOtpSent(false); 
-                        otpForm.reset(); 
-                        phoneForm.reset({phoneNumber: "05", name: persistedNameForOtp, birthday: persistedBirthdayForOtp }); 
-                        setConfirmationResult(null); 
-                        // No need to reset persistedNameForOtp/persistedBirthdayForOtp here, they are still needed if the user goes back to phone input.
+                  <Button
+                    variant="link"
+                    onClick={() => {
+                        setIsOtpSent(false);
+                        otpForm.reset();
+                        phoneForm.reset({phoneNumber: "05", name: persistedNameForOtp, birthday: persistedBirthdayForOtp });
+                        setConfirmationResult(null);
                         if (recaptchaVerifierRef.current) {
                             recaptchaVerifierRef.current.clear();
                             recaptchaVerifierRef.current = null;
                         }
                         const container = document.getElementById(recaptchaContainerId);
                         if (container) container.innerHTML = '';
-                    }} 
-                    className="w-full text-sm" 
+                    }}
+                    className="w-full text-sm"
                     disabled={isLoadingOverall}
                   >
                     שנה פרטים או שלח קוד מחדש
@@ -491,22 +503,21 @@ export function SignUpForm() {
                 </Button>
             )}
             {signUpMethod === 'phone' && (
-                 <Button 
-                    variant="outline" 
+                 <Button
+                    variant="outline"
                     onClick={() => {
-                        setSignUpMethod('email'); 
-                        setIsOtpSent(false); 
+                        setSignUpMethod('email');
+                        setIsOtpSent(false);
                         otpForm.reset();
                         phoneForm.reset({phoneNumber: "05", name: persistedNameForOtp, birthday: persistedBirthdayForOtp});
                         setConfirmationResult(null);
-                        // Persisted name/birthday remain for potential re-entry
                         if (recaptchaVerifierRef.current) {
                             recaptchaVerifierRef.current.clear();
                             recaptchaVerifierRef.current = null;
                         }
                         const container = document.getElementById(recaptchaContainerId);
                         if (container) container.innerHTML = '';
-                    }} 
+                    }}
                     disabled={isLoadingOverall}
                 >
                     <Chrome className="mr-2 h-4 w-4" /> הרשמה עם אימייל וסיסמה
@@ -551,3 +562,4 @@ export function SignUpForm() {
     </Card>
   );
 }
+
