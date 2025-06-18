@@ -163,13 +163,12 @@ export default function MessagesPage() {
     fetchChatsAndEvents();
   }, [fetchChatsAndEvents]);
 
-  const { displayOwnedChats, displayRequestedChats } = useMemo(() => {
-    if (!currentUser) return { displayOwnedChats: [], displayRequestedChats: [] };
+  const { displayOwnedChats, displayRequestedChats, ownedUnreadCount, requestedUnreadCount } = useMemo(() => {
+    if (!currentUser) return { displayOwnedChats: [], displayRequestedChats: [], ownedUnreadCount: 0, requestedUnreadCount: 0 };
 
     const now = new Date();
-    let filteredChats = [...allFetchedChats]; // Start with a copy
+    let filteredChats = [...allFetchedChats]; 
 
-    // Filter by simple search query
     if (simpleSearchQuery.trim()) {
       const queryText = simpleSearchQuery.toLowerCase().trim();
       filteredChats = filteredChats.filter(chat =>
@@ -179,7 +178,6 @@ export default function MessagesPage() {
       );
     }
 
-    // Filter by time
     if (chatTimeFilter !== 'all') {
         filteredChats = filteredChats.filter(chat => {
             const eventDateTime = eventDetailsMap.get(chat.eventId)?.dateTime;
@@ -190,22 +188,31 @@ export default function MessagesPage() {
         });
     }
 
-    // Filter by status
     if (chatStatusFilter !== 'all') {
         filteredChats = filteredChats.filter(chat => chat.status === chatStatusFilter);
     }
     
     const owned: EventChat[] = [];
     const requested: EventChat[] = [];
+    let tempOwnedUnread = 0;
+    let tempRequestedUnread = 0;
 
     filteredChats.forEach(chat => {
+      const unreadForThisChat = chat.unreadCount?.[currentUser.uid] || 0;
       if (chat.ownerUids.includes(currentUser.uid)) {
         owned.push(chat);
+        if (unreadForThisChat > 0) tempOwnedUnread += unreadForThisChat;
       } else if (chat.guestUid === currentUser.uid) {
         requested.push(chat);
+        if (unreadForThisChat > 0) tempRequestedUnread += unreadForThisChat;
       }
     });
-    return { displayOwnedChats: owned, displayRequestedChats: requested };
+    return { 
+        displayOwnedChats: owned, 
+        displayRequestedChats: requested,
+        ownedUnreadCount: tempOwnedUnread,
+        requestedUnreadCount: tempRequestedUnread
+    };
   }, [allFetchedChats, eventDetailsMap, chatTimeFilter, chatStatusFilter, simpleSearchQuery, currentUser]);
 
 
@@ -213,7 +220,6 @@ export default function MessagesPage() {
     if (chats.length === 0) {
       let noChatsMessage = HEBREW_TEXT.chat.noChatsFound; 
       if (simpleSearchQuery.trim() || chatTimeFilter !== defaultChatTimeFilter || chatStatusFilter !== defaultChatStatusFilter) {
-        // Filters are active, so message should reflect that
         noChatsMessage = HEBREW_TEXT.chat.noChatsFound;
       } else if (type === 'owned') {
         noChatsMessage = HEBREW_TEXT.chat.noChatsFoundOwner;
@@ -280,11 +286,21 @@ export default function MessagesPage() {
           <TabsList className="grid w-full grid-cols-2 mb-4 h-12">
             <TabsTrigger value="owned" className="py-2.5 text-sm sm:text-base font-body flex items-center justify-center">
               {HEBREW_TEXT.chat.eventsInMyOwnership}
-              <Briefcase className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+              {ownedUnreadCount > 0 && (
+                <span className="text-xs bg-primary text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center ml-1.5 rtl:mr-1.5">
+                  {ownedUnreadCount}
+                </span>
+              )}
+              <Briefcase className="ml-2 h-4 w-4 sm:h-5 sm:w-5" /> {/* Adjusted to ml-2 consistently */}
             </TabsTrigger>
             <TabsTrigger value="requested" className="py-2.5 text-sm sm:text-base font-body flex items-center justify-center">
               {HEBREW_TEXT.chat.myRequests}
-              <Inbox className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+              {requestedUnreadCount > 0 && (
+                <span className="text-xs bg-primary text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center ml-1.5 rtl:mr-1.5">
+                  {requestedUnreadCount}
+                </span>
+              )}
+              <Inbox className="ml-2 h-4 w-4 sm:h-5 sm:w-5" /> {/* Adjusted to ml-2 consistently */}
             </TabsTrigger>
           </TabsList>
           

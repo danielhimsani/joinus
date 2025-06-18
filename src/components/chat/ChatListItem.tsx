@@ -132,13 +132,13 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
           {/* Details Wrapper: Contains all text, timestamp, and status badge. Appears to the left of Avatar. */}
           <div className="flex-1 min-w-0 flex flex-col text-right">
             {/* Primary Title and Unread Badge Row */}
-            <div className="flex justify-end items-start">
-              <p className="text-md font-semibold truncate text-foreground" dir="rtl">{primaryTitle}</p>
+            <div className="flex items-center"> {/* Align items to the center of this line */}
               {unreadMessages > 0 && (
-                <Badge variant="destructive" className="text-xs px-1.5 py-0.5 leading-none h-5 shrink-0 mr-2">
+                <Badge variant="destructive" className="text-xs px-1.5 py-0.5 leading-none h-5 shrink-0 ml-2"> {/* ml-2 to create space after the badge */}
                   {unreadMessages}
                 </Badge>
               )}
+              <p className="text-md font-semibold truncate text-foreground" dir="rtl">{primaryTitle}</p>
             </div>
 
             {/* Secondary Title (if exists) */}
@@ -158,7 +158,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             
             {/* Timestamp and Status Badge Row */}
             <div className="flex justify-between items-center mt-1.5">
-              <div> {/* Status Badge Container - now first for RTL positioning */}
+                {/* Status Badge is now first for RTL positioning to the right */}
                 <Badge
                     variant={statusDisplay.variant}
                     className={cn(
@@ -169,10 +169,10 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                 >
                     {statusDisplay.text}
                 </Badge>
-              </div>
-              {displayTimestamp && (
-                <p className="text-xs text-muted-foreground/90 whitespace-nowrap">{displayTimestamp}</p>
-              )}
+                {/* Timestamp is now second, will be positioned to the left by justify-between */}
+                {displayTimestamp && (
+                    <p className="text-xs text-muted-foreground/90 whitespace-nowrap">{displayTimestamp}</p>
+                )}
             </div>
           </div>
         </CardContent>
