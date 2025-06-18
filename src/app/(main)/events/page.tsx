@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 
 const PULL_TO_REFRESH_THRESHOLD = 70; // Pixels to pull to trigger refresh
 const PULL_INDICATOR_TRAVEL = 60; // Max pixels the indicator travels down
-const EVENTS_PER_PAGE = 20;
+const EVENTS_PER_PAGE = 10;
 
 const defaultAdvancedFilters: Filters = {
   date: undefined,
