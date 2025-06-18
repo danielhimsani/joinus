@@ -13,6 +13,7 @@ import type { UserProfile } from '@/types';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, limit, orderBy, type QuerySnapshot, type DocumentData } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface AddOwnerModalProps {
   isOpen: boolean;
@@ -139,7 +140,7 @@ export function AddOwnerModal({ isOpen, onOpenChange, onOwnerAdded, currentOwner
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] md:max-w-[550px]">
-        <DialogHeader>
+        <DialogHeader className="text-right"> {/* Added text-right here */}
           <DialogTitle className="font-headline">{HEBREW_TEXT.event.addOwner}</DialogTitle>
           <DialogDescription>
             {HEBREW_TEXT.event.searchUsersPlaceholder}
