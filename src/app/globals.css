@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -114,3 +115,50 @@
     -ms-overflow-style: none;  /* For IE and Edge (older versions) */
   }
 }
+
+/* Google Places Autocomplete dropdown styling */
+.pac-container {
+  z-index: 9999 !important; /* Ensure it's above ShadCN dialogs (typically z-50) */
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem; /* Corresponds to rounded-md */
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* Tailwind shadow-md */
+  margin-top: 0.25rem; /* Add a small margin from the input field */
+}
+
+.pac-item {
+  padding: 0.5rem 0.75rem; /* p-2 px-3 */
+  cursor: pointer;
+  font-size: 0.875rem; /* text-sm */
+  color: hsl(var(--foreground));
+  border-radius: 0.25rem; /* rounded-sm */
+}
+
+.pac-item:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.pac-item-query {
+  font-weight: 600; /* semibold */
+}
+
+.pac-matched {
+  font-weight: 600; /* semibold */
+}
+
+/* Dark theme adjustments for Google Places Autocomplete */
+.dark .pac-container {
+  background-color: hsl(var(--popover)); /* Using popover background for dark mode, as it's typically designed for floating elements */
+  border-color: hsl(var(--border));
+}
+
+.dark .pac-item {
+  color: hsl(var(--popover-foreground));
+}
+
+.dark .pac-item:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+    
