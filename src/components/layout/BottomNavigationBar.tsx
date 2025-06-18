@@ -114,7 +114,9 @@ export default function BottomNavigationBar() {
                 <div className="relative">
                     <DefaultIcon className={cn("w-6 h-6 mb-1", currentItemIsActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground/80")} />
                     {totalUnreadCount > 0 && !isLoadingUnread && (
-                        <span className="absolute top-0 right-0 block h-2.5 w-2.5 translate-x-1/2 -translate-y-1/2 transform rounded-full bg-red-500 ring-2 ring-background" />
+                         <span className="absolute -top-1 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+                            {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
+                        </span>
                     )}
                 </div>
             );
