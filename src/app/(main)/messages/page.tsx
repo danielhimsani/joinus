@@ -278,13 +278,13 @@ export default function MessagesPage() {
       <Card className="max-w-3xl mx-auto shadow-lg">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full p-2 sm:p-4 md:p-6">
           <TabsList className="grid w-full grid-cols-2 mb-4 h-12">
-            <TabsTrigger value="owned" className="py-2.5 text-sm sm:text-base font-body flex flex-row-reverse">
-              <Briefcase className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+            <TabsTrigger value="owned" className="py-2.5 text-sm sm:text-base font-body flex items-center justify-center">
               {HEBREW_TEXT.chat.eventsInMyOwnership}
+              <Briefcase className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
             </TabsTrigger>
-            <TabsTrigger value="requested" className="py-2.5 text-sm sm:text-base font-body flex flex-row-reverse">
-              <Inbox className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+            <TabsTrigger value="requested" className="py-2.5 text-sm sm:text-base font-body flex items-center justify-center">
               {HEBREW_TEXT.chat.myRequests}
+              <Inbox className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
             </TabsTrigger>
           </TabsList>
           
@@ -400,3 +400,4 @@ export default function MessagesPage() {
     </div>
   );
 }
+
