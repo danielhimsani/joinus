@@ -43,11 +43,11 @@ import { format as formatDate } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
 import { getDisplayInitial } from '@/lib/textUtils';
-import { requestNotificationPermissionAndSaveToken } from '@/lib/firebase-messaging'; // Import the function
+import { requestNotificationPermissionAndSaveToken } from '@/lib/firebase-messaging'; 
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
-  email: z.string().email({ message: HEBREW_TEXT.auth.emailInvalid }).optional(),
+  email: z.string().email({ message: HEBREW_TEXT.auth.emailInvalid }).optional().or(z.literal("")), // Allow empty string
   birthday: z.string().optional(),
   bio: z.string().max(300, { message: "ביו יכול להכיל עד 300 תווים."}).optional(),
   phone: z.string().refine(val => val === '' || !val || /^0\d([\d]{0,1})([-]{0,1})\d{7}$/.test(val), {
@@ -75,7 +75,7 @@ export default function ProfilePage() {
     defaultValues: {
         name: "",
         email: "",
-        birthday: "", // Expected to be YYYY-MM-DD if set
+        birthday: "", 
         bio: "",
         phone: "",
     },
@@ -93,13 +93,21 @@ export default function ProfilePage() {
             const userDocSnap = await getDoc(userDocRef);
             if (userDocSnap.exists()) {
                 const data = userDocSnap.data();
+                let localPhoneNumber = data.phone || "";
+                if (localPhoneNumber.startsWith("+972")) {
+                    localPhoneNumber = "0" + localPhoneNumber.substring(4);
+                }
+                
                 firestoreProfileData = {
                     name: data.name || fbUser.displayName || "משתמש",
-                    email: data.email || fbUser.email || "",
+                    email: data.email || fbUser.email || "", // Use Firestore email if available, then Auth email
                     bio: data.bio || "",
-                    phone: data.phone || "",
-                    birthday: data.birthday || "", // Should be YYYY-MM-DD if set
+                    phone: localPhoneNumber,
+                    birthday: data.birthday || "", 
                 };
+            } else {
+                // If no Firestore doc, use Auth data primarily for email
+                firestoreProfileData.email = fbUser.email || "";
             }
         } catch (error) {
             console.error("Error fetching user data from Firestore:", error);
@@ -113,18 +121,18 @@ export default function ProfilePage() {
           email: firestoreProfileData.email,
           profileImageUrl: fbUser.photoURL,
           bio: firestoreProfileData.bio,
-          phone: firestoreProfileData.phone,
+          phone: firestoreProfileData.phone, // This is already local format or empty
           birthday: firestoreProfileData.birthday,
-          isVerified: fbUser.emailVerified,
+          isVerified: fbUser.emailVerified || !!fbUser.phoneNumber, // Consider verified if email is verified OR phone number exists
         };
         setUser(profileData);
         setCalculatedAgeState(calculateAge(profileData.birthday));
         form.reset({
           name: profileData.name,
           email: profileData.email,
-          birthday: profileData.birthday || "", // Use YYYY-MM-DD string or ""
+          birthday: profileData.birthday || "", 
           bio: profileData.bio || "",
-          phone: profileData.phone || "",
+          phone: profileData.phone || "", // Already local format or empty
         });
 
         setIsLoadingOwnedEvents(true);
@@ -140,7 +148,7 @@ export default function ProfilePage() {
                 dateTime: safeToDate(data.dateTime),
                 createdAt: safeToDate(data.createdAt),
                 updatedAt: safeToDate(data.updatedAt),
-                imageUrl: data.imageUrl || undefined, // Ensure imageUrl is part of EventType
+                imageUrl: data.imageUrl || undefined, 
             } as EventType;
           });
           setOwnedEvents(fetchedEvents);
@@ -200,6 +208,8 @@ export default function ProfilePage() {
       return;
     }
 
+    const originalEmail = user?.email; // Email before this update attempt
+
     try {
       // Update Firebase Auth display name if changed
       if (values.name !== firebaseUser.displayName) {
@@ -209,9 +219,10 @@ export default function ProfilePage() {
       // Prepare data for Firestore update
       const firestoreUpdateData: Partial<UserProfile> & { updatedAt: any } = {
         name: values.name,
+        email: values.email || null, // Store null if empty string
         bio: values.bio || "",
         phone: values.phone || "",
-        birthday: values.birthday || "", // This will be YYYY-MM-DD string or ""
+        birthday: values.birthday || "", 
         updatedAt: serverTimestamp(),
       };
 
@@ -225,16 +236,17 @@ export default function ProfilePage() {
         const updatedUser = {
           ...prevUser,
           name: values.name,
-          birthday: values.birthday || undefined, // Store as string or undefined
+          email: values.email || "", // Keep as empty string for local state if null in DB
+          birthday: values.birthday || undefined, 
           bio: values.bio || undefined,
           phone: values.phone || undefined,
         };
         setCalculatedAgeState(calculateAge(updatedUser.birthday));
         return updatedUser;
       });
-      form.reset({ // Ensure form is reset with values in YYYY-MM-DD for date input
+      form.reset({ 
         name: values.name,
-        email: values.email, // email is not editable here but kept for form structure
+        email: values.email || "",
         birthday: values.birthday || "",
         bio: values.bio || "",
         phone: values.phone || "",
@@ -244,6 +256,15 @@ export default function ProfilePage() {
         title: HEBREW_TEXT.general.success,
         description: "הפרופיל עודכן בהצלחה!",
       });
+
+      if (values.email && values.email !== originalEmail) {
+          toast({
+            title: "כתובת אימייל עודכנה בפרופיל",
+            description: "שים לב: עדכון זה משפיע על פרטי הפרופיל שלך באפליקציה. אם האימייל משמש להתחברות, ייתכן ויידרשו צעדים נוספים לאימותו המלא בחשבון Firebase.",
+            duration: 7000,
+          });
+      }
+
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -380,7 +401,7 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.profile.email}</FormLabel>
                         <FormControl>
-                          <Input disabled {...field} />
+                          <Input type="email" placeholder="your@email.com" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -406,7 +427,6 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.profile.birthday} ({HEBREW_TEXT.general.optional})</FormLabel>
                         <FormControl>
-                          {/* Input type="date" expects value in YYYY-MM-DD format */}
                           <Input type="date" {...field} value={field.value || ""} max={new Date().toISOString().split("T")[0]} />
                         </FormControl>
                         <FormMessage />
@@ -630,5 +650,4 @@ export default function ProfilePage() {
     
 
     
-
 
