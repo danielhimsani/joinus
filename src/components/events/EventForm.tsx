@@ -591,7 +591,7 @@ export function EventForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)} className="space-y-8">
         <Card className="w-full max-w-3xl mx-auto overflow-hidden">
-          <div className="relative w-full h-72 md:h-96 bg-muted group"> {/* Increased height for location input */}
+          <div className="relative w-full h-72 md:h-96 bg-muted group">
             <Image
               src={currentImageToDisplay}
               alt={eventNameValue || HEBREW_TEXT.event.eventNameGenericPlaceholder}
@@ -677,13 +677,12 @@ export function EventForm({
                   <p className="text-destructive text-xs mt-1 bg-black/50 p-1 rounded">{form.formState.errors.name.message}</p>
               )}
 
-              {/* Location Input Moved Here */}
               {isLoaded && (
                 <FormField
                   control={form.control}
                   name="location"
                   render={({ field }) => (
-                    <div className="mt-3"> {/* Added margin-top */}
+                    <div className="mt-3">
                       <FormControl>
                         <Autocomplete
                           onLoad={onAutocompleteLoad}
@@ -723,7 +722,7 @@ export function EventForm({
               <Popover open={isDateTimePopoverOpen} onOpenChange={setIsDateTimePopoverOpen}>
                 <PopoverTrigger asChild>
                     <p
-                        className="mt-3 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center" // Added mt-3
+                        className="mt-3 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center"
                         title="לחץ לעריכת תאריך ושעה"
                     >
                         <CalendarIcon className="ml-1.5 h-4 w-4" />
@@ -888,7 +887,80 @@ export function EventForm({
                 />
             )}
 
-            <div className="grid md:grid-cols-1 gap-8"> {/* Changed to 1 col for numberOfGuests only */}
+            <div className="grid md:grid-cols-2 gap-8 items-start">
+              <FormField
+                control={form.control}
+                name="paymentOption"
+                render={({ field }) => (
+                  <FormItem className="space-y-2" data-fieldname="paymentOption">
+                    <FormLabel className="text-base font-medium">{HEBREW_TEXT.event.paymentOptions}</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          if (value !== 'fixed') {
+                            form.setValue('pricePerGuest', undefined, { shouldValidate: true });
+                          } else if (form.getValues('pricePerGuest') === undefined){
+                            form.setValue('pricePerGuest', 200, { shouldValidate: true }); // Default price if switching to fixed
+                          }
+                        }}
+                        value={field.value}
+                        className="flex flex-col space-y-2 pt-1"
+                        dir="rtl"
+                      >
+                        {paymentOptions.map((option) => (
+                          <div key={option.value} className="flex items-center space-x-3 rtl:space-x-reverse">
+                            <RadioGroupItem value={option.value} id={`paymentOption-${option.value}`} />
+                            <label htmlFor={`paymentOption-${option.value}`} className="font-normal cursor-pointer flex-grow">
+                              {option.label}
+                            </label>
+                            {option.value === 'fixed' && paymentOptionValue === 'fixed' && (
+                              <div className="flex items-center ml-2 rtl:mr-2">
+                                <span className="mr-1 rtl:ml-1 text-sm text-muted-foreground">₪</span>
+                                <FormField
+                                  control={form.control}
+                                  name="pricePerGuest"
+                                  render={({ field: priceField }) => (
+                                    <FormItem className="w-28">
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          placeholder="סכום"
+                                          className="h-9 px-2 text-sm"
+                                          value={priceField.value === undefined || priceField.value === null || isNaN(priceField.value as number) ? '' : String(priceField.value)}
+                                          onChange={e => {
+                                            const rawValue = e.target.value;
+                                            if (rawValue === '') {
+                                              priceField.onChange(undefined);
+                                            } else {
+                                              const num = parseFloat(rawValue);
+                                              priceField.onChange(isNaN(num) ? undefined : num);
+                                            }
+                                          }}
+                                          onBlur={priceField.onBlur}
+                                          ref={priceField.ref}
+                                          name={priceField.name}
+                                          data-fieldname="pricePerGuest"
+                                        />
+                                      </FormControl>
+                                       {form.formState.errors.pricePerGuest && (
+                                          <FormMessage className="text-xs mt-0.5 absolute whitespace-nowrap">
+                                              {form.formState.errors.pricePerGuest.message}
+                                          </FormMessage>
+                                       )}
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="numberOfGuests"
@@ -903,80 +975,6 @@ export function EventForm({
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="paymentOption"
-              render={({ field }) => (
-                <FormItem className="space-y-2" data-fieldname="paymentOption">
-                  <FormLabel className="text-base font-medium">{HEBREW_TEXT.event.paymentOptions}</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        if (value !== 'fixed') {
-                          form.setValue('pricePerGuest', undefined, { shouldValidate: true });
-                        } else if (form.getValues('pricePerGuest') === undefined){
-                          form.setValue('pricePerGuest', 200, { shouldValidate: true }); // Default price if switching to fixed
-                        }
-                      }}
-                      value={field.value}
-                      className="flex flex-col space-y-2 pt-1"
-                      dir="rtl"
-                    >
-                      {paymentOptions.map((option) => (
-                        <div key={option.value} className="flex items-center space-x-3 rtl:space-x-reverse">
-                          <RadioGroupItem value={option.value} id={`paymentOption-${option.value}`} />
-                          <label htmlFor={`paymentOption-${option.value}`} className="font-normal cursor-pointer flex-grow">
-                            {option.label}
-                          </label>
-                          {option.value === 'fixed' && paymentOptionValue === 'fixed' && (
-                            <div className="flex items-center ml-2 rtl:mr-2">
-                              <span className="mr-1 rtl:ml-1 text-sm text-muted-foreground">₪</span>
-                              <FormField
-                                control={form.control}
-                                name="pricePerGuest"
-                                render={({ field: priceField }) => (
-                                  <FormItem className="w-28"> {/* Adjusted width */}
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        placeholder="סכום"
-                                        className="h-9 px-2 text-sm"
-                                        value={priceField.value === undefined || priceField.value === null || isNaN(priceField.value as number) ? '' : String(priceField.value)}
-                                        onChange={e => {
-                                          const rawValue = e.target.value;
-                                          if (rawValue === '') {
-                                            priceField.onChange(undefined);
-                                          } else {
-                                            const num = parseFloat(rawValue);
-                                            priceField.onChange(isNaN(num) ? undefined : num);
-                                          }
-                                        }}
-                                        onBlur={priceField.onBlur}
-                                        ref={priceField.ref}
-                                        name={priceField.name}
-                                        data-fieldname="pricePerGuest"
-                                      />
-                                    </FormControl>
-                                     {form.formState.errors.pricePerGuest && (
-                                        <FormMessage className="text-xs mt-0.5 absolute whitespace-nowrap">
-                                            {form.formState.errors.pricePerGuest.message}
-                                        </FormMessage>
-                                     )}
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
 
             <FormField
