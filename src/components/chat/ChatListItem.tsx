@@ -121,7 +121,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
           {/* Block 1: Text content (name, message, timestamp, unread) */}
           <div className="flex-1 min-w-0 flex flex-col text-right">
             <div className="flex justify-end items-start">
-              <p className="text-md font-semibold truncate text-foreground">{primaryTitle}</p>
+              <p className="text-md font-semibold truncate text-foreground" dir="rtl">{primaryTitle}</p>
               {unreadMessages > 0 && (
                 <Badge variant="destructive" className="text-xs px-1.5 py-0.5 leading-none h-5 shrink-0 mr-2">
                   {unreadMessages}
