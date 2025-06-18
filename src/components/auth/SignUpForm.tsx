@@ -6,8 +6,8 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, type User } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore"; // Firestore imports
+import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult, type User } from "firebase/auth";
+import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore"; 
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,71 +21,134 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import { Apple, Chrome, Loader2 } from "lucide-react";
+import { Apple, Chrome, Loader2, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; // Import your initialized auth and db instances
-import { useState } from "react";
+import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; 
+import { useState, useEffect, useRef } from "react";
 
-const formSchema = z.object({
+const emailPasswordSchema = z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
   email: z.string().email({ message: HEBREW_TEXT.auth.emailInvalid }),
   password: z.string().min(6, { message: HEBREW_TEXT.auth.passwordMinLengthError }),
-  birthday: z.string().min(1, { message: HEBREW_TEXT.profile.birthdayRequiredError }), // Date input returns string
+  birthday: z.string().min(1, { message: HEBREW_TEXT.profile.birthdayRequiredError }), 
 });
+
+const phoneSchema = z.object({
+  phoneNumber: z.string().refine(val => /^\+972\d{9}$/.test(val), { message: HEBREW_TEXT.auth.invalidPhoneNumber }),
+  // For phone sign-up, name and birthday are optional here for simplicity, can be added later
+  name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }).optional(),
+  birthday: z.string().optional(),
+});
+
+const otpSchema = z.object({
+  otpCode: z.string().length(6, { message: HEBREW_TEXT.auth.invalidOtp }),
+});
+
 
 export function SignUpForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
-  const [isSubmittingGoogle, setIsSubmittingGoogle] = useState(false);
-  const [isSubmittingApple, setIsSubmittingApple] = useState(false); // Apple sign-up remains mock
+  const [signUpMethod, setSignUpMethod] = useState<'email' | 'phone'>('email');
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-      birthday: "",
-    },
+  // Email/Password states
+  const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
+
+  // Social/Provider states
+  const [isSubmittingGoogle, setIsSubmittingGoogle] = useState(false);
+  const [isSubmittingApple, setIsSubmittingApple] = useState(false);
+
+  // Phone Auth states
+  const [phoneNumberForOtp, setPhoneNumberForOtp] = useState("+972");
+  const [nameForPhoneSignUp, setNameForPhoneSignUp] = useState(""); // To capture name during phone sign-up
+  const [birthdayForPhoneSignUp, setBirthdayForPhoneSignUp] = useState(""); // To capture birthday
+  const [otpCode, setOtpCode] = useState("");
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+  const recaptchaContainerId = "recaptcha-container-signup";
+
+
+  const emailForm = useForm<z.infer<typeof emailPasswordSchema>>({
+    resolver: zodResolver(emailPasswordSchema),
+    defaultValues: { name: "", email: "", password: "", birthday: "" },
   });
+
+  const phoneForm = useForm<z.infer<typeof phoneSchema>>({
+    resolver: zodResolver(phoneSchema),
+    defaultValues: { phoneNumber: "+972", name: "", birthday: "" },
+  });
+  
+  const otpForm = useForm<z.infer<typeof otpSchema>>({
+    resolver: zodResolver(otpSchema),
+    defaultValues: { otpCode: "" },
+  });
+
+   useEffect(() => {
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+      }
+    };
+  }, []);
+
+  const setupRecaptcha = () => {
+    if (!recaptchaVerifierRef.current && typeof window !== 'undefined') {
+      const verifier = new RecaptchaVerifier(firebaseAuthInstance, recaptchaContainerId, {
+        size: 'invisible',
+        'callback': (response: any) => console.log("reCAPTCHA (signup) solved:", response),
+        'expired-callback': () => {
+          console.log("reCAPTCHA (signup) expired");
+          toast({ title: HEBREW_TEXT.auth.recaptchaError, description: "אימות reCAPTCHA פג תוקף. אנא נסה לשלוח קוד שוב.", variant: "destructive" });
+          if (recaptchaVerifierRef.current) {
+            recaptchaVerifierRef.current.clear();
+            recaptchaVerifierRef.current = null;
+          }
+          setIsSendingOtp(false);
+        }
+      });
+      recaptchaVerifierRef.current = verifier;
+    }
+    return recaptchaVerifierRef.current;
+  };
 
   const createUserDocument = async (user: User, name?: string, birthday?: string, profileImageUrl?: string) => {
     const userDocRef = doc(db, "users", user.uid);
-    const userData: any = { // Use any to allow conditional properties
+    const userData: any = {
       firebaseUid: user.uid,
-      name: name || user.displayName || "משתמש חדש",
+      name: name || user.displayName || `משתמש ${user.uid.substring(0,5)}`,
       email: user.email,
       profileImageUrl: profileImageUrl || user.photoURL || `https://placehold.co/150x150.png?text=${(name || user.displayName || "U").charAt(0)}`,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
-    if (birthday) {
-      userData.birthday = birthday;
-    }
+    if (birthday) userData.birthday = birthday;
+    if (user.phoneNumber) userData.phone = user.phoneNumber;
+    if (!user.email) userData.email = null; // Explicitly null for phone-only users
+
     try {
       await setDoc(userDocRef, userData);
-      console.log("User document created/updated in Firestore for UID:", user.uid);
+      console.log("User document created in Firestore for UID:", user.uid);
     } catch (error) {
-      console.error("Error creating/updating user document in Firestore:", error);
+      console.error("Error creating user document in Firestore:", error);
       toast({
-        title: "שגיאת שמירת פרופיל",
-        description: "הייתה בעיה בשמירת פרטי הפרופיל שלך. ייתכן שתצטרך לעדכן אותם ידנית.",
+        title: "שגיאת יצירת פרופיל",
+        description: "הייתה בעיה ביצירת הפרופיל שלך. ייתכן שתצטרך לעדכן פרטים ידנית.",
         variant: "destructive",
       });
     }
   };
 
-
-  const handleSignUpSuccess = async (user: User, formValues?: { name: string, birthday: string }) => {
+  const handleSignUpSuccess = async (user: User, formValues?: { name: string, birthday?: string }) => {
     localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userName', formValues?.name || user.displayName || user.email || 'משתמש חדש');
+    localStorage.setItem('userName', formValues?.name || user.displayName || user.email || user.phoneNumber || 'משתמש חדש');
     
     await createUserDocument(user, formValues?.name, formValues?.birthday);
 
     toast({
       title: HEBREW_TEXT.general.success,
-      description: "נרשמת והתחברת בהצלחה!",
+      description: HEBREW_TEXT.auth.phoneSignUpSuccess,
     });
     router.push("/events"); 
   };
@@ -105,13 +168,25 @@ export function SignUpForm() {
           description = HEBREW_TEXT.auth.weakPasswordError;
           break;
         case 'auth/popup-closed-by-user':
-          description = "חלון ההרשמה נסגר לפני השלמת התהליך. אנא נסה שוב. אם הבעיה חוזרת, בדוק אם חוסם חלונות קופצים פעיל בדפדפן שלך.";
+          description = "חלון ההרשמה נסגר לפני השלמת התהליך.";
           break;
         case 'auth/cancelled-popup-request':
-            description = "בקשת ההרשמה בוטלה מכיוון שנפתחה בקשה נוספת. אנא נסה שוב.";
+            description = "בקשת ההרשמה בוטלה.";
             break;
         case 'auth/operation-not-allowed':
-            description = "סוג הרשמה זה אינו מאופשר כרגע. פנה לתמיכה.";
+            description = "סוג הרשמה זה אינו מאופשר כרגע.";
+            break;
+        case 'auth/invalid-phone-number':
+            description = HEBREW_TEXT.auth.invalidPhoneNumber;
+            break;
+        case 'auth/captcha-check-failed':
+            description = HEBREW_TEXT.auth.recaptchaError;
+            break;
+        case 'auth/network-request-failed':
+            description = "שגיאת רשת. בדוק את חיבור האינטרנט שלך.";
+            break;
+        case 'auth/too-many-requests':
+            description = "נשלחו יותר מדי בקשות. אנא נסה שוב מאוחר יותר.";
             break;
         default:
           description = error.message || description;
@@ -124,12 +199,11 @@ export function SignUpForm() {
     });
   };
 
-  const onEmailPasswordSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onEmailPasswordSubmit = async (values: z.infer<typeof emailPasswordSchema>) => {
     setIsSubmittingEmail(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(firebaseAuthInstance, values.email, values.password);
       await updateProfile(userCredential.user, { displayName: values.name });
-      console.log("Email/Password Sign Up Success:", userCredential.user);
       await handleSignUpSuccess(userCredential.user, { name: values.name, birthday: values.birthday });
     } catch (error: any) {
       handleAuthError(error, "Email/Password");
@@ -141,12 +215,8 @@ export function SignUpForm() {
   const handleGoogleSignUp = async () => {
     setIsSubmittingGoogle(true);
     const provider = new GoogleAuthProvider();
-    console.log("Attempting Google Sign-Up with auth instance:", firebaseAuthInstance);
     try {
       const result = await signInWithPopup(firebaseAuthInstance, provider);
-      console.log("Google Sign Up/In Success:", result.user);
-      // Google sign-up doesn't collect birthday, so we pass undefined for it.
-      // The UserProfile type has birthday as optional.
       await handleSignUpSuccess(result.user, { name: result.user.displayName || "משתמש גוגל", birthday: "" });
     } catch (error: any) {
       handleAuthError(error, "Google");
@@ -157,23 +227,57 @@ export function SignUpForm() {
 
   const handleAppleSignUp = async () => { 
     setIsSubmittingApple(true);
-    console.log("Attempting Apple Sign Up (Mock)");
     toast({ title: "הרשמה עם אפל", description: "תהליך הרשמה עם אפל מופעל (דמה)..." });
     await new Promise(resolve => setTimeout(resolve, 1000)); 
-    
-    const mockUser = { 
-      uid: 'mock-apple-uid-' + Date.now(), 
-      displayName: 'משתמש אפל', 
-      email: 'apple-user@example.com',
-      photoURL: `https://placehold.co/150x150.png?text=A`,
-    } as User; 
-
-    // Apple sign-up (mock) doesn't collect birthday.
+    const mockUser = { uid: 'mock-apple-uid-' + Date.now(), displayName: 'משתמש אפל', email: 'apple-user@example.com', photoURL: `https://placehold.co/150x150.png?text=A`} as User; 
     await handleSignUpSuccess(mockUser, { name: 'משתמש אפל', birthday: "" });
     setIsSubmittingApple(false);
   };
 
-  const isLoading = isSubmittingEmail || isSubmittingGoogle || isSubmittingApple;
+  const onSendOtp = async (data: z.infer<typeof phoneSchema>) => {
+    setIsSendingOtp(true);
+    setNameForPhoneSignUp(data.name || ""); // Store name and birthday for later
+    setBirthdayForPhoneSignUp(data.birthday || "");
+    try {
+      firebaseAuthInstance.languageCode = 'he';
+      const verifier = setupRecaptcha();
+      if (!verifier) {
+          throw new Error("RecaptchaVerifier not initialized for signup");
+      }
+      const result = await signInWithPhoneNumber(firebaseAuthInstance, data.phoneNumber, verifier);
+      setConfirmationResult(result);
+      setIsOtpSent(true);
+      setPhoneNumberForOtp(data.phoneNumber); // Store the number for which OTP was sent
+      toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.auth.otpSent });
+    } catch (error: any) {
+      handleAuthError(error, "Phone OTP Send (SignUp)");
+       if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current = null;
+      }
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const onVerifyOtp = async (data: z.infer<typeof otpSchema>) => {
+    if (!confirmationResult) return;
+    setIsVerifyingOtp(true);
+    try {
+      const userCredential = await confirmationResult.confirm(data.otpCode);
+      // Pass stored name and birthday for new user creation
+      await handleSignUpSuccess(userCredential.user, { name: nameForPhoneSignUp || `משתמש ${phoneNumberForOtp.slice(-4)}`, birthday: birthdayForPhoneSignUp });
+    } catch (error: any) {
+      handleAuthError(error, "Phone OTP Verify (SignUp)");
+      if (error.code === 'auth/invalid-verification-code' || error.code === 'auth/code-expired') {
+        otpForm.setError("otpCode", { type: "manual", message: HEBREW_TEXT.auth.invalidOtp });
+      }
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  const isLoading = isSubmittingEmail || isSubmittingGoogle || isSubmittingApple || isSendingOtp || isVerifyingOtp;
 
   return (
     <Card className="w-full max-w-md">
@@ -182,66 +286,150 @@ export function SignUpForm() {
         <CardDescription>{HEBREW_TEXT.auth.signUp} {HEBREW_TEXT.general.to} {HEBREW_TEXT.appName}</CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onEmailPasswordSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{HEBREW_TEXT.profile.name}</FormLabel>
-                  <FormControl>
-                    <Input placeholder="שם מלא" {...field} disabled={isLoading} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{HEBREW_TEXT.auth.email}</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="your@email.com" {...field} disabled={isLoading} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{HEBREW_TEXT.auth.password}</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="********" {...field} disabled={isLoading} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="birthday"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{HEBREW_TEXT.profile.birthday}</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} disabled={isLoading} max={new Date().toISOString().split("T")[0]} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full font-body" disabled={isLoading}>
-              {isSubmittingEmail && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {HEBREW_TEXT.auth.signUpButton}
-            </Button>
-          </form>
-        </Form>
+        {signUpMethod === 'email' && (
+          <Form {...emailForm}>
+            <form onSubmit={emailForm.handleSubmit(onEmailPasswordSubmit)} className="space-y-6">
+              <FormField
+                control={emailForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{HEBREW_TEXT.profile.name}</FormLabel>
+                    <FormControl>
+                      <Input placeholder="שם מלא" {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={emailForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{HEBREW_TEXT.auth.email}</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="your@email.com" {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={emailForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{HEBREW_TEXT.auth.password}</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="********" {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={emailForm.control}
+                name="birthday"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{HEBREW_TEXT.profile.birthday}</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} disabled={isLoading} max={new Date().toISOString().split("T")[0]} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full font-body" disabled={isLoading}>
+                {isSubmittingEmail && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {HEBREW_TEXT.auth.signUpButton}
+              </Button>
+            </form>
+          </Form>
+        )}
+        
+        {signUpMethod === 'phone' && (
+          <div className="space-y-6">
+            {!isOtpSent ? (
+              <Form {...phoneForm}>
+                <form onSubmit={phoneForm.handleSubmit(onSendOtp)} className="space-y-4">
+                  <FormField
+                    control={phoneForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{HEBREW_TEXT.profile.name} (נדרש להרשמה)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="שם מלא" {...field} disabled={isLoading} onChange={(e) => {setNameForPhoneSignUp(e.target.value); field.onChange(e);}} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <FormField
+                    control={phoneForm.control}
+                    name="birthday"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{HEBREW_TEXT.profile.birthday} (נדרש להרשמה)</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} disabled={isLoading} max={new Date().toISOString().split("T")[0]} onChange={(e) => {setBirthdayForPhoneSignUp(e.target.value); field.onChange(e);}} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={phoneForm.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{HEBREW_TEXT.auth.phoneNumber}</FormLabel>
+                        <FormControl>
+                          <Input type="tel" placeholder="+972501234567" {...field} disabled={isLoading} dir="ltr" value={phoneNumberForOtp} onChange={(e) => {setPhoneNumberForOtp(e.target.value); field.onChange(e);}} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full font-body" disabled={isLoading || !phoneNumberForOtp.match(/^\+972\d{9}$/) || !nameForPhoneSignUp || !birthdayForPhoneSignUp}>
+                    {isSendingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {HEBREW_TEXT.auth.sendOtp}
+                  </Button>
+                </form>
+              </Form>
+            ) : (
+              <Form {...otpForm}>
+                <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-4">
+                  <FormField
+                    control={otpForm.control}
+                    name="otpCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{HEBREW_TEXT.auth.otpCode}</FormLabel>
+                        <FormControl>
+                          <Input type="text" inputMode="numeric" maxLength={6} placeholder="123456" {...field} disabled={isLoading} dir="ltr" value={otpCode} onChange={(e) => {setOtpCode(e.target.value); field.onChange(e);}}/>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full font-body" disabled={isLoading || otpCode.length !== 6}>
+                    {isVerifyingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {HEBREW_TEXT.auth.verifyOtp}
+                  </Button>
+                  <Button variant="link" onClick={() => { setIsOtpSent(false); setOtpCode(''); setConfirmationResult(null); }} className="w-full text-sm" disabled={isLoading}>
+                    שנה פרטים או שלח קוד מחדש
+                  </Button>
+                </form>
+              </Form>
+            )}
+          </div>
+        )}
+        <div id={recaptchaContainerId} className="my-2 flex justify-center"></div>
+
+
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -249,11 +437,23 @@ export function SignUpForm() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                או הירשם עם
+                {HEBREW_TEXT.auth.phoneOrEmail}
               </span>
             </div>
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="mt-6 grid grid-cols-1 gap-3">
+            {signUpMethod === 'email' && (
+                <Button variant="outline" onClick={() => setSignUpMethod('phone')} disabled={isLoading}>
+                     <Phone className="mr-2 h-4 w-4" /> {HEBREW_TEXT.auth.signUpWithPhone}
+                </Button>
+            )}
+            {signUpMethod === 'phone' && (
+                 <Button variant="outline" onClick={() => {setSignUpMethod('email'); setIsOtpSent(false); setOtpCode(''); setConfirmationResult(null);}} disabled={isLoading}>
+                    <Chrome className="mr-2 h-4 w-4" /> הרשמה עם אימייל וסיסמה
+                </Button>
+            )}
+          </div>
+           <div className="mt-3 grid grid-cols-2 gap-3">
              <Button variant="outline" onClick={handleGoogleSignUp} disabled={isLoading}>
               {isSubmittingGoogle ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Chrome className="mr-2 h-4 w-4" />}
               Google
@@ -273,3 +473,4 @@ export function SignUpForm() {
     </Card>
   );
 }
+
