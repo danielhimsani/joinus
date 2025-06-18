@@ -140,7 +140,7 @@ export function AddOwnerModal({ isOpen, onOpenChange, onOwnerAdded, currentOwner
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] md:max-w-[550px]">
-        <DialogHeader className="text-right"> {/* Added text-right here */}
+        <DialogHeader>
           <DialogTitle className="font-headline">{HEBREW_TEXT.event.addOwner}</DialogTitle>
           <DialogDescription>
             {HEBREW_TEXT.event.searchUsersPlaceholder}
@@ -203,4 +203,3 @@ export function AddOwnerModal({ isOpen, onOpenChange, onOwnerAdded, currentOwner
     </Dialog>
   );
 }
-
