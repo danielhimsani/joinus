@@ -358,3 +358,5 @@ export const HEBREW_TEXT = {
     termsOfUseTitle: "תנאי שימוש",
   }
 };
+
+    
