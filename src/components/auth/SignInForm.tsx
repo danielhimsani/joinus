@@ -80,36 +80,45 @@ export function SignInForm() {
     return () => {
       if (recaptchaVerifierRef.current) {
         recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current = null;
       }
     };
   }, []);
 
   const setupRecaptcha = () => {
     if (typeof window !== 'undefined') {
+      // Clear any existing verifier and its container
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current = null;
+      }
       const container = document.getElementById(recaptchaContainerId);
       if (container) {
-        container.innerHTML = ''; // Explicitly clear the container
+        container.innerHTML = ''; // Ensure container is empty before creating new verifier
+      } else {
+        console.error(`[reCAPTCHA Setup - SignIn] Container with ID '${recaptchaContainerId}' not found.`);
+        toast({ title: HEBREW_TEXT.auth.recaptchaError, description: "שגיאה פנימית בהגדרת reCAPTCHA.", variant: "destructive" });
+        return null;
       }
-      if (!recaptchaVerifierRef.current || (container && container.innerHTML === '')) {
-        const verifier = new RecaptchaVerifier(firebaseAuthInstance, recaptchaContainerId, {
-          size: 'invisible',
-          'callback': (response: any) => {
-            console.log("reCAPTCHA (signin) solved:", response);
-          },
-          'expired-callback': () => {
-            console.log("reCAPTCHA (signin) expired");
-            toast({ title: HEBREW_TEXT.auth.recaptchaError, description: "אימות reCAPTCHA פג תוקף. אנא נסה לשלוח קוד שוב.", variant: "destructive" });
-            if (recaptchaVerifierRef.current) {
-              recaptchaVerifierRef.current.clear();
-              recaptchaVerifierRef.current = null;
-            }
-            setIsSendingOtp(false);
-          }
-        });
-        recaptchaVerifierRef.current = verifier;
-      }
+
+      // Create a new verifier instance
+      const verifier = new RecaptchaVerifier(firebaseAuthInstance, recaptchaContainerId, {
+        size: 'invisible',
+        'callback': (response: any) => {
+          console.log("reCAPTCHA (signin) solved (callback):", response);
+        },
+        'expired-callback': () => {
+          console.log("reCAPTCHA (signin) expired");
+          toast({ title: HEBREW_TEXT.auth.recaptchaError, description: "אימות reCAPTCHA פג תוקף. אנא נסה לשלוח קוד שוב.", variant: "destructive" });
+          setIsSendingOtp(false); // Reset sending state
+          // Old verifier is already cleared and nulled if this callback is triggered after a new setup.
+        }
+      });
+      recaptchaVerifierRef.current = verifier;
+      return verifier;
     }
-    return recaptchaVerifierRef.current;
+    console.error("[reCAPTCHA Setup - SignIn] Window is undefined, cannot setup reCAPTCHA.");
+    return null;
   };
 
   const createUserOrUpdateDocument = async (user: User, name?: string) => {
@@ -260,7 +269,9 @@ export function SignInForm() {
       firebaseAuthInstance.languageCode = 'he';
       const verifier = setupRecaptcha();
       if (!verifier) {
-          throw new Error("RecaptchaVerifier not initialized");
+          setIsSendingOtp(false); // Reset loading state if verifier setup failed
+          // Toast message for container not found is handled in setupRecaptcha
+          return;
       }
 
       let firebasePhoneNumber = data.phoneNumber;
@@ -275,10 +286,7 @@ export function SignInForm() {
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.auth.otpSent });
     } catch (error: any) {
       handleAuthError(error, "Phone OTP Send");
-      if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
-        recaptchaVerifierRef.current = null;
-      }
+      // No need to clear verifier here, setupRecaptcha will handle it on next attempt.
     } finally {
       setIsSendingOtp(false);
     }
@@ -304,6 +312,19 @@ export function SignInForm() {
   };
 
   const isLoadingOverall = isSubmittingEmail || isSubmittingGoogle || isSubmittingApple || isSendingOtp || isVerifyingOtp;
+
+  const resetPhoneAuthFlow = () => {
+    setIsOtpSent(false);
+    otpForm.reset();
+    phoneForm.reset({ phoneNumber: "05" });
+    setConfirmationResult(null);
+    if (recaptchaVerifierRef.current) {
+      recaptchaVerifierRef.current.clear();
+      recaptchaVerifierRef.current = null;
+    }
+    const container = document.getElementById(recaptchaContainerId);
+    if (container) container.innerHTML = '';
+  };
 
   return (
     <Card className="w-full max-w-md">
@@ -411,18 +432,8 @@ export function SignInForm() {
                   </Button>
                    <Button
                     variant="link"
-                    onClick={() => {
-                        setIsOtpSent(false);
-                        otpForm.reset();
-                        phoneForm.reset({phoneNumber: "05"}); // Reset to default for phone input
-                        setConfirmationResult(null);
-                        if (recaptchaVerifierRef.current) {
-                            recaptchaVerifierRef.current.clear();
-                            recaptchaVerifierRef.current = null;
-                        }
-                        const container = document.getElementById(recaptchaContainerId);
-                        if (container) container.innerHTML = '';
-                    }}
+                    type="button"
+                    onClick={resetPhoneAuthFlow}
                     className="w-full text-sm"
                     disabled={isLoadingOverall}
                   >
@@ -449,25 +460,17 @@ export function SignInForm() {
           </div>
           <div className="mt-6 grid grid-cols-1 gap-3">
              {signInMethod === 'email' && (
-                <Button variant="outline" onClick={() => setSignInMethod('phone')} disabled={isLoadingOverall}>
+                <Button variant="outline" type="button" onClick={() => { setSignInMethod('phone'); resetPhoneAuthFlow(); }} disabled={isLoadingOverall}>
                     <Phone className="mr-2 h-4 w-4" /> {HEBREW_TEXT.auth.switchToPhone}
                 </Button>
             )}
             {signInMethod === 'phone' && (
                  <Button
                     variant="outline"
+                    type="button"
                     onClick={() => {
                         setSignInMethod('email');
-                        setIsOtpSent(false); // Reset OTP state
-                        otpForm.reset();
-                        phoneForm.reset({phoneNumber: "05"}); // Reset to default for phone input
-                        setConfirmationResult(null);
-                        if (recaptchaVerifierRef.current) {
-                            recaptchaVerifierRef.current.clear();
-                            recaptchaVerifierRef.current = null;
-                        }
-                        const container = document.getElementById(recaptchaContainerId);
-                        if (container) container.innerHTML = '';
+                        resetPhoneAuthFlow();
                     }}
                     disabled={isLoadingOverall}
                 >
@@ -476,11 +479,11 @@ export function SignInForm() {
             )}
           </div>
            <div className="mt-3 grid grid-cols-2 gap-3">
-            <Button variant="outline" onClick={handleGoogleSignIn} disabled={isLoadingOverall}>
+            <Button variant="outline" type="button" onClick={handleGoogleSignIn} disabled={isLoadingOverall}>
               {isSubmittingGoogle ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Chrome className="mr-2 h-4 w-4" />}
               Google
             </Button>
-            <Button variant="outline" onClick={handleAppleSignIn} disabled={isLoadingOverall}>
+            <Button variant="outline" type="button" onClick={handleAppleSignIn} disabled={isLoadingOverall}>
               {isSubmittingApple ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
                 <svg
                   version="1.1"
