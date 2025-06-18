@@ -66,14 +66,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   }
 
   const unreadMessages = chat.unreadCount?.[currentUserId] || 0;
-
-  const initialTimestampFormat = useMemo(() => {
-    if (!chat.lastMessageTimestamp) return '';
-    const date = new Date(chat.lastMessageTimestamp);
-    return formatDateFns(date, 'dd/MM/yy HH:mm', { locale: he });
-  }, [chat.lastMessageTimestamp]);
-
-  const [displayTimestamp, setDisplayTimestamp] = useState(initialTimestampFormat);
+  const [displayTimestamp, setDisplayTimestamp] = useState<string>('');
 
   useEffect(() => {
     if (chat.lastMessageTimestamp) {
@@ -168,7 +161,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               {displayTimestamp && (
                 <p className="text-xs text-muted-foreground/90 whitespace-nowrap">{displayTimestamp}</p>
               )}
-              {!displayTimestamp && <div className="flex-grow"></div> /* Spacer to push badge left */}
+              {!displayTimestamp && <div className="flex-grow"></div>} {/* Spacer to push badge left if no timestamp */}
               <div> 
                 <Badge
                     variant={statusDisplay.variant}
@@ -188,3 +181,4 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     </Link>
   );
 }
+
