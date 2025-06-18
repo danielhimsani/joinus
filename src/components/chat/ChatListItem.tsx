@@ -13,7 +13,7 @@ import { format as formatDateFns, isToday, isYesterday } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { MessageSquareText, Hash, Contact as UserPlaceholderIcon, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useMemo, useState, useEffect } from 'react'; // Added useState, useEffect
+import { useMemo, useState, useEffect } from 'react';
 import { getDisplayInitial } from '@/lib/textUtils';
 
 interface ChatListItemProps {
@@ -67,17 +67,15 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
 
   const unreadMessages = chat.unreadCount?.[currentUserId] || 0;
 
-  // Initial state for timestamp, rendered on server and client's first pass
   const initialTimestampFormat = useMemo(() => {
     if (!chat.lastMessageTimestamp) return '';
     const date = new Date(chat.lastMessageTimestamp);
-    return formatDateFns(date, 'dd/MM/yy HH:mm', { locale: he }); // Full, non-relative format
+    return formatDateFns(date, 'dd/MM/yy HH:mm', { locale: he });
   }, [chat.lastMessageTimestamp]);
 
   const [displayTimestamp, setDisplayTimestamp] = useState(initialTimestampFormat);
 
   useEffect(() => {
-    // This effect runs only on the client after hydration
     if (chat.lastMessageTimestamp) {
       const date = new Date(chat.lastMessageTimestamp);
       if (isToday(date)) {
@@ -118,8 +116,29 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
         <CardContent className="p-3 sm:p-4 flex flex-row-reverse items-center gap-3 sm:gap-4">
-          {/* Block 1: Text content (name, message, timestamp, unread) */}
+          {/* Avatar: Positioned on the far right (first in DOM for flex-row-reverse) */}
+          <div
+            onClick={avatarLink ? handleAvatarClick : undefined}
+            onKeyDown={(e) => {
+              if (avatarLink && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                handleAvatarClick(e);
+              }
+            }}
+            className={cn(
+              "flex-shrink-0", // Prevents avatar from shrinking
+              avatarLink && "cursor-pointer"
+            )}
+            role={avatarLink ? "link" : undefined}
+            tabIndex={avatarLink ? 0 : undefined}
+            aria-label={avatarLink ? `View profile of ${avatarAltText}` : undefined}
+          >
+            <AvatarContent />
+          </div>
+
+          {/* Details Wrapper: Contains all text, timestamp, and status badge. Appears to the left of Avatar. */}
           <div className="flex-1 min-w-0 flex flex-col text-right">
+            {/* Primary Title and Unread Badge Row */}
             <div className="flex justify-end items-start">
               <p className="text-md font-semibold truncate text-foreground" dir="rtl">{primaryTitle}</p>
               {unreadMessages > 0 && (
@@ -129,10 +148,12 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               )}
             </div>
 
+            {/* Secondary Title (if exists) */}
             {secondaryTitle && (
               <p className="text-xs text-muted-foreground truncate mt-0.5" dir="rtl">{secondaryTitle}</p>
             )}
 
+            {/* Last Message Text */}
             <p className={cn(
               "text-sm text-muted-foreground truncate",
               secondaryTitle ? "mt-1" : "mt-0.5",
@@ -141,32 +162,14 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               {chat.lastMessageSenderId === currentUserId ? `${HEBREW_TEXT.chat.you}: ` : ''}
               {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
             </p>
-             {displayTimestamp && (
-              <p className="text-xs text-muted-foreground/90 whitespace-nowrap mt-1.5">{displayTimestamp}</p>
-            )}
-          </div>
-
-          {/* Block 2: Avatar and Status Badge */}
-          <div className="flex flex-col items-center justify-center flex-shrink-0">
-            <div
-              onClick={avatarLink ? handleAvatarClick : undefined}
-              onKeyDown={(e) => {
-                if (avatarLink && (e.key === 'Enter' || e.key === ' ')) {
-                  e.preventDefault();
-                  handleAvatarClick(e);
-                }
-              }}
-              className={cn(
-                "w-full flex justify-start",
-                avatarLink && "cursor-pointer"
+            
+            {/* Timestamp and Status Badge Row */}
+            <div className="flex justify-between items-center mt-1.5">
+              {displayTimestamp && (
+                <p className="text-xs text-muted-foreground/90 whitespace-nowrap">{displayTimestamp}</p>
               )}
-              role={avatarLink ? "link" : undefined}
-              tabIndex={avatarLink ? 0 : undefined}
-              aria-label={avatarLink ? `View profile of ${avatarAltText}` : undefined}
-            >
-              <AvatarContent />
-            </div>
-            <div className="mt-1.5">
+              {!displayTimestamp && <div className="flex-grow"></div> /* Spacer to push badge left */}
+              <div> 
                 <Badge
                     variant={statusDisplay.variant}
                     className={cn(
@@ -177,6 +180,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                 >
                     {statusDisplay.text}
                 </Badge>
+              </div>
             </div>
           </div>
         </CardContent>
