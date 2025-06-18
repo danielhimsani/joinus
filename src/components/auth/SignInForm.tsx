@@ -209,8 +209,8 @@ export function SignInForm() {
         case 'auth/code-expired':
               description = "הקוד פג תוקף. אנא שלח קוד חדש.";
               break;
-        case 'auth/internal-error-encountered':
-             description = "שגיאה פנימית של Firebase. אנא בדוק את הגדרות הפרויקט שלך ב-Firebase Console (כגון חיוב, הרשאות API, ואזורי SMS מאושרים), או נסה שוב מאוחר יותר.";
+        case 'auth/internal-error': // Catches 500 errors from Identity Toolkit
+             description = "שגיאה פנימית של Firebase (קוד 500). בעיה זו נגרמת לרוב מהגדרות שגויות בפרויקט Firebase שלך. אנא ודא: 1) פרויקט Firebase שלך נמצא בתכנית חיוב (Blaze). 2) אימות באמצעות מספר טלפון (Phone sign-in provider) מאופשר ב-Firebase Console. 3) מפתח ה-API של הדפדפן שלך בתצורת Firebase תקין ואינו מוגבל באופן שמונע פעולה זו. 4) הדומיין שלך (או localhost) מורשה ב-Firebase Authentication. 5) אם App Check מופעל, ודא שהוא מוגדר כראוי. אם הבעיה נמשכת, פנה לתמיכה של Firebase.";
              break;
         default:
           description = error.message || description;
@@ -220,6 +220,7 @@ export function SignInForm() {
       title: HEBREW_TEXT.general.error,
       description: description,
       variant: "destructive",
+      duration: 10000, // Longer duration for detailed error messages
     });
   };
 
