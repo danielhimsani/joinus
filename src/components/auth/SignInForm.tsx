@@ -202,7 +202,7 @@ export function SignInForm() {
               description = "הקוד פג תוקף. אנא שלח קוד חדש.";
               break;
         case 'auth/internal-error-encountered':
-             description = "שגיאה פנימית של Firebase. בדוק את הגדרות הפרויקט שלך ב-Firebase (כגון חיוב, הרשאות API), או נסה שוב מאוחר יותר.";
+             description = "שגיאה פנימית של Firebase. אנא בדוק את הגדרות הפרויקט שלך ב-Firebase Console (כגון חיוב, הרשאות API, ואזורי SMS מאושרים), או נסה שוב מאוחר יותר.";
              break;
         default:
           description = error.message || description;
@@ -348,7 +348,7 @@ export function SignInForm() {
         {signInMethod === 'phone' && (
           <div className="space-y-6">
             {!isOtpSent ? (
-              <Form {...phoneForm}>
+              <Form {...phoneForm} key="phone-input-signin">
                 <form onSubmit={phoneForm.handleSubmit(onSendOtp)} className="space-y-4">
                   <FormField
                     control={phoneForm.control}
@@ -376,7 +376,7 @@ export function SignInForm() {
                 </form>
               </Form>
             ) : (
-              <Form {...otpForm}>
+              <Form {...otpForm} key="otp-input-signin">
                 <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-4">
                    <FormField
                     control={otpForm.control}
@@ -393,6 +393,7 @@ export function SignInForm() {
                             {...field} 
                             disabled={isLoadingOverall} 
                             dir="ltr" 
+                            autoComplete="one-time-code"
                           />
                         </FormControl>
                         <FormMessage />
@@ -408,6 +409,7 @@ export function SignInForm() {
                     onClick={() => { 
                         setIsOtpSent(false); 
                         otpForm.reset();
+                        phoneForm.reset(); // Also reset phone form if going back
                         setConfirmationResult(null); 
                         if (recaptchaVerifierRef.current) {
                             recaptchaVerifierRef.current.clear();
@@ -453,6 +455,7 @@ export function SignInForm() {
                         setSignInMethod('email'); 
                         setIsOtpSent(false); 
                         otpForm.reset(); 
+                        phoneForm.reset();
                         setConfirmationResult(null);
                         if (recaptchaVerifierRef.current) {
                             recaptchaVerifierRef.current.clear();

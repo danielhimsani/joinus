@@ -198,7 +198,7 @@ export function SignUpForm() {
               description = "הקוד פג תוקף. אנא שלח קוד חדש.";
               break;
         case 'auth/internal-error-encountered':
-             description = "שגיאה פנימית של Firebase. בדוק את הגדרות הפרויקט שלך ב-Firebase (כגון חיוב, הרשאות API), או נסה שוב מאוחר יותר.";
+             description = "שגיאה פנימית של Firebase. אנא בדוק את הגדרות הפרויקט שלך ב-Firebase Console (כגון חיוב, הרשאות API, ואזורי SMS מאושרים), או נסה שוב מאוחר יותר.";
              break;
         default:
           description = error.message || description;
@@ -372,7 +372,7 @@ export function SignUpForm() {
         {signUpMethod === 'phone' && (
           <div className="space-y-6">
             {!isOtpSent ? (
-              <Form {...phoneForm}>
+              <Form {...phoneForm} key="phone-input-signup">
                 <form onSubmit={phoneForm.handleSubmit(onSendOtp)} className="space-y-4">
                   <FormField
                     control={phoneForm.control}
@@ -420,7 +420,7 @@ export function SignUpForm() {
                 </form>
               </Form>
             ) : (
-              <Form {...otpForm}>
+              <Form {...otpForm} key="otp-input-signup">
                 <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-4">
                   <FormField
                     control={otpForm.control}
@@ -429,7 +429,16 @@ export function SignUpForm() {
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.auth.otpCode}</FormLabel>
                         <FormControl>
-                          <Input type="text" inputMode="numeric" maxLength={6} placeholder="123456" {...field} disabled={isLoadingOverall} dir="ltr" />
+                          <Input 
+                            type="text" 
+                            inputMode="numeric" 
+                            maxLength={6} 
+                            placeholder="123456" 
+                            {...field} 
+                            disabled={isLoadingOverall} 
+                            dir="ltr" 
+                            autoComplete="one-time-code"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -444,7 +453,10 @@ export function SignUpForm() {
                     onClick={() => { 
                         setIsOtpSent(false); 
                         otpForm.reset(); 
+                        phoneForm.reset(); // Reset phone form as well
                         setConfirmationResult(null); 
+                        setPersistedNameForOtp(""); // Clear persisted data
+                        setPersistedBirthdayForOtp("");
                         if (recaptchaVerifierRef.current) {
                             recaptchaVerifierRef.current.clear();
                             recaptchaVerifierRef.current = null;
@@ -489,7 +501,10 @@ export function SignUpForm() {
                         setSignUpMethod('email'); 
                         setIsOtpSent(false); 
                         otpForm.reset();
+                        phoneForm.reset();
                         setConfirmationResult(null);
+                        setPersistedNameForOtp("");
+                        setPersistedBirthdayForOtp("");
                         if (recaptchaVerifierRef.current) {
                             recaptchaVerifierRef.current.clear();
                             recaptchaVerifierRef.current = null;
