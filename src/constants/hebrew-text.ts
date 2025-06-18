@@ -70,7 +70,7 @@ export const HEBREW_TEXT = {
     meatAndDairy: "בשרי + חלבי",
     vegetarian: "צמחוני",
     vegan: "טבעוני",
-    kosherParve: "כשר פרווה",
+    kosherParve: "פרווה",
     kashrut: "כשרות",
     kosher: "כשר",
     notKosher: "ללא כשרות", 
