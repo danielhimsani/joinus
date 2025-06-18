@@ -382,10 +382,20 @@ export default function EventDetailPage() {
   }
 
   const imageToDisplay = event.imageUrl || "/onboarding/slide-2.png";
-  const googleMapsQuery = event.latitude && event.longitude
-    ? `${event.latitude},${event.longitude}`
-    : encodeURIComponent(event.locationDisplayName || event.location);
+  
+  let queryForMap: string;
+  if (event.locationDisplayName && event.locationDisplayName.trim() !== "") {
+    queryForMap = event.locationDisplayName;
+  } else if (event.location && event.location.trim() !== "") {
+    queryForMap = event.location;
+  } else if (event.latitude != null && event.longitude != null) {
+    queryForMap = `${event.latitude},${event.longitude}`;
+  } else {
+    queryForMap = event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder;
+  }
+  const googleMapsQuery = encodeURIComponent(queryForMap);
   const googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${googleMapsQuery}`;
+
 
   return (
     <div className="container mx-auto px-4 py-12">
