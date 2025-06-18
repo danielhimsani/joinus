@@ -132,7 +132,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
           {/* Details Wrapper: Contains all text, timestamp, and status badge. */}
           <div className="flex-1 min-w-0 flex flex-col text-right">
             {/* Primary Title and Unread Badge Row */}
-            <div className="flex items-center justify-between"> {/* Use justify-between here */}
+            <div className="flex items-center justify-between"> {/* This container ensures title is right, badge is left */}
               <p className="text-md font-semibold truncate text-foreground" dir="rtl">{primaryTitle}</p>
               {unreadMessages > 0 && (
                 <Badge variant="destructive" className="text-xs px-1.5 py-0.5 leading-none h-5 shrink-0">
@@ -156,9 +156,8 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
             </p>
             
-            {/* Timestamp and Status Badge Row - REVERSED ORDER */}
+            {/* Timestamp and Status Badge Row - REVERSED ORDER (Status first, then Timestamp for RTL) */}
             <div className="flex justify-between items-center mt-1.5">
-                {/* Status Badge is now first for RTL positioning to the right */}
                  <div className="flex-shrink-0">
                     <Badge
                         variant={statusDisplay.variant}
@@ -171,7 +170,6 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
                         {statusDisplay.text}
                     </Badge>
                  </div>
-                {/* Timestamp is now second, will be positioned to the left by justify-between */}
                 {displayTimestamp && (
                     <p className="text-xs text-muted-foreground/90 whitespace-nowrap">{displayTimestamp}</p>
                 )}
@@ -182,4 +180,3 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     </Link>
   );
 }
-
