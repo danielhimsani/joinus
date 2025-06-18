@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -61,6 +62,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [authProviderId, setAuthProviderId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,6 +88,7 @@ export default function ProfilePage() {
       setIsLoading(true);
       if (fbUser) {
         setFirebaseUser(fbUser);
+        setAuthProviderId(fbUser.providerData[0]?.providerId || null);
 
         let firestoreProfileData = { bio: "", phone: "", birthday: "", name: fbUser.displayName || "משתמש", email: fbUser.email || "" };
         try {
@@ -94,19 +97,18 @@ export default function ProfilePage() {
             if (userDocSnap.exists()) {
                 const data = userDocSnap.data();
                 let localPhoneNumber = data.phone || "";
-                if (localPhoneNumber.startsWith("+972")) {
+                if (localPhoneNumber && typeof localPhoneNumber === 'string' && localPhoneNumber.startsWith("+972")) { // Check if string before substring
                     localPhoneNumber = "0" + localPhoneNumber.substring(4);
                 }
                 
                 firestoreProfileData = {
                     name: data.name || fbUser.displayName || "משתמש",
-                    email: data.email || fbUser.email || "", // Use Firestore email if available, then Auth email
+                    email: data.email || fbUser.email || "", 
                     bio: data.bio || "",
                     phone: localPhoneNumber,
                     birthday: data.birthday || "", 
                 };
             } else {
-                // If no Firestore doc, use Auth data primarily for email
                 firestoreProfileData.email = fbUser.email || "";
             }
         } catch (error) {
@@ -121,9 +123,9 @@ export default function ProfilePage() {
           email: firestoreProfileData.email,
           profileImageUrl: fbUser.photoURL,
           bio: firestoreProfileData.bio,
-          phone: firestoreProfileData.phone, // This is already local format or empty
+          phone: firestoreProfileData.phone,
           birthday: firestoreProfileData.birthday,
-          isVerified: fbUser.emailVerified || !!fbUser.phoneNumber, // Consider verified if email is verified OR phone number exists
+          isVerified: fbUser.emailVerified || !!fbUser.phoneNumber,
         };
         setUser(profileData);
         setCalculatedAgeState(calculateAge(profileData.birthday));
@@ -132,7 +134,7 @@ export default function ProfilePage() {
           email: profileData.email,
           birthday: profileData.birthday || "", 
           bio: profileData.bio || "",
-          phone: profileData.phone || "", // Already local format or empty
+          phone: profileData.phone || "",
         });
 
         setIsLoadingOwnedEvents(true);
@@ -162,6 +164,7 @@ export default function ProfilePage() {
       } else {
         setUser(null);
         setFirebaseUser(null);
+        setAuthProviderId(null);
         setOwnedEvents([]);
         router.push('/signin');
       }
@@ -208,35 +211,36 @@ export default function ProfilePage() {
       return;
     }
 
-    const originalEmail = user?.email; // Email before this update attempt
+    const originalEmail = user?.email; 
+    const isEmailManagedExternally = authProviderId === 'google.com' || authProviderId === 'apple.com';
 
     try {
-      // Update Firebase Auth display name if changed
       if (values.name !== firebaseUser.displayName) {
         await updateProfile(firebaseUser, { displayName: values.name });
       }
 
-      // Prepare data for Firestore update
       const firestoreUpdateData: Partial<UserProfile> & { updatedAt: any } = {
         name: values.name,
-        email: values.email || null, // Store null if empty string
         bio: values.bio || "",
         phone: values.phone || "",
         birthday: values.birthday || "", 
         updatedAt: serverTimestamp(),
       };
+      
+      if (!isEmailManagedExternally) {
+          firestoreUpdateData.email = values.email || null;
+      }
 
-      // Update user document in Firestore
+
       const userDocRef = doc(db, "users", firebaseUser.uid);
       await setDoc(userDocRef, firestoreUpdateData, { merge: true });
 
-      // Update local state
       setUser(prevUser => {
         if (!prevUser) return null;
         const updatedUser = {
           ...prevUser,
           name: values.name,
-          email: values.email || "", // Keep as empty string for local state if null in DB
+          email: isEmailManagedExternally ? prevUser.email : (values.email || ""),
           birthday: values.birthday || undefined, 
           bio: values.bio || undefined,
           phone: values.phone || undefined,
@@ -246,7 +250,7 @@ export default function ProfilePage() {
       });
       form.reset({ 
         name: values.name,
-        email: values.email || "",
+        email: isEmailManagedExternally ? (user?.email || "") : (values.email || ""),
         birthday: values.birthday || "",
         bio: values.bio || "",
         phone: values.phone || "",
@@ -257,7 +261,7 @@ export default function ProfilePage() {
         description: "הפרופיל עודכן בהצלחה!",
       });
 
-      if (values.email && values.email !== originalEmail) {
+      if (!isEmailManagedExternally && values.email && values.email !== originalEmail) {
           toast({
             title: "כתובת אימייל עודכנה בפרופיל",
             description: "שים לב: עדכון זה משפיע על פרטי הפרופיל שלך באפליקציה. אם האימייל משמש להתחברות, ייתכן ויידרשו צעדים נוספים לאימותו המלא בחשבון Firebase.",
@@ -306,6 +310,12 @@ export default function ProfilePage() {
     toast({ title: "מאפשר התראות...", description: "אנא אשר את בקשת ההרשאה מהדפדפן." });
     await requestNotificationPermissionAndSaveToken(firebaseUser.uid);
   };
+  
+  const getManagedByProviderText = () => {
+    if (authProviderId === 'google.com') return "מנוהל באמצעות Google";
+    if (authProviderId === 'apple.com') return "מנוהל באמצעות Apple";
+    return "";
+  }
 
   if (isLoading || !user) {
     return (
@@ -401,8 +411,16 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.profile.email}</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="your@email.com" {...field} />
+                          <Input 
+                            type="email" 
+                            placeholder="your@email.com" 
+                            {...field} 
+                            disabled={isSubmitting || authProviderId === 'google.com' || authProviderId === 'apple.com'}
+                          />
                         </FormControl>
+                        {(authProviderId === 'google.com' || authProviderId === 'apple.com') && (
+                            <FormDescription>{getManagedByProviderText()}</FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
