@@ -197,6 +197,9 @@ export function SignUpForm() {
         case 'auth/code-expired':
               description = "הקוד פג תוקף. אנא שלח קוד חדש.";
               break;
+        case 'auth/internal-error-encountered':
+             description = "שגיאה פנימית של Firebase. בדוק את הגדרות הפרויקט שלך ב-Firebase (כגון חיוב, הרשאות API), או נסה שוב מאוחר יותר.";
+             break;
         default:
           description = error.message || description;
       }
