@@ -591,7 +591,7 @@ export function EventForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)} className="space-y-8">
         <Card className="w-full max-w-3xl mx-auto overflow-hidden">
-          <div className="relative w-full h-64 md:h-80 bg-muted group">
+          <div className="relative w-full h-72 md:h-96 bg-muted group"> {/* Increased height for location input */}
             <Image
               src={currentImageToDisplay}
               alt={eventNameValue || HEBREW_TEXT.event.eventNameGenericPlaceholder}
@@ -676,10 +676,54 @@ export function EventForm({
                {form.formState.errors.name && (
                   <p className="text-destructive text-xs mt-1 bg-black/50 p-1 rounded">{form.formState.errors.name.message}</p>
               )}
+
+              {/* Location Input Moved Here */}
+              {isLoaded && (
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <div className="mt-3"> {/* Added margin-top */}
+                      <FormControl>
+                        <Autocomplete
+                          onLoad={onAutocompleteLoad}
+                          onPlaceChanged={handlePlaceChanged}
+                          options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location", "photos"] }}
+                        >
+                          <Input
+                              placeholder="מיקום האירוע"
+                              {...field}
+                              ref={(e) => {
+                                  field.ref(e);
+                                  locationInputRef.current = e;
+                              }}
+                              onChange={(e) => {
+                                  field.onChange(e);
+                                  if (trueFormattedAddress || latitude || longitude) {
+                                      setTrueFormattedAddress(null);
+                                      setLatitude(null);
+                                      setLongitude(null);
+                                  }
+                                  form.setValue("locationDisplayName", e.target.value, { shouldValidate: false });
+                              }}
+                              data-fieldname="location"
+                              className="text-lg md:text-xl bg-transparent border-0 border-b-2 border-white/50 focus:border-white focus:ring-0 p-0 h-auto text-white placeholder-white/70 w-full"
+                          />
+                        </Autocomplete>
+                      </FormControl>
+                      {form.formState.errors.location && (
+                        <p className="text-destructive text-xs mt-1 bg-black/50 p-1 rounded">{form.formState.errors.location.message}</p>
+                      )}
+                    </div>
+                  )}
+                />
+              )}
+
+
               <Popover open={isDateTimePopoverOpen} onOpenChange={setIsDateTimePopoverOpen}>
                 <PopoverTrigger asChild>
                     <p
-                        className="mt-2 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center"
+                        className="mt-3 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center" // Added mt-3
                         title="לחץ לעריכת תאריך ושעה"
                     >
                         <CalendarIcon className="ml-1.5 h-4 w-4" />
@@ -758,7 +802,7 @@ export function EventForm({
                 </PopoverContent>
               </Popover>
                {form.formState.errors.dateTime && !eventDateTimeValue && (
-                  <p className="text-destructive text-xs mt-1">{form.formState.errors.dateTime.message}</p>
+                  <p className="text-destructive text-xs mt-1 bg-black/50 p-1 rounded">{form.formState.errors.dateTime.message}</p>
               )}
             </div>
           </div>
@@ -844,7 +888,7 @@ export function EventForm({
                 />
             )}
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid md:grid-cols-1 gap-8"> {/* Changed to 1 col for numberOfGuests only */}
               <FormField
                 control={form.control}
                 name="numberOfGuests"
@@ -858,44 +902,6 @@ export function EventForm({
                   </FormItem>
                 )}
               />
-              {isLoaded && (
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{HEBREW_TEXT.event.location}</FormLabel>
-                      <FormControl>
-                        <Autocomplete
-                          onLoad={onAutocompleteLoad}
-                          onPlaceChanged={handlePlaceChanged}
-                          options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location", "photos"] }}
-                        >
-                          <Input
-                              placeholder="התחל להקליד כתובת או שם מקום..."
-                              {...field}
-                              ref={(e) => {
-                                  field.ref(e);
-                                  locationInputRef.current = e;
-                              }}
-                              onChange={(e) => {
-                                  field.onChange(e);
-                                  if (trueFormattedAddress || latitude || longitude) {
-                                      setTrueFormattedAddress(null);
-                                      setLatitude(null);
-                                      setLongitude(null);
-                                  }
-                                  form.setValue("locationDisplayName", e.target.value, { shouldValidate: false });
-                              }}
-                              data-fieldname="location"
-                          />
-                        </Autocomplete>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
             </div>
 
             <FormField
@@ -953,7 +959,6 @@ export function EventForm({
                                         data-fieldname="pricePerGuest"
                                       />
                                     </FormControl>
-                                    {/* Inline FormMessage for pricePerGuest, ensuring it appears if there's an error */}
                                      {form.formState.errors.pricePerGuest && (
                                         <FormMessage className="text-xs mt-0.5 absolute whitespace-nowrap">
                                             {form.formState.errors.pricePerGuest.message}
@@ -968,7 +973,6 @@ export function EventForm({
                       ))}
                     </RadioGroup>
                   </FormControl>
-                  {/* Main FormMessage for paymentOption (e.g., if no option is selected) */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -1092,7 +1096,7 @@ export function EventForm({
     {ownerToRemove && (
         <AlertDialog open={!!ownerToRemove} onOpenChange={() => setOwnerToRemove(null)}>
             <AlertDialogContent>
-                <AlertDialogHeader>
+                <AlertDialogHeader className="text-right">
                     <AlertDialogTitle>{HEBREW_TEXT.event.confirmRemoveOwnerTitle}</AlertDialogTitle>
                     <AlertDialogDescription>
                         {HEBREW_TEXT.event.confirmRemoveOwnerMessage.replace('{userName}', ownerToRemove.name)}
