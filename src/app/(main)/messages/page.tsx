@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle as ShadAlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle, Filter, ListFilter, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash, Search } from "lucide-react"; // Added ListFilter & Search
+import { Loader2, MessageSquareText, Inbox, Briefcase, AlertCircle, Filter, ListFilter, CheckCircle, XCircle, AlertTriangle, Radio, CircleSlash, Search, ChevronLeft, ChevronRight } from "lucide-react"; // Added ListFilter & Search, ChevronLeft, ChevronRight
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -47,11 +47,11 @@ const statusFilterOptions: { value: ChatStatusFilter; label: string; icon?: Reac
 const defaultChatTimeFilter: ChatTimeFilter = 'future';
 const defaultChatStatusFilter: ChatStatusFilter = 'all';
 const defaultSimpleSearchQuery: string = "";
+const CHATS_PER_PAGE = 10;
 
 const countActiveMessageFilters = (
   timeFilter: ChatTimeFilter,
   statusFilter: ChatStatusFilter
-  // simpleSearchQuery is not counted here as it has its own visual cue
 ): number => {
   let count = 0;
   if (timeFilter !== defaultChatTimeFilter) count++;
@@ -68,11 +68,13 @@ export default function MessagesPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("requested");
   
-  // Filter states
   const [simpleSearchQuery, setSimpleSearchQuery] = useState(defaultSimpleSearchQuery);
   const [chatTimeFilter, setChatTimeFilter] = useState<ChatTimeFilter>(defaultChatTimeFilter);
   const [chatStatusFilter, setChatStatusFilter] = useState<ChatStatusFilter>(defaultChatStatusFilter);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
+
+  const [currentPageOwned, setCurrentPageOwned] = useState(1);
+  const [currentPageRequested, setCurrentPageRequested] = useState(1);
 
 
   useEffect(() => {
@@ -163,8 +165,25 @@ export default function MessagesPage() {
     fetchChatsAndEvents();
   }, [fetchChatsAndEvents]);
 
-  const { displayOwnedChats, displayRequestedChats, ownedUnreadCount, requestedUnreadCount } = useMemo(() => {
-    if (!currentUser) return { displayOwnedChats: [], displayRequestedChats: [], ownedUnreadCount: 0, requestedUnreadCount: 0 };
+  useEffect(() => {
+    setCurrentPageOwned(1);
+    setCurrentPageRequested(1);
+  }, [simpleSearchQuery, chatTimeFilter, chatStatusFilter]);
+
+
+  const { 
+    paginatedOwnedChats, 
+    totalPagesOwned,
+    paginatedRequestedChats,
+    totalPagesRequested,
+    ownedUnreadCount, 
+    requestedUnreadCount 
+  } = useMemo(() => {
+    if (!currentUser) return { 
+        paginatedOwnedChats: [], totalPagesOwned: 0, 
+        paginatedRequestedChats: [], totalPagesRequested: 0, 
+        ownedUnreadCount: 0, requestedUnreadCount: 0 
+    };
 
     const now = new Date();
     let filteredChats = [...allFetchedChats]; 
@@ -207,16 +226,32 @@ export default function MessagesPage() {
         if (unreadForThisChat > 0) tempRequestedUnread += unreadForThisChat;
       }
     });
+
+    const calcTotalPagesOwned = Math.ceil(owned.length / CHATS_PER_PAGE);
+    const calcTotalPagesRequested = Math.ceil(requested.length / CHATS_PER_PAGE);
+    
+    const finalCurrentPageOwned = (currentPageOwned > calcTotalPagesOwned && calcTotalPagesOwned > 0) ? calcTotalPagesOwned : currentPageOwned;
+    const finalCurrentPageRequested = (currentPageRequested > calcTotalPagesRequested && calcTotalPagesRequested > 0) ? calcTotalPagesRequested : currentPageRequested;
+
+
+    const startIndexOwned = (finalCurrentPageOwned - 1) * CHATS_PER_PAGE;
+    const paginatedOwned = owned.slice(startIndexOwned, startIndexOwned + CHATS_PER_PAGE);
+
+    const startIndexRequested = (finalCurrentPageRequested - 1) * CHATS_PER_PAGE;
+    const paginatedRequested = requested.slice(startIndexRequested, startIndexRequested + CHATS_PER_PAGE);
+
     return { 
-        displayOwnedChats: owned, 
-        displayRequestedChats: requested,
+        paginatedOwnedChats: paginatedOwned, 
+        totalPagesOwned: calcTotalPagesOwned,
+        paginatedRequestedChats: paginatedRequested,
+        totalPagesRequested: calcTotalPagesRequested,
         ownedUnreadCount: tempOwnedUnread,
         requestedUnreadCount: tempRequestedUnread
     };
-  }, [allFetchedChats, eventDetailsMap, chatTimeFilter, chatStatusFilter, simpleSearchQuery, currentUser]);
+  }, [allFetchedChats, eventDetailsMap, chatTimeFilter, chatStatusFilter, simpleSearchQuery, currentUser, currentPageOwned, currentPageRequested]);
 
 
-  const renderChatList = (chats: EventChat[], type: 'owned' | 'guest') => {
+  const renderChatList = (chats: EventChat[], type: 'owned' | 'guest', currentPage: number, totalPages: number, onPageChange: (page: number) => void) => {
     if (chats.length === 0) {
       let noChatsMessage = HEBREW_TEXT.chat.noChatsFound; 
       if (simpleSearchQuery.trim() || chatTimeFilter !== defaultChatTimeFilter || chatStatusFilter !== defaultChatStatusFilter) {
@@ -235,11 +270,36 @@ export default function MessagesPage() {
       );
     }
     return (
-      <div className="space-y-3">
-        {chats.map((chat) => (
-          <ChatListItem key={chat.id} chat={chat} currentUserId={currentUser!.uid} />
-        ))}
-      </div>
+      <>
+        <div className="space-y-3">
+          {chats.map((chat) => (
+            <ChatListItem key={chat.id} chat={chat} currentUserId={currentUser!.uid} />
+          ))}
+        </div>
+        {totalPages > 1 && (
+            <div className="mt-6 flex justify-center items-center space-x-2 rtl:space-x-reverse">
+                <Button
+                    variant="outline"
+                    onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                >
+                    <ChevronRight className="h-4 w-4" />
+                    {HEBREW_TEXT.general.previous}
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                    עמוד {currentPage} מתוך {totalPages}
+                </span>
+                <Button
+                    variant="outline"
+                    onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                >
+                    {HEBREW_TEXT.general.next}
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+            </div>
+        )}
+      </>
     );
   };
   
@@ -264,6 +324,7 @@ export default function MessagesPage() {
     setSimpleSearchQuery(defaultSimpleSearchQuery);
     setChatTimeFilter(defaultChatTimeFilter);
     setChatStatusFilter(defaultChatStatusFilter);
+    // Page reset will be handled by useEffect watching these filters
   };
 
   if (isLoading && !currentUser && !allFetchedChats.length) { 
@@ -291,7 +352,7 @@ export default function MessagesPage() {
                   {ownedUnreadCount}
                 </span>
               )}
-              <Briefcase className="ml-2 h-4 w-4 sm:h-5 sm:w-5" /> {/* Adjusted to ml-2 consistently */}
+              <Briefcase className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
             </TabsTrigger>
             <TabsTrigger value="requested" className="py-2.5 text-sm sm:text-base font-body flex items-center justify-center">
               {HEBREW_TEXT.chat.myRequests}
@@ -300,7 +361,7 @@ export default function MessagesPage() {
                   {requestedUnreadCount}
                 </span>
               )}
-              <Inbox className="ml-2 h-4 w-4 sm:h-5 sm:w-5" /> {/* Adjusted to ml-2 consistently */}
+              <Inbox className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
             </TabsTrigger>
           </TabsList>
           
@@ -404,10 +465,10 @@ export default function MessagesPage() {
           ) : (
             <>
               <TabsContent value="owned">
-                {renderChatList(displayOwnedChats, 'owned')}
+                {renderChatList(paginatedOwnedChats, 'owned', currentPageOwned, totalPagesOwned, setCurrentPageOwned)}
               </TabsContent>
               <TabsContent value="requested">
-                {renderChatList(displayRequestedChats, 'guest')}
+                {renderChatList(paginatedRequestedChats, 'guest', currentPageRequested, totalPagesRequested, setCurrentPageRequested)}
               </TabsContent>
             </>
           )}

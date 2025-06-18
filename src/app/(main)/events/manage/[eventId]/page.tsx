@@ -15,7 +15,7 @@ import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertTitle, AlertDescription as ShadAlertDescription } from '@/components/ui/alert'; // Renamed to avoid conflict
+import { Alert, AlertTitle, AlertDescription as ShadAlertDescription } from '@/components/ui/alert'; 
 import {
   Tooltip,
   TooltipContent,
@@ -28,7 +28,7 @@ import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, server
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
-import { Edit3, Users, FileText, Send, Loader2, AlertCircle, ChevronRight, Contact as UserPlaceholderIcon, MessageSquare, CalendarDays, MoreVertical, UserX } from 'lucide-react'; // Changed ChevronLeft to ChevronRight
+import { Edit3, Users, FileText, Send, Loader2, AlertCircle, ChevronRight, Contact as UserPlaceholderIcon, MessageSquare, CalendarDays, MoreVertical, UserX, ChevronLeft } from 'lucide-react'; // Added ChevronLeft
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,7 +43,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle as ShadAlertDialogTitle, // Using alias for Shadcn's title
+  AlertDialogTitle as ShadAlertDialogTitle, 
 } from "@/components/ui/alert-dialog";
 
 
@@ -78,12 +78,12 @@ export default function ManageEventGuestsPage() {
   const [isExportingCsv, setIsExportingCsv] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const totalGuestPages = Math.ceil(approvedGuests.length / GUESTS_PER_PAGE);
-  const paginatedGuests = approvedGuests.slice((currentPage - 1) * GUESTS_PER_PAGE, currentPage * GUESTS_PER_PAGE);
-
   const [showRevokeDialog, setShowRevokeDialog] = useState(false);
   const [guestToRevoke, setGuestToRevoke] = useState<ApprovedGuestWithProfile | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
+
+  const totalGuestPages = Math.ceil(approvedGuests.length / GUESTS_PER_PAGE);
+  const paginatedGuests = approvedGuests.slice((currentPage - 1) * GUESTS_PER_PAGE, currentPage * GUESTS_PER_PAGE);
 
 
   useEffect(() => {
@@ -102,7 +102,6 @@ export default function ManageEventGuestsPage() {
     setFetchError(null);
 
     try {
-      // 1. Fetch Event Details & Verify Ownership
       const eventDocRef = doc(db, "events", eventId);
       const eventSnap = await getDoc(eventDocRef);
       if (!eventSnap.exists()) {
@@ -117,7 +116,6 @@ export default function ManageEventGuestsPage() {
       }
       setEvent(eventData);
 
-      // Fetch owner profiles for announcements later
       const tempOwnerProfiles = new Map<string, UserProfile>();
       for (const ownerUid of eventData.ownerUids) {
         const userDocRef = doc(db, "users", ownerUid);
@@ -128,7 +126,6 @@ export default function ManageEventGuestsPage() {
       }
       setOwnerProfiles(tempOwnerProfiles);
 
-      // 2. Fetch Approved Guests and their Profiles
       const chatsQuery = query(
         collection(db, "eventChats"),
         where("eventId", "==", eventId),
@@ -153,7 +150,6 @@ export default function ManageEventGuestsPage() {
       const fetchedGuestsRaw = await Promise.all(guestFetchPromises);
       setApprovedGuests(fetchedGuestsRaw.filter(g => g !== null) as ApprovedGuestWithProfile[]);
 
-      // 3. Fetch Announcements
       const announcementsQuery = query(
         collection(db, "eventAnnouncements"),
         where("eventId", "==", eventId),
@@ -205,10 +201,10 @@ export default function ManageEventGuestsPage() {
         guest.birthday ? (calculateAge(guest.birthday)?.toString() || "") : ""
       ]);
 
-      let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // \uFEFF for BOM for Excel UTF-8
+      let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
       csvContent += headers.join(",") + "\n";
       rows.forEach(rowArray => {
-        const row = rowArray.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(","); // Escape quotes
+        const row = rowArray.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(","); 
         csvContent += row + "\n";
       });
 
@@ -265,7 +261,7 @@ export default function ManageEventGuestsPage() {
         updatedAt: serverTimestamp()
       });
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.event.guestApprovalRevoked.replace('{guestName}', guestToRevoke.name || HEBREW_TEXT.chat.guest) });
-      fetchPageData(); // Refresh the guest list
+      fetchPageData(); 
     } catch (error: any) {
       console.error("Error revoking guest approval:", error);
       toast({ title: HEBREW_TEXT.general.error, description: HEBREW_TEXT.event.errorRevokingApproval + (error.message ? `: ${error.message}` : ''), variant: "destructive" });
@@ -338,12 +334,12 @@ export default function ManageEventGuestsPage() {
     <TooltipProvider>
       <div className="container mx-auto px-4 py-12">
         <Card className="max-w-4xl mx-auto shadow-lg">
-          <CardHeader className="border-b relative"> {/* Default padding is p-6 */}
+          <CardHeader className="border-b relative"> 
             <Button
               asChild
               variant="outline"
               size="icon"
-              className="absolute top-4 right-4 z-10" // Visually top-left in RTL, within p-4 (adjust if CardHeader padding changes)
+              className="absolute top-4 right-4 z-10" 
               title={HEBREW_TEXT.event.editEvent}
             >
               <Link href={`/events/edit/${event.id}`}>
@@ -357,13 +353,12 @@ export default function ManageEventGuestsPage() {
               </CardTitle>
               <CardDescription className="flex items-center mt-1">
                 <CalendarDays className="ml-1.5 h-4 w-4 text-muted-foreground" />
-                {format(event.dateTime, 'PPPP', { locale: he })} {/* Changed date format */}
+                {format(event.dateTime, 'PPPP', { locale: he })} 
               </CardDescription>
             </div>
           </CardHeader>
 
           <CardContent className="pt-6 space-y-10">
-            {/* Approved Guests Section */}
             <section>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-headline text-xl font-semibold flex items-center">
@@ -430,25 +425,25 @@ export default function ManageEventGuestsPage() {
                       </Card>
                     ))}
                    {totalGuestPages > 1 && (
-                    <div className="flex justify-center items-center space-x-2 rtl:space-x-reverse mt-6">
+                    <div className="mt-6 flex justify-center items-center space-x-2 rtl:space-x-reverse">
                         <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
+                            variant="outline"
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
                         >
-                        <ChevronRight className="h-4 w-4" />
+                            <ChevronRight className="h-4 w-4" />
+                            {HEBREW_TEXT.general.previous}
                         </Button>
                         <span className="text-sm text-muted-foreground">
                             עמוד {currentPage} מתוך {totalGuestPages}
                         </span>
                         <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setCurrentPage(prev => Math.min(totalGuestPages, prev + 1))}
-                        disabled={currentPage === totalGuestPages}
+                            variant="outline"
+                            onClick={() => setCurrentPage(prev => Math.min(totalGuestPages, prev + 1))}
+                            disabled={currentPage === totalGuestPages}
                         >
-                        <ChevronRight className="h-4 w-4 transform scale-x-[-1]" /> {/* ChevronLeft visually */}
+                            {HEBREW_TEXT.general.next}
+                            <ChevronLeft className="h-4 w-4" />
                         </Button>
                     </div>
                     )}
@@ -460,10 +455,9 @@ export default function ManageEventGuestsPage() {
 
             <Separator />
 
-            {/* Broadcast Announcements Section */}
             <section>
               <h2 className="font-headline text-xl font-semibold mb-4 flex items-center">
-                <Send className="ml-2 h-6 w-6 text-primary transform scale-x-[-1]" /> {/* Mirrored Send icon */}
+                <Send className="ml-2 h-6 w-6 text-primary transform scale-x-[-1]" /> 
                 {HEBREW_TEXT.event.broadcastAnnouncements}
               </h2>
               <Card className="bg-muted/30 p-4">
@@ -528,7 +522,6 @@ export default function ManageEventGuestsPage() {
         </Card>
       </div>
 
-      {/* Revoke Approval Confirmation Dialog */}
       <AlertDialog open={showRevokeDialog} onOpenChange={setShowRevokeDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
