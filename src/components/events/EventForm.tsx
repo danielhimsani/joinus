@@ -690,8 +690,7 @@ export function EventForm({
                     type="button"
                     onClick={() => setIsLocationPickerDialogOpen(true)}
                     className={cn(
-                        "mt-3 text-lg md:text-xl opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center w-full text-left",
-                        "bg-transparent border-0 border-b-2 border-white/50 focus:border-white focus:ring-0 p-0 h-auto text-white placeholder-white/70",
+                        "mt-3 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center w-full text-left bg-transparent text-white p-0 h-auto focus:ring-0 focus:outline-none",
                         !locationDisplayNameValue && "text-white/70"
                     )}
                     title={HEBREW_TEXT.event.pickLocation}
@@ -870,7 +869,7 @@ export function EventForm({
                     render={({ field }) => <input type="hidden" {...field} value={initialEventData.imageUrl} />}
                 />
             )}
-             <div className="grid md:grid-cols-2 gap-8 items-start">
+            <div className="grid md:grid-cols-2 gap-8 items-start">
                 <FormField
                     control={form.control}
                     name="numberOfGuests"
@@ -959,7 +958,7 @@ export function EventForm({
                 />
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8 items-start">
+             <div className="grid md:grid-cols-2 gap-8 items-start">
                  <FormField
                     control={form.control}
                     name="weddingType"
@@ -1132,5 +1131,3 @@ export function EventForm({
     </>
   );
 }
-
-    
