@@ -110,6 +110,7 @@ export function OnboardingSlides() {
             slide.isLogo ? "h-32 md:h-40" : "h-40 md:h-64" // Adjusted height for logo
         )}>
           <Image
+            key={slide.imageUrl} // Added key here
             src={slide.imageUrl}
             alt={slide.title}
             layout="fill"
