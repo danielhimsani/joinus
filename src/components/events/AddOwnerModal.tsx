@@ -140,20 +140,21 @@ export function AddOwnerModal({ isOpen, onOpenChange, onOwnerAdded, currentOwner
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] md:max-w-[550px]">
-        <DialogHeader className="text-right"> {/* Added text-right here */}
+        <DialogHeader className="text-right">
           <DialogTitle className="font-headline">{HEBREW_TEXT.event.addOwner}</DialogTitle>
           <DialogDescription>
             {HEBREW_TEXT.event.searchUsersPlaceholder}
           </DialogDescription>
         </DialogHeader>
         <div className="relative mt-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
           <Input
             type="search"
             placeholder={HEBREW_TEXT.general.search + " שם משתמש..."}
             value={searchTerm}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-3"
+            className="w-full pr-10 pl-3"
+            dir="rtl"
           />
         </div>
 
@@ -202,3 +203,4 @@ export function AddOwnerModal({ isOpen, onOpenChange, onOwnerAdded, currentOwner
     </Dialog>
   );
 }
+
