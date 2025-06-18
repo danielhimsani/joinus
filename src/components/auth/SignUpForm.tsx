@@ -57,10 +57,8 @@ export function SignUpForm() {
   const [isSubmittingApple, setIsSubmittingApple] = useState(false);
 
   // Phone Auth states
-  const [phoneNumberForOtp, setPhoneNumberForOtp] = useState("05");
-  const [nameForPhoneSignUp, setNameForPhoneSignUp] = useState(""); 
-  const [birthdayForPhoneSignUp, setBirthdayForPhoneSignUp] = useState(""); 
-  const [otpCode, setOtpCode] = useState("");
+  const [persistedNameForOtp, setPersistedNameForOtp] = useState(""); 
+  const [persistedBirthdayForOtp, setPersistedBirthdayForOtp] = useState(""); 
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
@@ -93,25 +91,27 @@ export function SignUpForm() {
   }, []);
 
   const setupRecaptcha = () => {
-    if (!recaptchaVerifierRef.current && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       const container = document.getElementById(recaptchaContainerId);
       if (container) {
         container.innerHTML = ''; // Explicitly clear the container
       }
-      const verifier = new RecaptchaVerifier(firebaseAuthInstance, recaptchaContainerId, {
-        size: 'invisible',
-        'callback': (response: any) => console.log("reCAPTCHA (signup) solved:", response),
-        'expired-callback': () => {
-          console.log("reCAPTCHA (signup) expired");
-          toast({ title: HEBREW_TEXT.auth.recaptchaError, description: "אימות reCAPTCHA פג תוקף. אנא נסה לשלוח קוד שוב.", variant: "destructive" });
-          if (recaptchaVerifierRef.current) {
-            recaptchaVerifierRef.current.clear();
-            recaptchaVerifierRef.current = null;
+      if (!recaptchaVerifierRef.current || (container && container.innerHTML === '')) {
+        const verifier = new RecaptchaVerifier(firebaseAuthInstance, recaptchaContainerId, {
+          size: 'invisible',
+          'callback': (response: any) => console.log("reCAPTCHA (signup) solved:", response),
+          'expired-callback': () => {
+            console.log("reCAPTCHA (signup) expired");
+            toast({ title: HEBREW_TEXT.auth.recaptchaError, description: "אימות reCAPTCHA פג תוקף. אנא נסה לשלוח קוד שוב.", variant: "destructive" });
+            if (recaptchaVerifierRef.current) {
+              recaptchaVerifierRef.current.clear();
+              recaptchaVerifierRef.current = null;
+            }
+            setIsSendingOtp(false);
           }
-          setIsSendingOtp(false);
-        }
-      });
-      recaptchaVerifierRef.current = verifier;
+        });
+        recaptchaVerifierRef.current = verifier;
+      }
     }
     return recaptchaVerifierRef.current;
   };
@@ -127,8 +127,8 @@ export function SignUpForm() {
       updatedAt: serverTimestamp(),
     };
     if (birthday) userData.birthday = birthday;
-    if (user.phoneNumber) userData.phone = user.phoneNumber; // Firebase phone number is E.164
-    if (!user.email) userData.email = null; // Explicitly null for phone-only users
+    if (user.phoneNumber) userData.phone = user.phoneNumber; 
+    if (!user.email) userData.email = null; 
 
     try {
       await setDoc(userDocRef, userData);
@@ -151,7 +151,7 @@ export function SignUpForm() {
 
     toast({
       title: HEBREW_TEXT.general.success,
-      description: HEBREW_TEXT.auth.phoneSignUpSuccess,
+      description: HEBREW_TEXT.auth.phoneSignUpSuccess, // Generic success message
     });
     router.push("/events"); 
   };
@@ -183,7 +183,7 @@ export function SignUpForm() {
             description = HEBREW_TEXT.auth.invalidIsraeliPhoneNumber;
             break;
         case 'auth/captcha-check-failed':
-            description = HEBREW_TEXT.auth.recaptchaError;
+            description = HEBREW_TEXT.auth.recaptchaError + " (Auth Hostname). " + error.message;
             break;
         case 'auth/network-request-failed':
             description = "שגיאת רשת. בדוק את חיבור האינטרנט שלך.";
@@ -191,6 +191,12 @@ export function SignUpForm() {
         case 'auth/too-many-requests':
             description = "נשלחו יותר מדי בקשות. אנא נסה שוב מאוחר יותר.";
             break;
+        case 'auth/invalid-verification-code':
+             description = HEBREW_TEXT.auth.invalidOtp;
+             break;
+        case 'auth/code-expired':
+              description = "הקוד פג תוקף. אנא שלח קוד חדש.";
+              break;
         default:
           description = error.message || description;
       }
@@ -220,7 +226,9 @@ export function SignUpForm() {
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(firebaseAuthInstance, provider);
-      // For Google sign-up, birthday isn't typically provided by Google, so we pass an empty string or handle it in profile completion.
+      // For Google sign-up, birthday isn't typically provided by Google.
+      // We need a way to collect it, or make it optional during initial Firestore doc creation.
+      // For now, passing empty string; user should update via profile page.
       await handleSignUpSuccess(result.user, { name: result.user.displayName || "משתמש גוגל", birthday: "" });
     } catch (error: any) {
       handleAuthError(error, "Google");
@@ -234,15 +242,14 @@ export function SignUpForm() {
     toast({ title: "הרשמה עם אפל", description: "תהליך הרשמה עם אפל מופעל (דמה)..." });
     await new Promise(resolve => setTimeout(resolve, 1000)); 
     const mockUser = { uid: 'mock-apple-uid-' + Date.now(), displayName: 'משתמש אפל', email: 'apple-user@example.com', photoURL: `https://placehold.co/150x150.png?text=A`} as User; 
-    // For Apple sign-up, birthday isn't typically provided, so we pass an empty string.
     await handleSignUpSuccess(mockUser, { name: 'משתמש אפל', birthday: "" });
     setIsSubmittingApple(false);
   };
 
   const onSendOtp = async (data: z.infer<typeof phoneSchema>) => {
     setIsSendingOtp(true);
-    setNameForPhoneSignUp(data.name || ""); 
-    setBirthdayForPhoneSignUp(data.birthday || "");
+    setPersistedNameForOtp(data.name); 
+    setPersistedBirthdayForOtp(data.birthday);
     try {
       firebaseAuthInstance.languageCode = 'he';
       const verifier = setupRecaptcha();
@@ -258,7 +265,7 @@ export function SignUpForm() {
       const result = await signInWithPhoneNumber(firebaseAuthInstance, firebasePhoneNumber, verifier);
       setConfirmationResult(result);
       setIsOtpSent(true);
-      setPhoneNumberForOtp(data.phoneNumber); 
+      otpForm.reset(); // Clear previous OTP if any
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.auth.otpSent });
     } catch (error: any) {
       handleAuthError(error, "Phone OTP Send (SignUp)");
@@ -276,7 +283,7 @@ export function SignUpForm() {
     setIsVerifyingOtp(true);
     try {
       const userCredential = await confirmationResult.confirm(data.otpCode);
-      await handleSignUpSuccess(userCredential.user, { name: nameForPhoneSignUp || `משתמש ${phoneNumberForOtp.slice(-4)}`, birthday: birthdayForPhoneSignUp });
+      await handleSignUpSuccess(userCredential.user, { name: persistedNameForOtp, birthday: persistedBirthdayForOtp });
     } catch (error: any) {
       handleAuthError(error, "Phone OTP Verify (SignUp)");
       if (error.code === 'auth/invalid-verification-code' || error.code === 'auth/code-expired') {
@@ -287,7 +294,7 @@ export function SignUpForm() {
     }
   };
 
-  const isLoading = isSubmittingEmail || isSubmittingGoogle || isSubmittingApple || isSendingOtp || isVerifyingOtp;
+  const isLoadingOverall = isSubmittingEmail || isSubmittingGoogle || isSubmittingApple || isSendingOtp || isVerifyingOtp;
 
   return (
     <Card className="w-full max-w-md">
@@ -306,7 +313,7 @@ export function SignUpForm() {
                   <FormItem>
                     <FormLabel>{HEBREW_TEXT.profile.name}</FormLabel>
                     <FormControl>
-                      <Input placeholder="שם מלא" {...field} disabled={isLoading} />
+                      <Input placeholder="שם מלא" {...field} disabled={isLoadingOverall} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -319,7 +326,7 @@ export function SignUpForm() {
                   <FormItem>
                     <FormLabel>{HEBREW_TEXT.auth.email}</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="your@email.com" {...field} disabled={isLoading} />
+                      <Input type="email" placeholder="your@email.com" {...field} disabled={isLoadingOverall} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -332,7 +339,7 @@ export function SignUpForm() {
                   <FormItem>
                     <FormLabel>{HEBREW_TEXT.auth.password}</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="********" {...field} disabled={isLoading} />
+                      <Input type="password" placeholder="********" {...field} disabled={isLoadingOverall} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -345,13 +352,13 @@ export function SignUpForm() {
                   <FormItem>
                     <FormLabel>{HEBREW_TEXT.profile.birthday}</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} disabled={isLoading} max={new Date().toISOString().split("T")[0]} />
+                      <Input type="date" {...field} disabled={isLoadingOverall} max={new Date().toISOString().split("T")[0]} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full font-body" disabled={isLoading}>
+              <Button type="submit" className="w-full font-body" disabled={isLoadingOverall || !emailForm.formState.isValid}>
                 {isSubmittingEmail && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {HEBREW_TEXT.auth.signUpButton}
               </Button>
@@ -369,9 +376,9 @@ export function SignUpForm() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{HEBREW_TEXT.profile.name} (נדרש להרשמה)</FormLabel>
+                        <FormLabel>{HEBREW_TEXT.profile.name}</FormLabel>
                         <FormControl>
-                          <Input placeholder="שם מלא" {...field} disabled={isLoading} onChange={(e) => {setNameForPhoneSignUp(e.target.value); field.onChange(e);}} />
+                          <Input placeholder="שם מלא" {...field} disabled={isLoadingOverall} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -382,9 +389,9 @@ export function SignUpForm() {
                     name="birthday"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{HEBREW_TEXT.profile.birthday} (נדרש להרשמה)</FormLabel>
+                        <FormLabel>{HEBREW_TEXT.profile.birthday}</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} disabled={isLoading} max={new Date().toISOString().split("T")[0]} onChange={(e) => {setBirthdayForPhoneSignUp(e.target.value); field.onChange(e);}} />
+                          <Input type="date" {...field} disabled={isLoadingOverall} max={new Date().toISOString().split("T")[0]} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -397,13 +404,13 @@ export function SignUpForm() {
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.auth.phoneNumber}</FormLabel>
                         <FormControl>
-                          <Input type="tel" placeholder={HEBREW_TEXT.auth.phoneNumber} {...field} disabled={isLoading} dir="ltr" value={phoneNumberForOtp} onChange={(e) => {setPhoneNumberForOtp(e.target.value); field.onChange(e);}} />
+                          <Input type="tel" placeholder={HEBREW_TEXT.auth.phoneNumberPlaceholderShort} {...field} disabled={isLoadingOverall} dir="ltr" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full font-body" disabled={isLoading || !phoneNumberForOtp.match(/^05\d{8}$/) || !nameForPhoneSignUp || !birthdayForPhoneSignUp}>
+                  <Button type="submit" className="w-full font-body" disabled={isLoadingOverall || !phoneForm.formState.isValid}>
                     {isSendingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {HEBREW_TEXT.auth.sendOtp}
                   </Button>
@@ -419,13 +426,13 @@ export function SignUpForm() {
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.auth.otpCode}</FormLabel>
                         <FormControl>
-                          <Input type="text" inputMode="numeric" maxLength={6} placeholder="123456" {...field} disabled={isLoading} dir="ltr" value={otpCode} onChange={(e) => {setOtpCode(e.target.value); field.onChange(e);}}/>
+                          <Input type="text" inputMode="numeric" maxLength={6} placeholder="123456" {...field} disabled={isLoadingOverall} dir="ltr" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full font-body" disabled={isLoading || otpCode.length !== 6}>
+                  <Button type="submit" className="w-full font-body" disabled={isLoadingOverall || !otpForm.formState.isValid}>
                     {isVerifyingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {HEBREW_TEXT.auth.verifyOtp}
                   </Button>
@@ -433,15 +440,17 @@ export function SignUpForm() {
                     variant="link" 
                     onClick={() => { 
                         setIsOtpSent(false); 
-                        setOtpCode(''); 
+                        otpForm.reset(); 
                         setConfirmationResult(null); 
                         if (recaptchaVerifierRef.current) {
                             recaptchaVerifierRef.current.clear();
                             recaptchaVerifierRef.current = null;
                         }
+                        const container = document.getElementById(recaptchaContainerId);
+                        if (container) container.innerHTML = '';
                     }} 
                     className="w-full text-sm" 
-                    disabled={isLoading}
+                    disabled={isLoadingOverall}
                   >
                     שנה פרטים או שלח קוד מחדש
                   </Button>
@@ -466,7 +475,7 @@ export function SignUpForm() {
           </div>
           <div className="mt-6 grid grid-cols-1 gap-3">
             {signUpMethod === 'email' && (
-                <Button variant="outline" onClick={() => setSignUpMethod('phone')} disabled={isLoading}>
+                <Button variant="outline" onClick={() => setSignUpMethod('phone')} disabled={isLoadingOverall}>
                      <Phone className="mr-2 h-4 w-4" /> {HEBREW_TEXT.auth.signUpWithPhone}
                 </Button>
             )}
@@ -476,25 +485,27 @@ export function SignUpForm() {
                     onClick={() => {
                         setSignUpMethod('email'); 
                         setIsOtpSent(false); 
-                        setOtpCode(''); 
+                        otpForm.reset();
                         setConfirmationResult(null);
                         if (recaptchaVerifierRef.current) {
                             recaptchaVerifierRef.current.clear();
                             recaptchaVerifierRef.current = null;
                         }
+                        const container = document.getElementById(recaptchaContainerId);
+                        if (container) container.innerHTML = '';
                     }} 
-                    disabled={isLoading}
+                    disabled={isLoadingOverall}
                 >
                     <Chrome className="mr-2 h-4 w-4" /> הרשמה עם אימייל וסיסמה
                 </Button>
             )}
           </div>
            <div className="mt-3 grid grid-cols-2 gap-3">
-             <Button variant="outline" onClick={handleGoogleSignUp} disabled={isLoading}>
+             <Button variant="outline" onClick={handleGoogleSignUp} disabled={isLoadingOverall}>
               {isSubmittingGoogle ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Chrome className="mr-2 h-4 w-4" />}
               Google
             </Button>
-            <Button variant="outline" onClick={handleAppleSignUp} disabled={isLoading}>
+            <Button variant="outline" onClick={handleAppleSignUp} disabled={isLoadingOverall}>
               {isSubmittingApple ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Apple className="mr-2 h-4 w-4" />}
               Apple
             </Button>

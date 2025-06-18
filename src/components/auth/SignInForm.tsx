@@ -53,8 +53,6 @@ export function SignInForm() {
   const [isSubmittingApple, setIsSubmittingApple] = useState(false); // Apple sign-in remains mock
 
   // Phone Auth states
-  const [phoneNumber, setPhoneNumber] = useState("05");
-  const [otpCode, setOtpCode] = useState("");
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
@@ -87,43 +85,44 @@ export function SignInForm() {
   }, []);
 
   const setupRecaptcha = () => {
-    if (!recaptchaVerifierRef.current && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       const container = document.getElementById(recaptchaContainerId);
       if (container) {
         container.innerHTML = ''; // Explicitly clear the container
       }
-      const verifier = new RecaptchaVerifier(firebaseAuthInstance, recaptchaContainerId, {
-        size: 'invisible',
-        'callback': (response: any) => {
-          // reCAPTCHA solved, allow signInWithPhoneNumber.
-          console.log("reCAPTCHA solved:", response);
-        },
-        'expired-callback': () => {
-          // Response expired. Ask user to solve reCAPTCHA again.
-          console.log("reCAPTCHA expired");
-          toast({ title: HEBREW_TEXT.auth.recaptchaError, description: "אימות reCAPTCHA פג תוקף. אנא נסה לשלוח קוד שוב.", variant: "destructive" });
-          if (recaptchaVerifierRef.current) { // Clear and allow re-initialization if needed
-            recaptchaVerifierRef.current.clear();
-            recaptchaVerifierRef.current = null; 
+      // Only create a new verifier if one doesn't exist or if the container was just cleared
+      if (!recaptchaVerifierRef.current || (container && container.innerHTML === '')) {
+        const verifier = new RecaptchaVerifier(firebaseAuthInstance, recaptchaContainerId, {
+          size: 'invisible',
+          'callback': (response: any) => {
+            console.log("reCAPTCHA (signin) solved:", response);
+          },
+          'expired-callback': () => {
+            console.log("reCAPTCHA (signin) expired");
+            toast({ title: HEBREW_TEXT.auth.recaptchaError, description: "אימות reCAPTCHA פג תוקף. אנא נסה לשלוח קוד שוב.", variant: "destructive" });
+            if (recaptchaVerifierRef.current) { 
+              recaptchaVerifierRef.current.clear();
+              recaptchaVerifierRef.current = null; 
+            }
+            setIsSendingOtp(false);
           }
-          setIsSendingOtp(false);
-        }
-      });
-      recaptchaVerifierRef.current = verifier;
+        });
+        recaptchaVerifierRef.current = verifier;
+      }
     }
     return recaptchaVerifierRef.current;
   };
 
   const createUserOrUpdateDocument = async (user: User, name?: string) => {
     const userDocRef = doc(db, "users", user.uid);
-    const userData: any = { // Using `any` for conditional properties like createdAt
+    const userData: any = { 
       firebaseUid: user.uid,
-      name: name || user.displayName || user.phoneNumber || "משתמש חדש", // Use phone number if display name not set
-      email: user.email, // Might be null for phone auth users
+      name: name || user.displayName || user.phoneNumber || "משתמש חדש",
+      email: user.email, 
       profileImageUrl: user.photoURL || `https://placehold.co/150x150.png?text=${(name || user.displayName || "U").charAt(0)}`,
       updatedAt: serverTimestamp(),
     };
-    if (user.phoneNumber) { // Firebase phone number is E.164
+    if (user.phoneNumber) { 
         userData.phone = user.phoneNumber;
     }
 
@@ -131,10 +130,8 @@ export function SignInForm() {
       const docSnap = await getDoc(userDocRef);
       if (!docSnap.exists()) {
         userData.createdAt = serverTimestamp();
-        // For phone auth, email might not be available.
-        // Name and birthday also not available initially.
         if (!userData.name && user.phoneNumber) userData.name = `משתמש ${user.phoneNumber.slice(-4)}`;
-        if (!userData.email) userData.email = null; // Explicitly set to null if not present
+        if (!userData.email) userData.email = null; 
       }
       await setDoc(userDocRef, userData, { merge: true });
       console.log("User document created/updated in Firestore for UID:", user.uid);
@@ -190,14 +187,20 @@ export function SignInForm() {
             description = "מספר טלפון חסר.";
             break;
         case 'auth/captcha-check-failed':
-            description = HEBREW_TEXT.auth.recaptchaError;
+             description = HEBREW_TEXT.auth.recaptchaError + " (Auth Hostname). " + error.message;
             break;
-         case 'auth/network-request-failed':
+        case 'auth/network-request-failed':
             description = "שגיאת רשת. בדוק את חיבור האינטרנט שלך ונסה שוב.";
             break;
         case 'auth/too-many-requests':
             description = "נשלחו יותר מדי בקשות. אנא נסה שוב מאוחר יותר.";
             break;
+        case 'auth/invalid-verification-code':
+             description = HEBREW_TEXT.auth.invalidOtp;
+             break;
+        case 'auth/code-expired':
+              description = "הקוד פג תוקף. אנא שלח קוד חדש.";
+              break;
         default:
           description = error.message || description;
       }
@@ -227,7 +230,8 @@ export function SignInForm() {
     try {
       const result = await signInWithPopup(firebaseAuthInstance, provider);
       await handleAuthSuccess(result.user);
-    } catch (error: any) {
+    } catch (error: any)      
+    {
       handleAuthError(error, "Google");
     } finally {
       setIsSubmittingGoogle(false);
@@ -260,13 +264,13 @@ export function SignInForm() {
       const result = await signInWithPhoneNumber(firebaseAuthInstance, firebasePhoneNumber, verifier);
       setConfirmationResult(result);
       setIsOtpSent(true);
+      otpForm.reset(); // Clear previous OTP if any
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.auth.otpSent });
     } catch (error: any) {
       handleAuthError(error, "Phone OTP Send");
-      // Reset reCAPTCHA if it was rendered and caused an error, or if there's a persistent issue.
       if (recaptchaVerifierRef.current) {
         recaptchaVerifierRef.current.clear();
-        recaptchaVerifierRef.current = null; // Allow re-initialization on next attempt
+        recaptchaVerifierRef.current = null; 
       }
     } finally {
       setIsSendingOtp(false);
@@ -292,7 +296,7 @@ export function SignInForm() {
     }
   };
   
-  const isLoading = isSubmittingEmail || isSubmittingGoogle || isSubmittingApple || isSendingOtp || isVerifyingOtp;
+  const isLoadingOverall = isSubmittingEmail || isSubmittingGoogle || isSubmittingApple || isSendingOtp || isVerifyingOtp;
 
   return (
     <Card className="w-full max-w-md">
@@ -311,7 +315,7 @@ export function SignInForm() {
                   <FormItem>
                     <FormLabel>{HEBREW_TEXT.auth.email}</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="your@email.com" {...field} disabled={isLoading} />
+                      <Input type="email" placeholder="your@email.com" {...field} disabled={isLoadingOverall} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -324,13 +328,13 @@ export function SignInForm() {
                   <FormItem>
                     <FormLabel>{HEBREW_TEXT.auth.password}</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="********" {...field} disabled={isLoading} />
+                      <Input type="password" placeholder="********" {...field} disabled={isLoadingOverall} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full font-body" disabled={isLoading}>
+              <Button type="submit" className="w-full font-body" disabled={isLoadingOverall}>
                 {isSubmittingEmail && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {HEBREW_TEXT.auth.signInButton}
               </Button>
@@ -352,22 +356,17 @@ export function SignInForm() {
                         <FormControl>
                           <Input 
                             type="tel" 
-                            placeholder={HEBREW_TEXT.auth.phoneNumber}
+                            placeholder={HEBREW_TEXT.auth.phoneNumberPlaceholderShort}
                             {...field} 
-                            disabled={isLoading} 
+                            disabled={isLoadingOverall} 
                             dir="ltr"
-                            value={phoneNumber}
-                            onChange={(e) => {
-                                setPhoneNumber(e.target.value);
-                                field.onChange(e); // Ensure react-hook-form is also updated
-                            }}
                            />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full font-body" disabled={isLoading || !phoneNumber.match(/^05\d{8}$/)}>
+                  <Button type="submit" className="w-full font-body" disabled={isLoadingOverall || !phoneForm.formState.isValid}>
                     {isSendingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {HEBREW_TEXT.auth.sendOtp}
                   </Button>
@@ -387,21 +386,17 @@ export function SignInForm() {
                             type="text" 
                             inputMode="numeric" 
                             maxLength={6} 
-                            placeholder="123456" {...field} 
-                            disabled={isLoading} 
+                            placeholder="123456" 
+                            {...field} 
+                            disabled={isLoadingOverall} 
                             dir="ltr" 
-                            value={otpCode}
-                            onChange={(e) => {
-                                setOtpCode(e.target.value);
-                                field.onChange(e); // Ensure react-hook-form is also updated
-                            }}
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full font-body" disabled={isLoading || otpCode.length !== 6}>
+                  <Button type="submit" className="w-full font-body" disabled={isLoadingOverall || !otpForm.formState.isValid}>
                     {isVerifyingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {HEBREW_TEXT.auth.verifyOtp}
                   </Button>
@@ -409,15 +404,17 @@ export function SignInForm() {
                     variant="link" 
                     onClick={() => { 
                         setIsOtpSent(false); 
-                        setOtpCode(''); 
+                        otpForm.reset();
                         setConfirmationResult(null); 
                         if (recaptchaVerifierRef.current) {
                             recaptchaVerifierRef.current.clear();
                             recaptchaVerifierRef.current = null;
                         }
+                        const container = document.getElementById(recaptchaContainerId);
+                        if (container) container.innerHTML = '';
                     }} 
                     className="w-full text-sm" 
-                    disabled={isLoading}
+                    disabled={isLoadingOverall}
                   >
                     שנה מספר טלפון או שלח קוד מחדש
                 </Button>
@@ -426,7 +423,6 @@ export function SignInForm() {
             )}
           </div>
         )}
-         {/* Container for reCAPTCHA, must be visible in the DOM for invisible reCAPTCHA */}
          <div id={recaptchaContainerId} className="my-2 flex justify-center"></div>
 
 
@@ -443,7 +439,7 @@ export function SignInForm() {
           </div>
           <div className="mt-6 grid grid-cols-1 gap-3">
              {signInMethod === 'email' && (
-                <Button variant="outline" onClick={() => setSignInMethod('phone')} disabled={isLoading}>
+                <Button variant="outline" onClick={() => setSignInMethod('phone')} disabled={isLoadingOverall}>
                     <Phone className="mr-2 h-4 w-4" /> {HEBREW_TEXT.auth.switchToPhone}
                 </Button>
             )}
@@ -453,25 +449,27 @@ export function SignInForm() {
                     onClick={() => { 
                         setSignInMethod('email'); 
                         setIsOtpSent(false); 
-                        setOtpCode(''); 
+                        otpForm.reset(); 
                         setConfirmationResult(null);
                         if (recaptchaVerifierRef.current) {
                             recaptchaVerifierRef.current.clear();
                             recaptchaVerifierRef.current = null;
                         }
+                        const container = document.getElementById(recaptchaContainerId);
+                        if (container) container.innerHTML = '';
                     }} 
-                    disabled={isLoading}
+                    disabled={isLoadingOverall}
                 >
                     <Chrome className="mr-2 h-4 w-4" /> {HEBREW_TEXT.auth.switchToEmail}
                 </Button>
             )}
           </div>
            <div className="mt-3 grid grid-cols-2 gap-3">
-            <Button variant="outline" onClick={handleGoogleSignIn} disabled={isLoading}>
+            <Button variant="outline" onClick={handleGoogleSignIn} disabled={isLoadingOverall}>
               {isSubmittingGoogle ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Chrome className="mr-2 h-4 w-4" />}
               Google
             </Button>
-            <Button variant="outline" onClick={handleAppleSignIn} disabled={isLoading}>
+            <Button variant="outline" onClick={handleAppleSignIn} disabled={isLoadingOverall}>
               {isSubmittingApple ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Apple className="mr-2 h-4 w-4" />}
               Apple
             </Button>

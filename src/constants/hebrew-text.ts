@@ -11,7 +11,8 @@ export const HEBREW_TEXT = {
     signInWithApple: "התחבר עם אפל",
     signInWithPhone: "התחבר עם מספר טלפון",
     signUpWithPhone: "הירשם עם מספר טלפון",
-    phoneNumber: "מספר טלפון (לדוגמה 0501234567)",
+    phoneNumber: "מספר טלפון",
+    phoneNumberPlaceholderShort: "05X-XXXXXXX",
     sendOtp: "שלח קוד",
     otpCode: "קוד אימות",
     verifyOtp: "אמת קוד",
@@ -24,13 +25,13 @@ export const HEBREW_TEXT = {
     passwordMinLengthError: "סיסמה חייבת להכיל לפחות 6 תווים.",
     emailInUseError: "כתובת אימייל זו כבר רשומה.",
     weakPasswordError: "הסיסמה חלשה מדי. נסה סיסמה חזקה יותר.",
-    invalidPhoneNumber: "מספר טלפון לא תקין. אנא השתמש בפורמט +972XXXXXXXXX.", // Kept for general reference if needed, but new one is primary
-    invalidIsraeliPhoneNumber: "מספר טלפון ישראלי לא תקין. אנא השתמש בפורמט 05XXXXXXXX (10 ספרות).",
+    invalidPhoneNumber: "מספר טלפון לא תקין. אנא השתמש בפורמט +972XXXXXXXXX.",
+    invalidIsraeliPhoneNumber: "מספר טלפון ישראלי לא תקין. חייב להיות בן 10 ספרות ולהתחיל ב-05.",
     otpSent: "קוד אימות נשלח למספר הטלפון שלך.",
     otpError: "שגיאה בשליחת קוד האימות. אנא נסה שוב.",
     invalidOtp: "קוד האימות שגוי. אנא נסה שוב.",
-    phoneSignInSuccess: "התחברת בהצלחה באמצעות טלפון!",
-    phoneSignUpSuccess: "נרשמת בהצלחה באמצעות טלפון!",
+    phoneSignInSuccess: "התחברת בהצלחה!",
+    phoneSignUpSuccess: "נרשמת בהצלחה!",
     recaptchaError: "שגיאה באימות reCAPTCHA. נסה לרענן את הדף או נסה שוב מאוחר יותר.",
     phoneOrEmail: "או התחבר/הירשם עם",
     switchToEmail: "התחברות עם אימייל וסיסמה",
@@ -63,7 +64,7 @@ export const HEBREW_TEXT = {
     selectDate: "בחר תאריך",
     description: "תיאור",
     ageRange: "טווח גילאים",
-    foodType: "סוג כיבוד", // Changed from "סוג אוכל"
+    foodType: "סוג כיבוד", 
     meat: "בשרי",
     dairy: "חלבי",
     meatAndDairy: "בשרי + חלבי",
@@ -72,12 +73,12 @@ export const HEBREW_TEXT = {
     kosherParve: "כשר פרווה",
     kashrut: "כשרות",
     kosher: "כשר",
-    notKosher: "ללא כשרות", // Changed from "לא כשר" to be more explicit
-    weddingType: "סוג חתונה", // Changed from "סגנון דתי"
+    notKosher: "ללא כשרות", 
+    weddingType: "סוג חתונה", 
     traditional: "מסורתית",
     civil: "אזרחית",
     harediWithSeparation: "חרדית עם הפרדה",
-    religionStyle: "סגנון דתי", // Kept for backward compatibility if referenced somewhere, but new usage should be weddingType
+    religionStyle: "סגנון דתי", 
     uploadImage: "העלאת תמונה",
     createEventButton: "צור אירוע",
     discoverEvents: "גלה אירועים",
@@ -323,7 +324,7 @@ export const HEBREW_TEXT = {
     yesterday: "אתמול",
   },
   foodIcons: {
-    kosherMeat: "בשרי", // This structure might be for old icon mapping, review if needed
+    kosherMeat: "בשרי", 
     kosherDairy: "חלבי",
     kosherParve: "פרווה",
     notKosher: "לא כשר",
