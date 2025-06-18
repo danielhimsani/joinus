@@ -60,11 +60,12 @@ export const HEBREW_TEXT = {
     payWhatYouWant: "שלם כפי יכולתך",
     free: "חינם",
     location: "מיקום",
+    pickLocation: "בחר מיקום",
     dateTime: "תאריך",
     selectDate: "בחר תאריך",
     description: "תיאור",
     ageRange: "טווח גילאים",
-    foodType: "סוג כיבוד", 
+    foodType: "סוג כיבוד",
     meat: "בשרי",
     dairy: "חלבי",
     meatAndDairy: "בשרי + חלבי",
@@ -73,12 +74,12 @@ export const HEBREW_TEXT = {
     kosherParve: "פרווה",
     kashrut: "כשרות",
     kosher: "כשר",
-    notKosher: "ללא כשרות", 
-    weddingType: "סוג חתונה", 
+    notKosher: "ללא כשרות",
+    weddingType: "סוג חתונה",
     traditional: "מסורתית",
     civil: "אזרחית",
     harediWithSeparation: "חרדית עם הפרדה",
-    religionStyle: "סגנון דתי", 
+    religionStyle: "סגנון דתי",
     uploadImage: "העלאת תמונה",
     createEventButton: "צור אירוע",
     discoverEvents: "גלה אירועים",
@@ -324,7 +325,7 @@ export const HEBREW_TEXT = {
     yesterday: "אתמול",
   },
   foodIcons: {
-    kosherMeat: "בשרי", 
+    kosherMeat: "בשרי",
     kosherDairy: "חלבי",
     kosherParve: "פרווה",
     notKosher: "לא כשר",
@@ -357,4 +358,3 @@ export const HEBREW_TEXT = {
     termsOfUseTitle: "תנאי שימוש",
   }
 };
-    
