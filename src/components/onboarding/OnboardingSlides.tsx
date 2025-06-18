@@ -106,17 +106,16 @@ export function OnboardingSlides() {
         <h1 className="font-headline text-2xl md:text-4xl font-bold mb-3">{slide.title}</h1>
 
         <div className={cn(
-            "relative w-full my-4 md:my-6 rounded-lg overflow-hidden",
-            slide.isLogo ? "h-32 md:h-40" : "h-40 md:h-64" // Adjusted height for logo
+            "relative w-full my-4 md:my-6 rounded-lg overflow-hidden h-40 md:h-64" // Consistent height
         )}>
           <Image
-            key={slide.imageUrl} // Added key here
+            key={slide.imageUrl}
             src={slide.imageUrl}
             alt={slide.title}
             layout="fill"
-            objectFit={slide.isLogo ? "contain" : "cover"} // Use "contain" for logo
+            objectFit={slide.isLogo ? "contain" : "cover"}
             data-ai-hint={slide.imageHint}
-            priority={currentSlide === 0} // Prioritize first image
+            priority={currentSlide === 0}
           />
         </div>
         <p className="text-base md:text-lg text-foreground/80 mb-6 md:mb-8 leading-relaxed px-2">
@@ -166,3 +165,4 @@ export function OnboardingSlides() {
     </div>
   );
 }
+
