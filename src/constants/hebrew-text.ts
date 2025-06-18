@@ -122,7 +122,7 @@ export const HEBREW_TEXT = {
     errorDeletingImageFromStorage: "שגיאה במחיקת תמונת האירוע מהאחסון. התמונה עשויה עדיין להתקיים בשרת. בדוק הרשאות אחסון.",
     owners: "בעלי האירוע",
     addOwner: "הוסף בעלים",
-    searchUsersPlaceholder: "חפש משתמשים לפי שם או אימייל...",
+    searchUsersPlaceholder: "חפש משתמשים לפי שם",
     userAlreadyOwner: "משתמש זה כבר מוגדר כבעלים.",
     add: "הוסף",
     removeOwner: "הסר בעלות",
