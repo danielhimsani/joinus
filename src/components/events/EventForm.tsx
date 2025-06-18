@@ -66,16 +66,15 @@ const weddingTypeOptions: { value: WeddingType; label: string }[] = [
 ];
 
 const paymentOptions: { value: PaymentOption; label: string }[] = [
-    { value: "fixed", label: HEBREW_TEXT.event.pricePerGuest },
     { value: "payWhatYouWant", label: HEBREW_TEXT.event.payWhatYouWant },
-    { value: "free", label: HEBREW_TEXT.event.free },
+    { value: "fixed", label: HEBREW_TEXT.event.pricePerGuest },
 ];
 
 const formSchema = z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.event.eventNameMinLengthError }),
   ownerUids: z.array(z.string()).min(1, { message: "חייב להיות לפחות בעלים אחד לאירוע." }),
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
-  paymentOption: z.enum(["fixed", "payWhatYouWant", "free"], { errorMap: () => ({ message: "יש לבחור אפשרות תשלום."}) }),
+  paymentOption: z.enum(["payWhatYouWant", "fixed"], { errorMap: () => ({ message: "יש לבחור אפשרות תשלום."}) }),
   pricePerGuest: z.coerce.number().optional(),
   location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }),
   locationDisplayName: z.string().optional(),
@@ -230,12 +229,16 @@ export function EventForm({
           migratedKashrut = 'kosher';
       }
 
+      const validPaymentOption = initialEventData.paymentOption === "free" 
+        ? "payWhatYouWant" 
+        : initialEventData.paymentOption;
+
 
       form.reset({
         name: initialEventData.name,
         ownerUids: initialEventData.ownerUids || (currentUser ? [currentUser.uid] : []),
         numberOfGuests: initialEventData.numberOfGuests,
-        paymentOption: initialEventData.paymentOption,
+        paymentOption: validPaymentOption,
         pricePerGuest: initialEventData.pricePerGuest,
         location: initialEventData.locationDisplayName || initialEventData.location,
         locationDisplayName: initialEventData.locationDisplayName,

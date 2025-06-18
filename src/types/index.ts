@@ -12,7 +12,7 @@ export interface UserProfile {
   firebaseUid: string;
 }
 
-export type PaymentOption = 'fixed' | 'payWhatYouWant' | 'free';
+export type PaymentOption = 'fixed' | 'payWhatYouWant';
 export type FoodType = 'meat' | 'dairy' | 'meatAndDairy' | 'vegetarian' | 'vegan' | 'kosherParve';
 export type KashrutType = 'kosher' | 'notKosher';
 export type WeddingType = 'traditional' | 'civil' | 'harediWithSeparation';

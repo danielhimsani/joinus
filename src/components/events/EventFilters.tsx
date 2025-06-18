@@ -33,7 +33,7 @@ interface EventFiltersProps {
 
 const priceRanges = [
     { value: "any", label: "כל מחיר" },
-    { value: "free", label: HEBREW_TEXT.event.free },
+    // { value: "free", label: HEBREW_TEXT.event.free }, // Removed "free"
     { value: "0-100", label: "₪0 - ₪100" },
     { value: "100-200", label: "₪100 - ₪200" },
     { value: "200+", label: "₪200+" },
