@@ -170,6 +170,7 @@ export default function EventDetailPage() {
           paymentOption: data.paymentOption || "free",
           location: data.location || "No location specified",
           locationDisplayName: data.locationDisplayName || "",
+          placeId: data.placeId || undefined,
           latitude: data.latitude || null,
           longitude: data.longitude || null,
           description: data.description || "",
@@ -383,18 +384,23 @@ export default function EventDetailPage() {
 
   const imageToDisplay = event.imageUrl || "/onboarding/slide-2.png";
   
-  let queryForMap: string;
-  if (event.locationDisplayName && event.locationDisplayName.trim() !== "") {
-    queryForMap = event.locationDisplayName;
-  } else if (event.location && event.location.trim() !== "") {
-    queryForMap = event.location;
-  } else if (event.latitude != null && event.longitude != null) {
-    queryForMap = `${event.latitude},${event.longitude}`;
+  let googleMapsLink: string;
+  if (event.placeId) {
+    const queryParam = encodeURIComponent(event.locationDisplayName || event.name || event.location);
+    googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${queryParam}&query_place_id=${event.placeId}`;
   } else {
-    queryForMap = event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder;
+    let queryForMap: string;
+    if (event.locationDisplayName && event.locationDisplayName.trim() !== "") {
+      queryForMap = event.locationDisplayName;
+    } else if (event.location && event.location.trim() !== "") {
+      queryForMap = event.location;
+    } else if (event.latitude != null && event.longitude != null) {
+      queryForMap = `${event.latitude},${event.longitude}`;
+    } else {
+      queryForMap = event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder;
+    }
+    googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryForMap)}`;
   }
-  const googleMapsQuery = encodeURIComponent(queryForMap);
-  const googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${googleMapsQuery}`;
 
 
   return (

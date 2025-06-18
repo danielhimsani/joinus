@@ -78,6 +78,7 @@ const formSchema = z.object({
   pricePerGuest: z.coerce.number().optional(),
   location: z.string().min(3, { message: "מיקום חייב להכיל לפחות 3 תווים." }),
   locationDisplayName: z.string().optional(),
+  placeId: z.string().optional(),
   dateTime: z.date({ required_error: HEBREW_TEXT.event.dateTimeRequiredError })
     .refine(date => {
       if (!date) return true; 
@@ -139,6 +140,7 @@ export function EventForm({
       pricePerGuest: 200,
       location: "",
       locationDisplayName: "",
+      placeId: "",
       description: "",
       ageRange: [18, 55],
       foodType: "meat",
@@ -154,6 +156,8 @@ export function EventForm({
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [trueFormattedAddress, setTrueFormattedAddress] = useState<string | null>(null);
+  const [currentPlaceId, setCurrentPlaceId] = useState<string | null>(null);
+
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -239,6 +243,7 @@ export function EventForm({
         pricePerGuest: initialEventData.pricePerGuest,
         location: initialEventData.locationDisplayName || initialEventData.location,
         locationDisplayName: initialEventData.locationDisplayName,
+        placeId: initialEventData.placeId || "",
         dateTime: new Date(initialEventData.dateTime),
         description: initialEventData.description,
         ageRange: initialEventData.ageRange,
@@ -253,6 +258,7 @@ export function EventForm({
       setLatitude(initialEventData.latitude || null);
       setLongitude(initialEventData.longitude || null);
       setTrueFormattedAddress(initialEventData.location || null);
+      setCurrentPlaceId(initialEventData.placeId || null);
       setIsEditingName(false);
     } else if (!isEditMode) {
         if (currentUser && form.getValues("ownerUids").length === 0) {
@@ -332,6 +338,7 @@ export function EventForm({
   const paymentOptionValue = form.watch("paymentOption");
   const eventNameValue = form.watch("name");
   const eventDateTimeValue = form.watch("dateTime");
+  const locationDisplayValue = form.watch("locationDisplayName");
 
   const pageTitleToDisplay = propPageTitle || (isEditMode ? `${HEBREW_TEXT.event.editEvent}${initialEventData?.name ? `: ${initialEventData.name}` : ''}` : HEBREW_TEXT.event.createEventTitle);
   const submitButtonTextToDisplay = propSubmitButtonText || (isEditMode ? HEBREW_TEXT.profile.saveChanges : HEBREW_TEXT.event.createEventButton);
@@ -376,11 +383,16 @@ export function EventForm({
       if (place && place.geometry && (place.name || place.formatted_address)) {
         const displayName = place.name || place.formatted_address?.split(',')[0] || "מיקום לא ידוע";
         const formattedAddress = place.formatted_address || displayName;
+        const placeIdValue = place.place_id || null;
 
-        form.setValue("location", displayName, { shouldValidate: true }); // Set RHF location field
+        form.setValue("location", displayName, { shouldValidate: true });
         form.setValue("locationDisplayName", displayName, { shouldValidate: false });
-        setTrueFormattedAddress(formattedAddress);
+        if (placeIdValue) {
+          form.setValue("placeId", placeIdValue, { shouldValidate: false });
+        }
 
+        setTrueFormattedAddress(formattedAddress);
+        setCurrentPlaceId(placeIdValue);
         setLatitude(place.geometry.location.lat());
         setLongitude(place.geometry.location.lng());
 
@@ -393,8 +405,10 @@ export function EventForm({
         }
       } else {
         const currentLocationValue = locationInputRef.current?.value || form.getValues("location");
-        form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false }); // Keep what user typed
-        setTrueFormattedAddress(currentLocationValue); // Store what user typed if no selection
+        form.setValue("locationDisplayName", currentLocationValue, { shouldValidate: false });
+        form.setValue("placeId", "", { shouldValidate: false }); // Clear placeId if no valid place selected
+        setTrueFormattedAddress(currentLocationValue);
+        setCurrentPlaceId(null);
         setLatitude(null);
         setLongitude(null);
       }
@@ -471,6 +485,7 @@ export function EventForm({
         pricePerGuest: values.paymentOption === 'fixed' ? (values.pricePerGuest ?? 0) : null,
         location: trueFormattedAddress || values.location,
         locationDisplayName: values.locationDisplayName || values.location.split(',')[0] || "מיקום לא ידוע",
+        placeId: values.placeId || currentPlaceId || null,
         latitude: latitude,
         longitude: longitude,
         dateTime: Timestamp.fromDate(values.dateTime),
@@ -684,17 +699,18 @@ export function EventForm({
                           <Autocomplete
                             onLoad={onAutocompleteLoad}
                             onPlaceChanged={handlePlaceChanged}
-                            options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location", "photos"] }}
+                            options={{ componentRestrictions: { country: "il" }, fields: ["name", "formatted_address", "geometry.location", "photos", "place_id"] }}
                           >
                             <Input
                               ref={(e) => { field.ref(e); locationInputRef.current = e; }}
                               placeholder={HEBREW_TEXT.event.pickLocation}
-                              defaultValue={field.value}
-                              onBlur={field.onBlur}
-                              name={field.name}
-                              className="text-sm md:text-base bg-transparent border-0 p-0 h-auto text-white placeholder-white/70 flex-grow focus:ring-0"
+                              defaultValue={field.value} // Use defaultValue for Autocomplete controlled by external value
+                              name={field.name} // Keep name for form context
+                              className="text-sm md:text-base bg-transparent border-0 p-0 h-auto text-white placeholder-white/70 flex-grow focus:ring-0 focus-visible:ring-0 focus-visible:outline-none"
                               data-fieldname="location"
                               onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault();}}
+                              onChange={field.onChange} // Important: Allow RHF to track changes
+                              onBlur={field.onBlur} // Important: Allow RHF to track blur
                             />
                           </Autocomplete>
                         )}
@@ -709,13 +725,17 @@ export function EventForm({
 
               <Popover open={isDateTimePopoverOpen} onOpenChange={setIsDateTimePopoverOpen}>
                 <PopoverTrigger asChild>
-                    <p
-                        className="mt-3 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center"
+                    <button
+                        type="button"
+                        className={cn(
+                            "mt-3 text-sm md:text-base opacity-90 cursor-pointer hover:opacity-100 transition-opacity flex items-center w-full text-left p-0 bg-transparent border-0 text-white focus-visible:outline-none focus-visible:ring-0",
+                             form.formState.errors.dateTime && "text-destructive"
+                        )}
                         title="לחץ לעריכת תאריך ושעה"
                     >
                         <CalendarIcon className="ml-1.5 h-4 w-4" />
                         {eventDateTimeValue ? format(eventDateTimeValue, "EEEE, d MMMM yyyy, HH:mm", { locale: he }) : HEBREW_TEXT.event.selectDateTimePlaceholder}
-                    </p>
+                    </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                     <Controller
@@ -875,7 +895,7 @@ export function EventForm({
                 />
             )}
             <div className="grid md:grid-cols-2 gap-8 items-start">
-                <FormField
+                 <FormField
                     control={form.control}
                     name="numberOfGuests"
                     render={({ field }) => (
@@ -962,7 +982,6 @@ export function EventForm({
                     )}
                 />
             </div>
-
              <div className="grid md:grid-cols-2 gap-8 items-start">
                  <FormField
                     control={form.control}

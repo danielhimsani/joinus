@@ -33,6 +33,7 @@ export interface Event {
   paymentOption: PaymentOption;
   location: string; // Formatted address
   locationDisplayName?: string; // User-friendly display name (e.g., business name)
+  placeId?: string; // Google Places ID
   latitude?: number | null; // For map coordinates
   longitude?: number | null; // For map coordinates
   dateTime: Date;
