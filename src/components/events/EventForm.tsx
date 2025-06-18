@@ -886,112 +886,112 @@ export function EventForm({
                     render={({ field }) => <input type="hidden" {...field} value={initialEventData.imageUrl} />}
                 />
             )}
+            
+            <div className="grid md:grid-cols-2 gap-8 items-start">
+                 <FormField
+                    control={form.control}
+                    name="numberOfGuests"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>{HEBREW_TEXT.event.numberOfGuests}</FormLabel>
+                        <FormControl>
+                        <Input type="number" placeholder="50" {...field} data-fieldname="numberOfGuests" />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="paymentOption"
+                    render={({ field }) => (
+                    <FormItem className="space-y-2" data-fieldname="paymentOption">
+                        <FormLabel className="text-base font-medium">{HEBREW_TEXT.event.paymentOptions}</FormLabel>
+                        <FormControl>
+                        <RadioGroup
+                            onValueChange={(value) => {
+                            field.onChange(value);
+                            if (value !== 'fixed') {
+                                form.setValue('pricePerGuest', undefined, { shouldValidate: true });
+                            } else if (form.getValues('pricePerGuest') === undefined){
+                                form.setValue('pricePerGuest', 200, { shouldValidate: true }); // Default price if switching to fixed
+                            }
+                            }}
+                            value={field.value}
+                            className="flex flex-col space-y-2 pt-1"
+                            dir="rtl"
+                        >
+                            {paymentOptions.map((option) => (
+                            <div key={option.value} className="flex items-center space-x-3 rtl:space-x-reverse">
+                                <RadioGroupItem value={option.value} id={`paymentOption-${option.value}`} />
+                                <label htmlFor={`paymentOption-${option.value}`} className="font-normal cursor-pointer flex-grow">
+                                {option.label}
+                                </label>
+                                {option.value === 'fixed' && paymentOptionValue === 'fixed' && (
+                                <div className="flex items-center ml-2 rtl:mr-2">
+                                    <span className="mr-1 rtl:ml-1 text-sm text-muted-foreground">₪</span>
+                                    <FormField
+                                    control={form.control}
+                                    name="pricePerGuest"
+                                    render={({ field: priceField }) => (
+                                        <FormItem className="w-28">
+                                        <FormControl>
+                                            <Input
+                                            type="number"
+                                            placeholder="סכום"
+                                            className="h-9 px-2 text-sm"
+                                            value={priceField.value === undefined || priceField.value === null || isNaN(priceField.value as number) ? '' : String(priceField.value)}
+                                            onChange={e => {
+                                                const rawValue = e.target.value;
+                                                if (rawValue === '') {
+                                                priceField.onChange(undefined);
+                                                } else {
+                                                const num = parseFloat(rawValue);
+                                                priceField.onChange(isNaN(num) ? undefined : num);
+                                                }
+                                            }}
+                                            onBlur={priceField.onBlur}
+                                            ref={priceField.ref}
+                                            name={priceField.name}
+                                            data-fieldname="pricePerGuest"
+                                            />
+                                        </FormControl>
+                                        {form.formState.errors.pricePerGuest && (
+                                            <FormMessage className="text-xs mt-0.5 absolute whitespace-nowrap">
+                                                {form.formState.errors.pricePerGuest.message}
+                                            </FormMessage>
+                                        )}
+                                        </FormItem>
+                                    )}
+                                    />
+                                </div>
+                                )}
+                            </div>
+                            ))}
+                        </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
 
             <div className="grid md:grid-cols-2 gap-8 items-start">
                  <FormField
-                control={form.control}
-                name="numberOfGuests"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{HEBREW_TEXT.event.numberOfGuests}</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="50" {...field} data-fieldname="numberOfGuests" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="paymentOption"
-                render={({ field }) => (
-                  <FormItem className="space-y-2" data-fieldname="paymentOption">
-                    <FormLabel className="text-base font-medium">{HEBREW_TEXT.event.paymentOptions}</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          if (value !== 'fixed') {
-                            form.setValue('pricePerGuest', undefined, { shouldValidate: true });
-                          } else if (form.getValues('pricePerGuest') === undefined){
-                            form.setValue('pricePerGuest', 200, { shouldValidate: true }); // Default price if switching to fixed
-                          }
-                        }}
-                        value={field.value}
-                        className="flex flex-col space-y-2 pt-1"
-                        dir="rtl"
-                      >
-                        {paymentOptions.map((option) => (
-                          <div key={option.value} className="flex items-center space-x-3 rtl:space-x-reverse">
-                            <RadioGroupItem value={option.value} id={`paymentOption-${option.value}`} />
-                            <label htmlFor={`paymentOption-${option.value}`} className="font-normal cursor-pointer flex-grow">
-                              {option.label}
-                            </label>
-                            {option.value === 'fixed' && paymentOptionValue === 'fixed' && (
-                              <div className="flex items-center ml-2 rtl:mr-2">
-                                <span className="mr-1 rtl:ml-1 text-sm text-muted-foreground">₪</span>
-                                <FormField
-                                  control={form.control}
-                                  name="pricePerGuest"
-                                  render={({ field: priceField }) => (
-                                    <FormItem className="w-28">
-                                      <FormControl>
-                                        <Input
-                                          type="number"
-                                          placeholder="סכום"
-                                          className="h-9 px-2 text-sm"
-                                          value={priceField.value === undefined || priceField.value === null || isNaN(priceField.value as number) ? '' : String(priceField.value)}
-                                          onChange={e => {
-                                            const rawValue = e.target.value;
-                                            if (rawValue === '') {
-                                              priceField.onChange(undefined);
-                                            } else {
-                                              const num = parseFloat(rawValue);
-                                              priceField.onChange(isNaN(num) ? undefined : num);
-                                            }
-                                          }}
-                                          onBlur={priceField.onBlur}
-                                          ref={priceField.ref}
-                                          name={priceField.name}
-                                          data-fieldname="pricePerGuest"
-                                        />
-                                      </FormControl>
-                                       {form.formState.errors.pricePerGuest && (
-                                          <FormMessage className="text-xs mt-0.5 absolute whitespace-nowrap">
-                                              {form.formState.errors.pricePerGuest.message}
-                                          </FormMessage>
-                                       )}
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{HEBREW_TEXT.event.description}</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="ספרו על האירוע, האווירה, מה מיוחד בו..." className="resize-none" rows={4} {...field} data-fieldname="description"/>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid md:grid-cols-2 gap-8 items-start">
+                    control={form.control}
+                    name="weddingType"
+                    render={({ field }) => (
+                        <FormItem data-fieldname="weddingType">
+                        <FormLabel>{HEBREW_TEXT.event.weddingType}</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} dir="rtl">
+                            <FormControl><SelectTrigger dir="rtl"><SelectValue placeholder="בחר סוג חתונה" /></SelectTrigger></FormControl>
+                            <SelectContent dir="rtl">
+                            {weddingTypeOptions.map(style => (<SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                )} />
                 <FormField
                   control={form.control}
                   name="ageRange"
@@ -1008,7 +1008,9 @@ export function EventForm({
                     </FormItem>
                   )}
                 />
-                <FormField
+            </div>
+            <div className="grid md:grid-cols-2 gap-8 items-start">
+                 <FormField
                     control={form.control}
                     name="foodType"
                     render={({ field }) => (
@@ -1023,8 +1025,6 @@ export function EventForm({
                         <FormMessage />
                         </FormItem>
                 )} />
-            </div>
-            <div className="grid md:grid-cols-2 gap-8 items-start">
                  <FormField
                     control={form.control}
                     name="kashrut"
@@ -1040,22 +1040,22 @@ export function EventForm({
                         <FormMessage />
                         </FormItem>
                 )} />
-                <FormField
-                    control={form.control}
-                    name="weddingType"
-                    render={({ field }) => (
-                        <FormItem data-fieldname="weddingType">
-                        <FormLabel>{HEBREW_TEXT.event.weddingType}</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} dir="rtl">
-                            <FormControl><SelectTrigger dir="rtl"><SelectValue placeholder="בחר סוג חתונה" /></SelectTrigger></FormControl>
-                            <SelectContent dir="rtl">
-                            {weddingTypeOptions.map(style => (<SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                )} />
             </div>
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{HEBREW_TEXT.event.description}</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="ספרו על האירוע, האווירה, מה מיוחד בו..." className="resize-none" rows={4} {...field} data-fieldname="description"/>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                     type="submit"
