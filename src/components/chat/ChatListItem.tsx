@@ -108,8 +108,8 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
   return (
     <Link href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors rounded-lg">
       <Card className="overflow-hidden shadow-sm hover:shadow-md">
-        <CardContent className="p-3 sm:p-4 flex flex-row-reverse items-center gap-3 sm:gap-4">
-          {/* Avatar: Positioned on the far right (first in DOM for flex-row-reverse) */}
+        <CardContent className="p-3 sm:p-4 flex flex-row-reverse items-start gap-3 sm:gap-4">
+          {/* Avatar: Positioned on the far right */}
           <div
             onClick={avatarLink ? handleAvatarClick : undefined}
             onKeyDown={(e) => {
@@ -119,7 +119,7 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               }
             }}
             className={cn(
-              "flex-shrink-0", // Prevents avatar from shrinking
+              "flex-shrink-0 mt-1", 
               avatarLink && "cursor-pointer"
             )}
             role={avatarLink ? "link" : undefined}
@@ -129,16 +129,16 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
             <AvatarContent />
           </div>
 
-          {/* Details Wrapper: Contains all text, timestamp, and status badge. Appears to the left of Avatar. */}
+          {/* Details Wrapper: Contains all text, timestamp, and status badge. */}
           <div className="flex-1 min-w-0 flex flex-col text-right">
             {/* Primary Title and Unread Badge Row */}
-            <div className="flex items-center"> {/* Align items to the center of this line */}
+            <div className="flex items-center justify-between"> {/* Use justify-between here */}
+              <p className="text-md font-semibold truncate text-foreground" dir="rtl">{primaryTitle}</p>
               {unreadMessages > 0 && (
-                <Badge variant="destructive" className="text-xs px-1.5 py-0.5 leading-none h-5 shrink-0 ml-2"> {/* ml-2 to create space after the badge */}
+                <Badge variant="destructive" className="text-xs px-1.5 py-0.5 leading-none h-5 shrink-0">
                   {unreadMessages}
                 </Badge>
               )}
-              <p className="text-md font-semibold truncate text-foreground" dir="rtl">{primaryTitle}</p>
             </div>
 
             {/* Secondary Title (if exists) */}
@@ -156,19 +156,21 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
               {chat.lastMessageText || HEBREW_TEXT.chat.noMessagesYet}
             </p>
             
-            {/* Timestamp and Status Badge Row */}
+            {/* Timestamp and Status Badge Row - REVERSED ORDER */}
             <div className="flex justify-between items-center mt-1.5">
                 {/* Status Badge is now first for RTL positioning to the right */}
-                <Badge
-                    variant={statusDisplay.variant}
-                    className={cn(
-                    "text-xs px-2 py-0.5 leading-tight",
-                    statusDisplay.variant === 'warning' && "bg-amber-500/20 text-amber-700 border-amber-500/50 dark:text-amber-400",
-                    statusDisplay.variant === 'success' && "bg-green-500/20 text-green-700 border-green-500/50 dark:text-green-400"
-                    )}
-                >
-                    {statusDisplay.text}
-                </Badge>
+                 <div className="flex-shrink-0">
+                    <Badge
+                        variant={statusDisplay.variant}
+                        className={cn(
+                        "text-xs px-2 py-0.5 leading-tight",
+                        statusDisplay.variant === 'warning' && "bg-amber-500/20 text-amber-700 border-amber-500/50 dark:text-amber-400",
+                        statusDisplay.variant === 'success' && "bg-green-500/20 text-green-700 border-green-500/50 dark:text-green-400"
+                        )}
+                    >
+                        {statusDisplay.text}
+                    </Badge>
+                 </div>
                 {/* Timestamp is now second, will be positioned to the left by justify-between */}
                 {displayTimestamp && (
                     <p className="text-xs text-muted-foreground/90 whitespace-nowrap">{displayTimestamp}</p>
@@ -180,3 +182,4 @@ export function ChatListItem({ chat, currentUserId }: ChatListItemProps) {
     </Link>
   );
 }
+
