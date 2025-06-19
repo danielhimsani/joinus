@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Button } from "@/components/ui/button";
 import type { Event, FoodType, KashrutType } from "@/types";
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
-import { CalendarDays, MapPin, Users, Tag, Utensils, XCircle, ShieldCheck } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Gift, Utensils, XCircle, ShieldCheck } from 'lucide-react'; // Changed Tag to Gift
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -85,7 +85,7 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
             <span>{HEBREW_TEXT.event.availableSpots}: {availableSpots > 0 ? availableSpots : HEBREW_TEXT.event.noSpotsAvailableShort}</span>
         </div>
         <div className="flex items-center text-muted-foreground">
-            <Tag className="ml-1.5 h-4 w-4 text-primary" />
+            <Gift className="ml-1.5 h-4 w-4 text-primary" /> {/* Changed Tag to Gift */}
             <span>{getPriceDisplay(event)}</span>
         </div>
         <div className="flex items-center text-muted-foreground">
