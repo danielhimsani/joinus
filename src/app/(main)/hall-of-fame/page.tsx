@@ -391,7 +391,7 @@ export default function HallOfFamePage() {
         <TabsContent value="attendees">
           <Card dir="rtl">
             <CardHeader className="text-right">
-              <CardTitle className="font-headline text-xl">{HEBREW_TEXT.hallOfFame.topAttendees}</CardTitle>
+              {/* CardTitle removed as requested */}
               <CardDescription dir="rtl">משתמשים שהשתתפו במספר האירועים הרב ביותר דרך האפליקציה.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -403,7 +403,7 @@ export default function HallOfFamePage() {
         <TabsContent value="hosts">
           <Card dir="rtl">
             <CardHeader className="text-right">
-              <CardTitle className="font-headline text-xl">{HEBREW_TEXT.hallOfFame.mostGuestsHosted}</CardTitle>
+              {/* CardTitle removed as requested */}
               <CardDescription dir="rtl">משתמשים שאירחו את מספר האורחים הרב ביותר דרך האירועים שלהם.</CardDescription>
             </CardHeader>
             <CardContent>
