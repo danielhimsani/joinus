@@ -12,10 +12,34 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid in resource.data.ownerUids;
     }
 
+    match /userEventGuestRatings/{ratingDocId} {
+      // Allow read if user is authenticated
+      allow read: if request.auth != null;
+      
+      // Allow list if user is authenticated (needed for queries like Hall of Fame & Profile stats)
+      allow list: if request.auth != null;
+
+      // Allow create if the authenticated user's UID matches the raterUID part of the doc ID
+      // and the document being written contains the correct fields.
+      // Example assumes ratingDocId is "raterUid_eventId_guestUid"
+      allow create: if request.auth != null && request.auth.uid == ratingDocId.split('_')[0]
+                      && request.resource.data.keys().hasAll(['raterUid', 'guestUid', 'eventId', 'ratingType', 'timestamp'])
+                      && request.resource.data.ratingType in ['positive', 'negative'];
+      
+      // Generally, ratings are immutable or only updatable by the original rater.
+      allow update, delete: if false; 
+    }
+
     // Rules for 'users' collection
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
+
+      // Rules for 'fcmTokens' subcollection
+      // Users can read and write their own FCM tokens.
+      match /fcmTokens/{tokenId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
     // Rules for 'eventChats' collection
@@ -34,8 +58,22 @@ service cloud.firestore {
       allow read: if isParticipantInExistingChat();
 
       // Who can create a chat document? (Typically the guest initiating the request)
-      // DIAGNOSTIC: EXTREMELY INSECURE - FOR TESTING ONLY
-      allow create: if true;
+      // Ensure the creator is the guest and is adding themselves and owners as participants.
+      allow create: if request.auth.uid == request.resource.data.guestUid &&
+                       request.auth.uid in request.resource.data.participants &&
+                       request.resource.data.ownerUids.hasAny(request.resource.data.participants) && // At least one owner must be in participants
+                       request.resource.data.status == 'pending_request' &&
+                       request.resource.data.createdAt == request.time &&
+                       request.resource.data.updatedAt == request.time &&
+                       // Ensure required fields are present and have correct types (basic check)
+                       request.resource.data.eventId is string &&
+                       request.resource.data.guestUid is string &&
+                       request.resource.data.ownerUids is list &&
+                       request.resource.data.participants is list &&
+                       request.resource.data.eventInfo is map &&
+                       request.resource.data.guestInfo is map &&
+                       request.resource.data.unreadCount is map;
+
 
       // Who can update a chat document?
       allow update: if isParticipantInExistingChat() &&
@@ -87,16 +125,50 @@ service cloud.firestore {
         function isSenderOfNewMessage() {
           return request.auth.uid == request.resource.data.senderId;
         }
+        function isChatParticipant() {
+            return exists(/databases/$(database)/documents/eventChats/$(chatId)) &&
+                   request.auth.uid in get(/databases/$(database)/documents/eventChats/$(chatId)).data.participants;
+        }
+        function canSendMessageInChat() {
+            let chatDoc = get(/databases/$(database)/documents/eventChats/$(chatId)).data;
+            return chatDoc.status != 'closed' && chatDoc.status != 'request_rejected';
+        }
 
-        allow read: if exists(/databases/$(database)/documents/eventChats/$(chatId)) &&
-                       request.auth.uid in get(/databases/$(database)/documents/eventChats/$(chatId)).data.participants;
+        allow read: if isChatParticipant();
 
-        // DIAGNOSTIC: EXTREMELY INSECURE - FOR TESTING ONLY
-        allow create: if true;
+        allow create: if isChatParticipant() &&
+                         isSenderOfNewMessage() &&
+                         canSendMessageInChat() &&
+                         request.resource.data.chatId == chatId &&
+                         request.resource.data.timestamp == request.time &&
+                         request.resource.data.text is string && request.resource.data.text.size() > 0 &&
+                         request.resource.data.senderInfo is map &&
+                         request.resource.data.senderInfo.name is string &&
+                         request.resource.data.senderInfo.profileImageUrl is string;
 
         allow update, delete: if false; // Messages are immutable
       } // End of messages/{messageId} match
     } // End of eventChats/{chatId} match
+
+    // Rules for 'eventAnnouncements' collection
+    match /eventAnnouncements/{announcementId} {
+      // Helper: Check if the user is an owner of the event linked to this announcement
+      function isEventOwnerForAnnouncement(eventId) {
+        return exists(/databases/$(database)/documents/events/$(eventId)) &&
+               request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.ownerUids;
+      }
+
+      // Allow read if authenticated (for simplicity, can be tightened later)
+      allow read: if request.auth != null;
+
+      allow create: if isEventOwnerForAnnouncement(request.resource.data.eventId) && // Must be owner of the target event
+                       request.resource.data.ownerUid == request.auth.uid && // Creator must be self
+                       request.resource.data.messageText is string && request.resource.data.messageText.size() > 0 &&
+                       request.resource.data.timestamp == request.time; // Server timestamp
+
+      allow update, delete: if false; // Announcements are immutable
+    }
+
   } // End of databases/{database}/documents match
 } // End of service cloud.firestore
     
