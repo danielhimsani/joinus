@@ -33,9 +33,10 @@ interface EventFiltersProps {
 
 const priceRanges = [
     { value: "any", label: "כל מחיר" },
-    { value: "0-100", label: "₪0 - ₪100" },
-    { value: "100-200", label: "₪100 - ₪200" },
-    { value: "200+", label: "₪200+" },
+    { value: "payWhatYouWant", label: HEBREW_TEXT.event.payWhatYouWant },
+    { value: "fixed_0-100", label: `${HEBREW_TEXT.event.pricePerGuest}: ₪0 - ₪100` },
+    { value: "fixed_101-200", label: `${HEBREW_TEXT.event.pricePerGuest}: ₪101 - ₪200` },
+    { value: "fixed_201+", label: `${HEBREW_TEXT.event.pricePerGuest}: ₪201+` },
 ];
 
 const foodTypeOptions: { value: FoodType | "any"; label: string }[] = [
@@ -222,16 +223,16 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
             </div>
         </div>
         <DialogFooter className="pt-6 border-t mt-2 sm:justify-between">
+             <Button type="button" variant="ghost" onClick={handleClearFilters}>
+                <Trash2 className="ml-2 h-4 w-4" />
+                {HEBREW_TEXT.general.clearFilters}
+            </Button>
             <DialogClose asChild>
                  <Button type="submit" className="font-body">
                     <Search className="ml-2 h-4 w-4" />
                     {HEBREW_TEXT.event.applyFilters}
                 </Button>
             </DialogClose>
-            <Button type="button" variant="ghost" onClick={handleClearFilters}>
-                <Trash2 className="ml-2 h-4 w-4" />
-                {HEBREW_TEXT.general.clearFilters}
-            </Button>
         </DialogFooter>
     </form>
   );

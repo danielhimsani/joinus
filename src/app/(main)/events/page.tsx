@@ -237,24 +237,19 @@ export default function EventsPage() {
           return new Date(event.dateTime).toDateString() === filterDateString;
       });
     }
+    
     if (advancedFilters.priceRange && advancedFilters.priceRange !== "any") {
-        if (advancedFilters.priceRange === "free") {
-            eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "free");
-        } else {
-            eventsToFilter = eventsToFilter.filter(e => {
-                if (e.paymentOption === "fixed" && e.pricePerGuest != null) {
-                    if (advancedFilters.priceRange === "0-100") {
-                        return e.pricePerGuest >= 0 && e.pricePerGuest <= 100;
-                    } else if (advancedFilters.priceRange === "100-200") {
-                        return e.pricePerGuest >= 100 && e.pricePerGuest <= 200;
-                    } else if (advancedFilters.priceRange === "200+") {
-                        return e.pricePerGuest >= 200;
-                    }
-                }
-                return false;
-            });
+        if (advancedFilters.priceRange === "payWhatYouWant") {
+            eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "payWhatYouWant");
+        } else if (advancedFilters.priceRange === "fixed_0-100") {
+            eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "fixed" && e.pricePerGuest != null && e.pricePerGuest >= 0 && e.pricePerGuest <= 100);
+        } else if (advancedFilters.priceRange === "fixed_101-200") {
+            eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "fixed" && e.pricePerGuest != null && e.pricePerGuest >= 101 && e.pricePerGuest <= 200);
+        } else if (advancedFilters.priceRange === "fixed_201+") {
+            eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "fixed" && e.pricePerGuest != null && e.pricePerGuest >= 201);
         }
     }
+
      if (advancedFilters.foodType && advancedFilters.foodType !== "any") {
       eventsToFilter = eventsToFilter.filter(event => event.foodType === advancedFilters.foodType);
     }
