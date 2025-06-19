@@ -75,7 +75,6 @@ const getWeddingTypeLabel = (weddingType: WeddingType | undefined) => {
 
 const getPriceDisplay = (event: Event) => {
     switch (event.paymentOption) {
-        case 'free': return HEBREW_TEXT.event.free;
         case 'payWhatYouWant': return HEBREW_TEXT.event.payWhatYouWant;
         case 'fixed': return `₪${event.pricePerGuest || 0} ${HEBREW_TEXT.event.pricePerGuest}`;
         default: return '';
@@ -559,36 +558,36 @@ export default function EventDetailPage() {
             </div>
 
             <div className="md:col-span-1 space-y-4">
-              {isLoadingExistingChat ? (
-                 <Button className="w-full font-body text-lg py-3" disabled>
-                    <Loader2 className="ml-2 h-5 w-5 animate-spin" />
-                    {HEBREW_TEXT.general.loading}...
+            {isLoadingExistingChat ? (
+              <Button className="w-full font-body text-lg py-3" disabled>
+                <Loader2 className="ml-2 h-5 w-5 animate-spin" />
+                {HEBREW_TEXT.general.loading}...
+              </Button>
+            ) : existingChatId ? (
+              <Button asChild className="w-full font-body text-lg py-3">
+                <Link href={`/chat/${existingChatId}`}>
+                  <MessageSquare className="ml-2 h-5 w-5" />
+                  {HEBREW_TEXT.chat.viewChat}
+                </Link>
+              </Button>
+            ) : !isOwner && currentUser ? (
+              availableSpots > 0 ? (
+                <Button className="w-full font-body text-lg py-3" onClick={handleOpenRequestToJoinModal}>
+                  <MessageCircleMore className="ml-2 h-5 w-5" />
+                  {HEBREW_TEXT.event.requestToJoin}
                 </Button>
-              ) : existingChatId ? (
-                <Button asChild className="w-full font-body text-lg py-3">
-                  <Link href={`/chat/${existingChatId}`}>
-                    <MessageSquare className="ml-2 h-5 w-5" />
-                    {HEBREW_TEXT.chat.viewChat}
-                  </Link>
+              ) : (
+                <Button className="w-full font-body text-lg py-3" disabled>
+                  <XCircle className="ml-2 h-5 w-5" />
+                  {HEBREW_TEXT.event.noSpotsAvailableTitle}
                 </Button>
-              ) : !isOwner && currentUser && (
-                 availableSpots > 0 ? (
-                    <Button className="w-full font-body text-lg py-3" onClick={handleOpenRequestToJoinModal}>
-                      <MessageCircleMore className="ml-2 h-5 w-5" />
-                      {HEBREW_TEXT.event.requestToJoin}
-                    </Button>
-                 ) : (
-                    <Button className="w-full font-body text-lg py-3" disabled>
-                        <XCircle className="ml-2 h-5 w-5" />
-                        {HEBREW_TEXT.event.noSpotsAvailableTitle}
-                    </Button>
-                 )
-              ) : !currentUser && (
-                <Button className="w-full font-body text-lg py-3" onClick={() => router.push('/signin')}>
-                    <MessageCircleMore className="ml-2 h-5 w-5" />
-                    התחבר כדי לבקש להצטרף
-                </Button>
-              )}
+              )
+            ) : !currentUser ? (
+              <Button className="w-full font-body text-lg py-3" onClick={() => router.push('/signin')}>
+                <MessageCircleMore className="ml-2 h-5 w-5" />
+                התחבר כדי לבקש להצטרף
+              </Button>
+            ) : null}
             </div>
           </div>
         </CardContent>
