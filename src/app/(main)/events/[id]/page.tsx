@@ -102,7 +102,7 @@ export default function EventDetailPage() {
   const [approvedGuestsData, setApprovedGuestsData] = useState<ApprovedGuestData[]>([]);
   const [isLoadingApprovedGuestsData, setIsLoadingApprovedGuestsData] = useState(false);
   const [existingChatId, setExistingChatId] = useState<string | null>(null);
-  const [isLoadingExistingChat, setIsLoadingExistingChat] = useState(true);
+  const [isLoadingExistingChat, setIsLoadingExistingChat] = useState(false);
 
 
   useEffect(() => {
@@ -126,11 +126,11 @@ export default function EventDetailPage() {
 
     setIsLoading(true);
     setIsLoadingApprovedCount(true);
-    setIsLoadingApprovedGuestsData(true); // Assume we might need it
-    setIsLoadingExistingChat(true); // Assume we might need it
+    setIsLoadingApprovedGuestsData(true); // Assume loading until owner check
+    setIsLoadingExistingChat(true); // Assume loading until guest check
     
     setFetchError(null);
-    setExistingChatId(null); // Reset existing chat ID
+    setExistingChatId(null); // Reset existing chat ID on new fetch
 
     try {
       const eventDocRef = doc(db, "events", eventId);
@@ -188,7 +188,8 @@ export default function EventDetailPage() {
         const currentIsOwnerCheck = fetchedEvent && currentUser && fetchedEvent.ownerUids.includes(currentUser.uid);
 
         if (currentIsOwnerCheck) {
-          setIsLoadingExistingChat(false); // Owners don't need to check for their own "request" chat
+          // Owner specific data
+          setIsLoadingExistingChat(false); // Owner doesn't need this check
           setIsLoadingApprovedGuestsData(true);
           const qApprovedData = query(chatsRef, where("eventId", "==", eventId), where("status", "==", "request_approved"));
           const approvedSnapshot = await getDocs(qApprovedData);
@@ -206,11 +207,9 @@ export default function EventDetailPage() {
           setApprovedGuestsData(guests);
           setIsLoadingApprovedGuestsData(false);
         } else {
-          // Not an owner, or user not logged in yet (currentUser might be null initially)
-          setApprovedGuestsData([]); // Non-owners don't see full guest list here
-          setIsLoadingApprovedGuestsData(false);
-
-          if (currentUser && eventId) { // Only check for existing chat if user is logged in and eventId is present
+          // Non-owner specific data
+          setIsLoadingApprovedGuestsData(false); // Not loading guest list for non-owner
+          if (currentUser && eventId) { 
               setIsLoadingExistingChat(true);
               const existingChatQuery = query(
                   chatsRef,
@@ -227,7 +226,7 @@ export default function EventDetailPage() {
               setIsLoadingExistingChat(false);
           } else {
              setExistingChatId(null);
-             setIsLoadingExistingChat(false); // No user, so no existing chat to load
+             setIsLoadingExistingChat(false); 
           }
         }
       } else {
@@ -247,7 +246,7 @@ export default function EventDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [eventId, currentUser]); // Removed toast from dependencies as it's stable
+  }, [eventId, currentUser]); 
 
   useEffect(() => {
     fetchEventAndRelatedData();
@@ -292,8 +291,6 @@ export default function EventDetailPage() {
               variant: "destructive",
               duration: 7000,
             });
-            // Decide if you want to stop the event deletion here or continue.
-            // For now, we'll let it continue, but you might want to return if image deletion is critical.
           }
         }
       }
@@ -327,7 +324,6 @@ export default function EventDetailPage() {
         return; 
       } catch (shareError) {
         console.error('Web Share API attempt failed:', shareError);
-        // Fall through to clipboard copy
       }
     }
 
@@ -647,3 +643,5 @@ export default function EventDetailPage() {
     </div>
   );
 }
+
+    
