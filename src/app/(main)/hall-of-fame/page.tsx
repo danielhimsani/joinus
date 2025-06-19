@@ -61,6 +61,7 @@ export default function HallOfFamePage() {
     try {
       const eventsQuery = query(collection(db, "events"));
       const chatsQuery = query(collection(db, "eventChats"), where("status", "==", "request_approved"));
+      // Fetch all positive ratings for the "Most Liked" leaderboard
       const ratingsQuery = query(collection(db, "userEventGuestRatings"), where("ratingType", "==", "positive"));
 
 
@@ -72,7 +73,7 @@ export default function HallOfFamePage() {
 
       const allEvents = eventsSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data(), dateTime: safeToDate(docSnap.data().dateTime) } as EventType));
       const allApprovedChats = chatsSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as EventChat));
-      const allPositiveRatings = ratingsSnapshot.docs.map(docSnap => docSnap.data() as { guestUid: string, eventId: string });
+      const allPositiveRatings = ratingsSnapshot.docs.map(docSnap => docSnap.data() as { guestUid: string, eventId: string, ratingType: 'positive' | 'negative' });
       
       const eventDateMap = new Map<string, Date>();
       allEvents.forEach(event => eventDateMap.set(event.id, event.dateTime));
@@ -105,7 +106,6 @@ export default function HallOfFamePage() {
         }
         attendeeData[chat.guestUid].score += 1;
         const eventDate = eventDateMap.get(chat.eventId);
-        // Only consider past events for last attended date, regardless of filter
         if (eventDate && eventDate < now) { 
           if (!attendeeData[chat.guestUid].lastEventDate || eventDate > attendeeData[chat.guestUid].lastEventDate!) {
             attendeeData[chat.guestUid].lastEventDate = eventDate;
@@ -139,7 +139,7 @@ export default function HallOfFamePage() {
             const attendeeEntry = sortedAttendees.find(a => a.userId === userId);
             return {
                 userId,
-                score,
+                score, // This score is the thumbsUpCount
                 lastEventAttendedDate: attendeeEntry?.lastEventAttendedDate || null,
             };
         })
@@ -203,25 +203,20 @@ export default function HallOfFamePage() {
             leaderboard.push(leaderboardItem);
             if (isCurrentUser) foundCurrentUserInTop = true;
           } else if (isCurrentUser && !foundCurrentUserInTop) {
-            // If current user is outside top N, but we found them in the full sorted list
             currentUserData = leaderboardItem;
           }
           
-          // Ensure currentUserData is set if the current user is encountered, regardless of top N
           if (isCurrentUser && !currentUserData) {
             currentUserData = leaderboardItem;
           }
         }
         
-        // If current user wasn't in the top N (or not in the list at all but should be)
         if (!currentUserData) {
             const currentUserEntry = users.find(u => u.userId === currentUserUid);
             if (currentUserEntry) {
                 const profile = userProfilesMap.get(currentUserEntry.userId);
                 const name = profile?.name || `User ${currentUserEntry.userId.substring(0, 5)}`;
-                // Calculate rank accurately if not in top N
                 let currentUserRank = users.findIndex(u => u.userId === currentUserUid) + 1;
-                // Adjust rank for ties
                 for(let i = 0; i < currentUserRank -1; i++) {
                     if (users[i].score === currentUserEntry.score) {
                         currentUserRank = i + 1; 
@@ -238,15 +233,15 @@ export default function HallOfFamePage() {
                     lastEventAttendedDate: currentUserEntry.lastEventAttendedDate,
                     thumbsUpCount: type === 'liked' ? currentUserEntry.score : undefined,
                 };
-            } else if (type === 'liked') { // Handle case where user has 0 likes and is not in `likedGuestsData`
+            } else if (type === 'liked') { 
                  const profile = userProfilesMap.get(currentUserUid);
                  if (profile) {
                     currentUserData = {
                         userId: currentUserUid,
                         name: profile.name || `User ${currentUserUid.substring(0,5)}`,
                         profileImageUrl: profile.profileImageUrl,
-                        score: 0, // 0 likes
-                        rank: likedGuestsData.length + 1, // Rank them last if they have 0
+                        score: 0, 
+                        rank: likedGuestsData.length + 1, 
                         isCurrentUser: true,
                         lastEventAttendedDate: sortedAttendees.find(a => a.userId === currentUserUid)?.lastEventAttendedDate || null,
                         thumbsUpCount: 0
@@ -278,11 +273,15 @@ export default function HallOfFamePage() {
   }, [currentUser, eventTimeFilter, toast]);
 
   useEffect(() => {
-    fetchLeaderboardData();
-  }, [fetchLeaderboardData]);
+    if (currentUser) { // Only call if currentUser is set
+      fetchLeaderboardData();
+    } else {
+      setIsLoading(false); // Explicitly set loading to false if no user
+    }
+  }, [currentUser, fetchLeaderboardData]); // fetchLeaderboardData dependency will re-run if eventTimeFilter changes
 
   const renderLeaderboardTable = (data: LeaderboardUser[], type: LeaderboardType) => {
-    if (isLoading && data.length === 0) { // Show skeleton only when loading AND no data yet
+    if (isLoading && data.length === 0) { 
         return (
             <div className="space-y-3">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
@@ -344,7 +343,7 @@ export default function HallOfFamePage() {
     else if (type === 'hosts') isUserInTopList = leaderboardHosts.some(u => u.userId === userData.userId);
     else if (type === 'liked') isUserInTopList = leaderboardMostLiked.some(u => u.userId === userData.userId);
 
-    if (isUserInTopList && userData.rank <= MAX_LEADERBOARD_USERS) return null; // Don't show if already in top list
+    if (isUserInTopList && userData.rank <= MAX_LEADERBOARD_USERS) return null; 
 
     return (
       <Card className="mt-4 bg-muted/50" dir="rtl">
