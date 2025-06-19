@@ -205,7 +205,8 @@ export default function ProfilePage() {
         setIsLoadingOwnedEvents(true);
         try {
           const eventsRef = collection(db, "events");
-          const q = query(eventsRef, where("ownerUids", "array-contains", fbUser.uid), where("dateTime", ">=", Timestamp.now()), orderBy("dateTime", "asc"));
+          // Query for all events owned by the user, ordered by date
+          const q = query(eventsRef, where("ownerUids", "array-contains", fbUser.uid), orderBy("dateTime", "asc"));
           const querySnapshot = await getDocs(q);
           const fetchedEvents = querySnapshot.docs.map(eventDoc => {
             const data = eventDoc.data();
