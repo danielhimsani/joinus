@@ -45,6 +45,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle as ShadAlertDialogTitle, 
 } from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
 
 
 const GUESTS_PER_PAGE = 10;
@@ -81,7 +82,10 @@ export default function ManageEventGuestsPage() {
   const [showRevokeDialog, setShowRevokeDialog] = useState(false);
   const [guestToRevoke, setGuestToRevoke] = useState<ApprovedGuestWithProfile | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
-  const [isRating, setIsRating] = useState(false); // For rating loading state
+  
+  const [ratingInProgressForGuest, setRatingInProgressForGuest] = useState<string | null>(null);
+  const [guestRatings, setGuestRatings] = useState<Map<string, 'positive' | 'negative'>>(new Map());
+
 
   const totalGuestPages = Math.ceil(approvedGuests.length / GUESTS_PER_PAGE);
   const paginatedGuests = approvedGuests.slice((currentPage - 1) * GUESTS_PER_PAGE, currentPage * GUESTS_PER_PAGE);
@@ -143,6 +147,7 @@ export default function ManageEventGuestsPage() {
           guestFetchPromises.push(
             getDoc(doc(db, "users", chatData.guestUid)).then(userDoc => {
               if (userDoc.exists()) {
+                // Use userDoc.id (Firestore document ID which is the firebaseUid) as the guest's unique ID
                 return { ...userDoc.data(), id: userDoc.id, firebaseUid: userDoc.id, chatId: chatDoc.id } as ApprovedGuestWithProfile;
               }
               return null;
@@ -276,14 +281,12 @@ export default function ManageEventGuestsPage() {
   };
 
   const handleRateGuest = async (guest: ApprovedGuestWithProfile, rating: 'positive' | 'negative') => {
-    if (!guest || !event) return;
-    setIsRating(true);
-    // Placeholder for rating logic
-    // In a real app, you would write this rating to Firestore (e.g., a 'ratings' collection or update user profile)
+    if (!guest || !event || guestRatings.has(guest.id)) return;
+    setRatingInProgressForGuest(guest.id);
+    
     console.log(`Rating guest ${guest.id} (${guest.name}) for event ${event.id} with: ${rating}`);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 700));
+    await new Promise(resolve => setTimeout(resolve, 700)); // Simulate API call
 
     const ratingText = rating === 'positive' ? 'חיובית' : 'שלילית';
     toast({
@@ -291,9 +294,8 @@ export default function ManageEventGuestsPage() {
         description: HEBREW_TEXT.event.guestRatedSuccessfully.replace('{guestName}', guest.name || HEBREW_TEXT.chat.guest).replace('{ratingType}', ratingText)
     });
     
-    // Potentially update UI to reflect that rating has been given for this guest (e.g., disable buttons)
-    // For now, we'll just show a toast.
-    setIsRating(false);
+    setGuestRatings(prevRatings => new Map(prevRatings).set(guest.id, rating));
+    setRatingInProgressForGuest(null);
   };
 
 
@@ -402,7 +404,10 @@ export default function ManageEventGuestsPage() {
               </div>
               {approvedGuests.length > 0 ? (
                 <div className="space-y-3">
-                  {paginatedGuests.map(guest => (
+                  {paginatedGuests.map(guest => {
+                    const currentRating = guestRatings.get(guest.id);
+                    const isCurrentGuestBeingRated = ratingInProgressForGuest === guest.id;
+                    return (
                       <Card key={guest.id} className="p-3 shadow-sm">
                         <div className="flex items-center justify-between space-x-3 rtl:space-x-reverse">
                           <div className="flex items-center space-x-3 rtl:space-x-reverse flex-1 min-w-0">
@@ -432,7 +437,7 @@ export default function ManageEventGuestsPage() {
                               {!isEventPast ? (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isRating || isRevoking}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isRevoking || isCurrentGuestBeingRated}>
                                             <MoreVertical className="h-4 w-4 text-muted-foreground" />
                                         </Button>
                                     </DropdownMenuTrigger>
@@ -440,7 +445,7 @@ export default function ManageEventGuestsPage() {
                                         <DropdownMenuItem 
                                             onSelect={() => { setGuestToRevoke(guest); setShowRevokeDialog(true); }}
                                             className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-                                            disabled={isRating || isRevoking}
+                                            disabled={isRevoking || isCurrentGuestBeingRated}
                                         >
                                             <UserX className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
                                             {HEBREW_TEXT.event.revokeApproval}
@@ -454,11 +459,14 @@ export default function ManageEventGuestsPage() {
                                             <Button 
                                               variant="ghost" 
                                               size="icon" 
-                                              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-500/10" 
+                                              className={cn(
+                                                "h-8 w-8",
+                                                currentRating === 'positive' ? "text-green-600 bg-green-500/20 hover:bg-green-500/30" : "text-muted-foreground hover:text-green-700 hover:bg-green-500/10"
+                                              )}
                                               onClick={() => handleRateGuest(guest, 'positive')}
-                                              disabled={isRating || isRevoking}
+                                              disabled={isCurrentGuestBeingRated || !!currentRating}
                                             >
-                                                {isRating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsUp className="h-4 w-4" />}
+                                                {isCurrentGuestBeingRated ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsUp className="h-4 w-4" />}
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent><p>{HEBREW_TEXT.general.ratePositive}</p></TooltipContent>
@@ -468,11 +476,14 @@ export default function ManageEventGuestsPage() {
                                             <Button 
                                               variant="ghost" 
                                               size="icon" 
-                                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                               className={cn(
+                                                "h-8 w-8",
+                                                currentRating === 'negative' ? "text-destructive bg-destructive/10 hover:bg-destructive/20" : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                              )}
                                               onClick={() => handleRateGuest(guest, 'negative')}
-                                              disabled={isRating || isRevoking}
+                                              disabled={isCurrentGuestBeingRated || !!currentRating}
                                             >
-                                                {isRating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsDown className="h-4 w-4" />}
+                                                {isCurrentGuestBeingRated ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsDown className="h-4 w-4" />}
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent><p>{HEBREW_TEXT.general.rateNegative}</p></TooltipContent>
@@ -482,7 +493,7 @@ export default function ManageEventGuestsPage() {
                           </div>
                         </div>
                       </Card>
-                    ))}
+                    )})}
                    {totalGuestPages > 1 && (
                     <div className="mt-6 flex justify-center items-center space-x-2 rtl:space-x-reverse">
                         <Button
@@ -608,4 +619,3 @@ export default function ManageEventGuestsPage() {
   );
 }
     
-
