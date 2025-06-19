@@ -12,6 +12,21 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid in resource.data.ownerUids;
     }
 
+    match /userEventGuestRatings/{ratingDocId} {
+      // Allow read if user is authenticated (adjust as needed for privacy)
+      allow read: if request.auth != null;
+
+      // Allow create if the authenticated user's UID matches the raterUID part of the doc ID
+      // and the document being written contains the correct fields.
+      // Example assumes ratingDocId is "raterUid_eventId_guestUid"
+      allow create: if request.auth != null && request.auth.uid == ratingDocId.split('_')[0]
+                      && request.resource.data.keys().hasAll(['ratingType', 'timestamp'])
+                      && request.resource.data.ratingType in ['positive', 'negative'];
+      
+      // Generally, ratings are immutable or only updatable by the original rater.
+      allow update, delete: if false; 
+    }
+
     // Rules for 'users' collection
     match /users/{userId} {
       allow read: if request.auth != null;
