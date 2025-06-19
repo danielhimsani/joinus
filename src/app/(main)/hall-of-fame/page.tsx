@@ -392,7 +392,7 @@ export default function HallOfFamePage() {
           <Card dir="rtl">
             <CardHeader className="text-right">
               {/* CardTitle removed as requested */}
-              <CardDescription dir="rtl">משתמשים שהשתתפו במספר האירועים הרב ביותר דרך האפליקציה.</CardDescription>
+              <CardDescription dir="rtl">משתמשים שהשתתפו במספר האירועים הרב ביותר!</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? <Skeleton className="h-40 w-full" /> : renderLeaderboardTable(leaderboardAttendees, 'events')}
@@ -404,7 +404,7 @@ export default function HallOfFamePage() {
           <Card dir="rtl">
             <CardHeader className="text-right">
               {/* CardTitle removed as requested */}
-              <CardDescription dir="rtl">משתמשים שאירחו את מספר האורחים הרב ביותר דרך האירועים שלהם.</CardDescription>
+              <CardDescription dir="rtl">משתמשים שאירחו את מספר האורחים הרב ביותר!</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? <Skeleton className="h-40 w-full" /> : renderLeaderboardTable(leaderboardHosts, 'guests')}
