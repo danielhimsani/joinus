@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Contact as UserPlaceholderIcon, MessageCircle } from "lucide-react";
-import type { ApprovedGuestData } from '@/app/(main)/events/[id]/page'; // Import the shared type
+import type { ApprovedGuestData } from '@/types'; // Updated import
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 
 interface ApprovedGuestListItemProps {

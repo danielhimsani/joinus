@@ -136,4 +136,10 @@ export interface EventAnnouncement {
   messageText: string;
   timestamp: Date; // Firestore Timestamp
 }
+
+export interface ApprovedGuestData {
+  guestUid: string;
+  guestInfo?: EventChat['guestInfo'];
+  chatId: string;
+}
     

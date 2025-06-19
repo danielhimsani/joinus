@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
-import type { Event, EventOwnerInfo, EventChat, FoodType, KashrutType, WeddingType } from '@/types';
+import type { Event, EventOwnerInfo, EventChat, FoodType, KashrutType, WeddingType, ApprovedGuestData } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -29,7 +29,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
 
 import { RequestToJoinModal } from '@/components/events/RequestToJoinModal';
 import { ApprovedGuestListItem } from '@/components/events/ApprovedGuestListItem';
@@ -83,12 +82,6 @@ const getPriceDisplay = (event: Event) => {
     }
 };
 
-export interface ApprovedGuestData {
-  guestUid: string;
-  guestInfo?: EventChat['guestInfo'];
-  chatId: string;
-}
-
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -133,15 +126,11 @@ export default function EventDetailPage() {
 
     setIsLoading(true);
     setIsLoadingApprovedCount(true);
-    setIsLoadingApprovedGuestsData(true);
-    if (currentUser) {
-        setIsLoadingExistingChat(true);
-    } else {
-        setIsLoadingExistingChat(false);
-    }
+    setIsLoadingApprovedGuestsData(true); // Assume we might need it
+    setIsLoadingExistingChat(true); // Assume we might need it
     
     setFetchError(null);
-    setExistingChatId(null);
+    setExistingChatId(null); // Reset existing chat ID
 
     try {
       const eventDocRef = doc(db, "events", eventId);
@@ -173,7 +162,7 @@ export default function EventDetailPage() {
           dateTime: safeToDate(data.dateTime),
           createdAt: safeToDate(data.createdAt),
           updatedAt: safeToDate(data.updatedAt),
-          name: data.name,
+          name: data.name || HEBREW_TEXT.event.eventNameGenericPlaceholder,
           numberOfGuests: data.numberOfGuests || 0,
           paymentOption: data.paymentOption || "free",
           location: data.location || "No location specified",
@@ -199,6 +188,8 @@ export default function EventDetailPage() {
         const currentIsOwnerCheck = fetchedEvent && currentUser && fetchedEvent.ownerUids.includes(currentUser.uid);
 
         if (currentIsOwnerCheck) {
+          setIsLoadingExistingChat(false); // Owners don't need to check for their own "request" chat
+          setIsLoadingApprovedGuestsData(true);
           const qApprovedData = query(chatsRef, where("eventId", "==", eventId), where("status", "==", "request_approved"));
           const approvedSnapshot = await getDocs(qApprovedData);
           const guests: ApprovedGuestData[] = [];
@@ -213,29 +204,32 @@ export default function EventDetailPage() {
             }
           });
           setApprovedGuestsData(guests);
+          setIsLoadingApprovedGuestsData(false);
         } else {
-          setApprovedGuestsData([]);
-        }
-        setIsLoadingApprovedGuestsData(false);
-        
-        if (currentUser && !currentIsOwnerCheck) {
-            const existingChatQuery = query(
-                chatsRef,
-                where("eventId", "==", eventId),
-                where("guestUid", "==", currentUser.uid),
-                limit(1)
-            );
-            const existingChatSnapshot = await getDocs(existingChatQuery);
-            if (!existingChatSnapshot.empty) {
-                setExistingChatId(existingChatSnapshot.docs[0].id);
-            } else {
-                setExistingChatId(null);
-            }
-        } else if (!currentUser) { // Explicitly handle case where currentUser is null
-           setExistingChatId(null);
-        }
-        setIsLoadingExistingChat(false);
+          // Not an owner, or user not logged in yet (currentUser might be null initially)
+          setApprovedGuestsData([]); // Non-owners don't see full guest list here
+          setIsLoadingApprovedGuestsData(false);
 
+          if (currentUser && eventId) { // Only check for existing chat if user is logged in and eventId is present
+              setIsLoadingExistingChat(true);
+              const existingChatQuery = query(
+                  chatsRef,
+                  where("eventId", "==", eventId),
+                  where("guestUid", "==", currentUser.uid),
+                  limit(1)
+              );
+              const existingChatSnapshot = await getDocs(existingChatQuery);
+              if (!existingChatSnapshot.empty) {
+                  setExistingChatId(existingChatSnapshot.docs[0].id);
+              } else {
+                  setExistingChatId(null);
+              }
+              setIsLoadingExistingChat(false);
+          } else {
+             setExistingChatId(null);
+             setIsLoadingExistingChat(false); // No user, so no existing chat to load
+          }
+        }
       } else {
         setFetchError(HEBREW_TEXT.event.noEventsFound);
         setEvent(null);
@@ -253,7 +247,7 @@ export default function EventDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [eventId, currentUser]); 
+  }, [eventId, currentUser]); // Removed toast from dependencies as it's stable
 
   useEffect(() => {
     fetchEventAndRelatedData();
@@ -298,6 +292,8 @@ export default function EventDetailPage() {
               variant: "destructive",
               duration: 7000,
             });
+            // Decide if you want to stop the event deletion here or continue.
+            // For now, we'll let it continue, but you might want to return if image deletion is critical.
           }
         }
       }
@@ -331,6 +327,7 @@ export default function EventDetailPage() {
         return; 
       } catch (shareError) {
         console.error('Web Share API attempt failed:', shareError);
+        // Fall through to clipboard copy
       }
     }
 
@@ -349,6 +346,7 @@ export default function EventDetailPage() {
       });
     }
   };
+
 
   if (isLoading || isLoadingApprovedCount) { 
     return (
@@ -638,7 +636,7 @@ export default function EventDetailPage() {
         )}
       </Card>
 
-      {event && currentUser && !existingChatId && (
+      {event && currentUser && !isOwner && !existingChatId && (
         <RequestToJoinModal
           isOpen={showRequestToJoinModal}
           onOpenChange={setShowRequestToJoinModal}
@@ -649,4 +647,3 @@ export default function EventDetailPage() {
     </div>
   );
 }
-    
