@@ -10,7 +10,6 @@ import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { CalendarDays, MapPin, Users, Tag, Utensils, MessageSquare, Edit3, CheckCircle, XCircle, Clock, Info, Loader2, AlertCircle, Trash2, MessageCircleMore, ListChecks, Share2, FileText, ShieldCheck, Heart, Contact as UserPlaceholderIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -36,7 +35,7 @@ import { RequestToJoinModal } from '@/components/events/RequestToJoinModal';
 import { ApprovedGuestListItem } from '@/components/events/ApprovedGuestListItem';
 
 import { db, auth as firebaseAuthInstance, storage } from "@/lib/firebase";
-import { doc, getDoc, Timestamp, deleteDoc, collection, query, where, getDocs, getCountFromServer } from "firebase/firestore";
+import { doc, getDoc, Timestamp, deleteDoc, collection, query, where, getDocs, getCountFromServer, limit } from "firebase/firestore";
 import { ref as storageRef, deleteObject } from "firebase/storage";
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
@@ -52,9 +51,9 @@ const getFoodTypeLabel = (foodType: FoodType | undefined) => {
         case 'vegetarian': return HEBREW_TEXT.event.vegetarian;
         case 'vegan': return HEBREW_TEXT.event.vegan;
         case 'kosherParve': return HEBREW_TEXT.event.kosherParve;
-        default: return foodType; 
+        default: return foodType;
     }
-}
+};
 
 const getKashrutLabel = (kashrut: KashrutType | undefined) => {
     if (!kashrut) return '';
@@ -63,7 +62,7 @@ const getKashrutLabel = (kashrut: KashrutType | undefined) => {
         case 'notKosher': return HEBREW_TEXT.event.notKosher;
         default: return kashrut;
     }
-}
+};
 
 const getWeddingTypeLabel = (weddingType: WeddingType | undefined) => {
     if (!weddingType) return '';
@@ -71,9 +70,9 @@ const getWeddingTypeLabel = (weddingType: WeddingType | undefined) => {
         case 'traditional': return HEBREW_TEXT.event.traditional;
         case 'civil': return HEBREW_TEXT.event.civil;
         case 'harediWithSeparation': return HEBREW_TEXT.event.harediWithSeparation;
-        default: return weddingType; 
+        default: return weddingType;
     }
-}
+};
 
 const getPriceDisplay = (event: Event) => {
     switch (event.paymentOption) {
@@ -82,7 +81,7 @@ const getPriceDisplay = (event: Event) => {
         case 'fixed': return `₪${event.pricePerGuest || 0} ${HEBREW_TEXT.event.pricePerGuest}`;
         default: return '';
     }
-}
+};
 
 export interface ApprovedGuestData {
   guestUid: string;
@@ -109,6 +108,8 @@ export default function EventDetailPage() {
 
   const [approvedGuestsData, setApprovedGuestsData] = useState<ApprovedGuestData[]>([]);
   const [isLoadingApprovedGuestsData, setIsLoadingApprovedGuestsData] = useState(false);
+  const [existingChatId, setExistingChatId] = useState<string | null>(null);
+  const [isLoadingExistingChat, setIsLoadingExistingChat] = useState(true);
 
 
   useEffect(() => {
@@ -118,24 +119,31 @@ export default function EventDetailPage() {
     return () => unsubscribe();
   }, []);
 
-  const isOwner = event && currentUser && event.ownerUids.includes(currentUser.uid);
+  const isOwner = !!(event && currentUser && event.ownerUids.includes(currentUser.uid));
 
   const fetchEventAndRelatedData = useCallback(async () => {
     if (!eventId) {
         setIsLoading(false);
         setIsLoadingApprovedCount(false);
         setIsLoadingApprovedGuestsData(false);
+        setIsLoadingExistingChat(false);
         setFetchError("Event ID is missing.");
         return;
     }
 
     setIsLoading(true);
     setIsLoadingApprovedCount(true);
-    if (isOwner) setIsLoadingApprovedGuestsData(true);
+    setIsLoadingApprovedGuestsData(true);
+    if (currentUser) {
+        setIsLoadingExistingChat(true);
+    } else {
+        setIsLoadingExistingChat(false);
+    }
+    
     setFetchError(null);
+    setExistingChatId(null);
 
     try {
-      // Fetch Event Data
       const eventDocRef = doc(db, "events", eventId);
       const docSnap = await getDoc(eventDocRef);
 
@@ -182,43 +190,58 @@ export default function EventDetailPage() {
         } as Event;
         setEvent(fetchedEvent);
 
-        // Fetch Approved Guests Count
         const chatsRef = collection(db, "eventChats");
         const qCount = query(chatsRef, where("eventId", "==", eventId), where("status", "==", "request_approved"));
         const countSnapshot = await getCountFromServer(qCount);
         setApprovedGuestsCount(countSnapshot.data().count);
         setIsLoadingApprovedCount(false);
 
-        // Fetch Approved Guests Detailed Data (only if current user is an owner)
-        const currentIsOwner = fetchedEvent && currentUser && fetchedEvent.ownerUids.includes(currentUser.uid);
+        const currentIsOwnerCheck = fetchedEvent && currentUser && fetchedEvent.ownerUids.includes(currentUser.uid);
 
-        if (currentIsOwner) {
-          setIsLoadingApprovedGuestsData(true);
+        if (currentIsOwnerCheck) {
           const qApprovedData = query(chatsRef, where("eventId", "==", eventId), where("status", "==", "request_approved"));
           const approvedSnapshot = await getDocs(qApprovedData);
           const guests: ApprovedGuestData[] = [];
-          approvedSnapshot.forEach(doc => {
-            const chatData = doc.data() as EventChat;
+          approvedSnapshot.forEach(docData => {
+            const chatData = docData.data() as EventChat;
             if (chatData.guestInfo && chatData.guestUid) {
               guests.push({
                 guestUid: chatData.guestUid,
                 guestInfo: chatData.guestInfo,
-                chatId: doc.id
+                chatId: docData.id
               });
             }
           });
           setApprovedGuestsData(guests);
-          setIsLoadingApprovedGuestsData(false);
         } else {
           setApprovedGuestsData([]);
-          setIsLoadingApprovedGuestsData(false);
         }
+        setIsLoadingApprovedGuestsData(false);
+        
+        if (currentUser && !currentIsOwnerCheck) {
+            const existingChatQuery = query(
+                chatsRef,
+                where("eventId", "==", eventId),
+                where("guestUid", "==", currentUser.uid),
+                limit(1)
+            );
+            const existingChatSnapshot = await getDocs(existingChatQuery);
+            if (!existingChatSnapshot.empty) {
+                setExistingChatId(existingChatSnapshot.docs[0].id);
+            } else {
+                setExistingChatId(null);
+            }
+        } else if (!currentUser) { // Explicitly handle case where currentUser is null
+           setExistingChatId(null);
+        }
+        setIsLoadingExistingChat(false);
 
       } else {
         setFetchError(HEBREW_TEXT.event.noEventsFound);
         setEvent(null);
         setIsLoadingApprovedCount(false);
         setIsLoadingApprovedGuestsData(false);
+        setIsLoadingExistingChat(false);
       }
     } catch (error) {
       console.error("Error fetching event or related data:", error);
@@ -226,17 +249,17 @@ export default function EventDetailPage() {
       setEvent(null);
       setIsLoadingApprovedCount(false);
       setIsLoadingApprovedGuestsData(false);
+      setIsLoadingExistingChat(false);
     } finally {
       setIsLoading(false);
     }
-  }, [eventId, currentUser, isOwner]);
+  }, [eventId, currentUser]); 
 
   useEffect(() => {
     fetchEventAndRelatedData();
   }, [fetchEventAndRelatedData]);
 
   const availableSpots = event ? event.numberOfGuests - approvedGuestsCount : 0;
-
 
   const handleOpenRequestToJoinModal = () => {
     if (!currentUser) {
@@ -252,7 +275,6 @@ export default function EventDetailPage() {
         setShowRequestToJoinModal(true);
     }
   };
-
 
   const handleDeleteEvent = async () => {
     if (!event || !event.id || !isOwner) {
@@ -285,8 +307,7 @@ export default function EventDetailPage() {
 
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.event.eventDeletedSuccessfully });
       router.push('/events');
-    } catch (error)
-    {
+    } catch (error) {
       console.error("Error deleting event (Firestore or other):", error);
       toast({ title: HEBREW_TEXT.general.error, description: HEBREW_TEXT.event.errorDeletingEvent + (error instanceof Error ? `: ${error.message}` : ''), variant: "destructive"});
     } finally {
@@ -329,8 +350,7 @@ export default function EventDetailPage() {
     }
   };
 
-
-  if (isLoading || isLoadingApprovedCount) {
+  if (isLoading || isLoadingApprovedCount) { 
     return (
       <div className="container mx-auto px-4 py-12">
         <Card className="overflow-hidden">
@@ -401,7 +421,6 @@ export default function EventDetailPage() {
     }
     googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryForMap)}`;
   }
-
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -540,7 +559,19 @@ export default function EventDetailPage() {
             </div>
 
             <div className="md:col-span-1 space-y-4">
-              {!isOwner && currentUser && (
+              {isLoadingExistingChat ? (
+                 <Button className="w-full font-body text-lg py-3" disabled>
+                    <Loader2 className="ml-2 h-5 w-5 animate-spin" />
+                    {HEBREW_TEXT.general.loading}...
+                </Button>
+              ) : existingChatId ? (
+                <Button asChild className="w-full font-body text-lg py-3">
+                  <Link href={`/chat/${existingChatId}`}>
+                    <MessageSquare className="ml-2 h-5 w-5" />
+                    {HEBREW_TEXT.chat.viewChat}
+                  </Link>
+                </Button>
+              ) : !isOwner && currentUser && (
                  availableSpots > 0 ? (
                     <Button className="w-full font-body text-lg py-3" onClick={handleOpenRequestToJoinModal}>
                       <MessageCircleMore className="ml-2 h-5 w-5" />
@@ -552,14 +583,12 @@ export default function EventDetailPage() {
                         {HEBREW_TEXT.event.noSpotsAvailableTitle}
                     </Button>
                  )
-              )}
-               {!currentUser && (
+              ) : !currentUser && (
                 <Button className="w-full font-body text-lg py-3" onClick={() => router.push('/signin')}>
                     <MessageCircleMore className="ml-2 h-5 w-5" />
                     התחבר כדי לבקש להצטרף
                 </Button>
               )}
-              
             </div>
           </div>
         </CardContent>
@@ -609,7 +638,7 @@ export default function EventDetailPage() {
         )}
       </Card>
 
-      {event && currentUser && (
+      {event && currentUser && !existingChatId && (
         <RequestToJoinModal
           isOpen={showRequestToJoinModal}
           onOpenChange={setShowRequestToJoinModal}

@@ -257,7 +257,7 @@ export const HEBREW_TEXT = {
     confirmCloseChatMessages: "האם אתה בטוח שברצונך לסגור צ'אט זה? לא ניתן יהיה לשלוח הודעות נוספות.",
     chatClosed: "צ'אט זה נסגר.",
     chatClosedByOwner: "צ'אט זה נסגר על ידי בעל האירוע.",
-    viewChat: "צפה בצ'אט",
+    viewChat: "מעבר לצ'אט",
     lastMessage: "הודעה אחרונה",
     unread: "לא נקראו",
     errorFetchingChats: "שגיאה בטעינת הצ'אטים. נסה שוב מאוחר יותר.",
@@ -361,3 +361,6 @@ export const HEBREW_TEXT = {
   }
 };
 
+
+
+  
