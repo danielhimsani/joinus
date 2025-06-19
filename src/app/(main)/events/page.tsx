@@ -21,10 +21,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { db } from "@/lib/firebase";
+import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, Timestamp, where, getCountFromServer, doc } from "firebase/firestore";
 import { safeToDate } from '@/lib/dateUtils';
 import { cn } from "@/lib/utils";
+import type { User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 
 
 const PULL_TO_REFRESH_THRESHOLD = 70; // Pixels to pull to trigger refresh
@@ -38,6 +40,7 @@ const defaultAdvancedFilters: Filters = {
   kashrut: "any",
   weddingType: "any",
   minAvailableSpots: 1,
+  showAppliedEvents: false, // Default for new filter
 };
 
 const countActiveEventFilters = (currentFilters: Filters): number => {
@@ -48,6 +51,7 @@ const countActiveEventFilters = (currentFilters: Filters): number => {
   if (currentFilters.kashrut && currentFilters.kashrut !== defaultAdvancedFilters.kashrut) count++;
   if (currentFilters.weddingType && currentFilters.weddingType !== defaultAdvancedFilters.weddingType) count++;
   if (currentFilters.minAvailableSpots !== undefined && currentFilters.minAvailableSpots !== defaultAdvancedFilters.minAvailableSpots && currentFilters.minAvailableSpots !== 1) count++;
+  if (currentFilters.showAppliedEvents === true) count++; // Count if true (non-default)
   return count;
 };
 
@@ -78,6 +82,41 @@ export default function EventsPage() {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [appliedEventIds, setAppliedEventIds] = useState<string[]>([]);
+  const [isLoadingAppliedEventIds, setIsLoadingAppliedEventIds] = useState(false);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(firebaseAuthInstance, (user) => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    const fetchAppliedEvents = async () => {
+      if (!currentUser) {
+        setAppliedEventIds([]);
+        setIsLoadingAppliedEventIds(false);
+        return;
+      }
+      setIsLoadingAppliedEventIds(true);
+      try {
+        const chatsRef = collection(db, "eventChats");
+        const q = query(chatsRef, where("guestUid", "==", currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const ids = querySnapshot.docs.map(doc => doc.data().eventId as string);
+        setAppliedEventIds(ids);
+      } catch (error) {
+        console.error("Error fetching applied event IDs:", error);
+        setAppliedEventIds([]);
+      } finally {
+        setIsLoadingAppliedEventIds(false);
+      }
+    };
+    fetchAppliedEvents();
+  }, [currentUser]);
 
 
   useEffect(() => {
@@ -200,12 +239,17 @@ export default function EventsPage() {
 
 
   useEffect(() => {
-    if (isLoadingEvents || isLoadingApprovedCounts) { 
+    if (isLoadingEvents || isLoadingApprovedCounts || isLoadingAppliedEventIds) { 
         setFilteredAndPaginatedEvents([]); 
         return;
     }
 
     let eventsToFilter = [...allEvents];
+
+    // Filter out events already applied to if showAppliedEvents is false
+    if (!advancedFilters.showAppliedEvents && appliedEventIds.length > 0) {
+        eventsToFilter = eventsToFilter.filter(event => !appliedEventIds.includes(event.id));
+    }
 
     eventsToFilter = eventsToFilter.filter(event => {
         const approvedCount = approvedCountsMap.get(event.id) || 0;
@@ -275,16 +319,16 @@ export default function EventsPage() {
     const endIndex = startIndex + EVENTS_PER_PAGE;
     setFilteredAndPaginatedEvents(eventsToFilter.slice(startIndex, endIndex));
 
-  }, [allEvents, approvedCountsMap, simpleSearchQuery, advancedFilters, isLoadingEvents, isLoadingApprovedCounts, currentPage]);
+  }, [allEvents, approvedCountsMap, simpleSearchQuery, advancedFilters, isLoadingEvents, isLoadingApprovedCounts, isLoadingAppliedEventIds, appliedEventIds, currentPage]);
 
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (window.scrollY === 0 && !isRefreshingViaPull && !isLoadingEvents && !isLoadingApprovedCounts) {
+    if (window.scrollY === 0 && !isRefreshingViaPull && !isLoadingEvents && !isLoadingApprovedCounts && !isLoadingAppliedEventIds) {
       setPullStart(e.touches[0].clientY);
       setIsPulling(true);
       setPullDistance(0); 
     }
-  }, [isRefreshingViaPull, isLoadingEvents, isLoadingApprovedCounts]);
+  }, [isRefreshingViaPull, isLoadingEvents, isLoadingApprovedCounts, isLoadingAppliedEventIds]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (!isPulling) return;
@@ -444,7 +488,7 @@ export default function EventsPage() {
 
         <Separator className="my-8"/>
 
-        {fetchError && !(isLoadingEvents || isLoadingApprovedCounts) && (
+        {fetchError && !(isLoadingEvents || isLoadingApprovedCounts || isLoadingAppliedEventIds) && (
           <Alert variant="destructive" className="my-8">
             <AlertCircle className="h-5 w-5" />
             <AlertTitle className="font-headline">{HEBREW_TEXT.general.error}</AlertTitle>
@@ -452,7 +496,7 @@ export default function EventsPage() {
           </Alert>
         )}
 
-        {(isLoadingEvents || isLoadingApprovedCounts) && !isRefreshingViaPull ? (
+        {(isLoadingEvents || isLoadingApprovedCounts || isLoadingAppliedEventIds) && !isRefreshingViaPull ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {renderSkeletons()}
           </div>
@@ -488,7 +532,7 @@ export default function EventsPage() {
               </div>
             )}
           </>
-        ) : !fetchError && filteredAndPaginatedEvents.length === 0 && !(isLoadingEvents || isLoadingApprovedCounts) ? (
+        ) : !fetchError && filteredAndPaginatedEvents.length === 0 && !(isLoadingEvents || isLoadingApprovedCounts || isLoadingAppliedEventIds) ? (
           <Alert variant="default" className="mt-8">
               <SearchX className="h-5 w-5" />
             <AlertTitle className="font-headline">{HEBREW_TEXT.event.noEventsFound}</AlertTitle>

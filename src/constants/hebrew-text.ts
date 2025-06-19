@@ -169,6 +169,7 @@ export const HEBREW_TEXT = {
     confirmRevoke: "אשר ביטול",
     guestApprovalRevoked: "אישור ההגעה של {guestName} בוטל.",
     errorRevokingApproval: "שגיאה בביטול אישור ההגעה.",
+    showAppliedEventsFilterLabel: "הצג אירועים שכבר ביקשתי להצטרף אליהם",
   },
   profile: {
     userProfile: "פרופיל משתמש",
@@ -359,3 +360,4 @@ export const HEBREW_TEXT = {
     termsOfUseTitle: "תנאי שימוש",
   }
 };
+

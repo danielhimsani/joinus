@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import { ListFilter, Search, Users, ShieldCheck, Heart, Trash2 } from "lucide-react"; // Added Trash2
+import { ListFilter, Search, Users, ShieldCheck, Heart, Trash2, Eye, EyeOff } from "lucide-react"; // Added Eye, EyeOff
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { he } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch"; // Added Switch
 import { useState, useEffect } from "react";
 import { DialogFooter, DialogClose } from "@/components/ui/dialog";
 import type { FoodType, KashrutType, WeddingType } from "@/types";
@@ -24,6 +25,7 @@ export interface Filters {
   kashrut?: KashrutType | "any";
   weddingType?: WeddingType | "any";
   minAvailableSpots?: number;
+  showAppliedEvents?: boolean; // New filter
 }
 
 interface EventFiltersProps {
@@ -71,6 +73,7 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
     kashrut: initialFilters.kashrut || "any",
     weddingType: initialFilters.weddingType || "any",
     minAvailableSpots: initialFilters.minAvailableSpots === undefined ? 1 : initialFilters.minAvailableSpots,
+    showAppliedEvents: initialFilters.showAppliedEvents === undefined ? false : initialFilters.showAppliedEvents, // Initialize new filter
   }));
 
   useEffect(() => {
@@ -81,11 +84,12 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
       kashrut: initialFilters.kashrut || "any",
       weddingType: initialFilters.weddingType || "any",
       minAvailableSpots: initialFilters.minAvailableSpots === undefined ? 1 : initialFilters.minAvailableSpots,
+      showAppliedEvents: initialFilters.showAppliedEvents === undefined ? false : initialFilters.showAppliedEvents,
     }));
   }, [initialFilters]);
 
 
-  const handleInputChange = (name: keyof Filters, value: string | Date | number | undefined) => {
+  const handleInputChange = (name: keyof Filters, value: string | Date | number | boolean | undefined) => {
     if (name === "minAvailableSpots" && typeof value === 'string') {
         const numValue = parseInt(value, 10);
         setFilters(prev => ({ ...prev, [name]: isNaN(numValue) || numValue < 1 ? 1 : numValue }));
@@ -93,6 +97,8 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
         setFilters(prev => ({ ...prev, [name]: value < 1 ? 1 : value }));
     } else if ( (name === "foodType" || name === "kashrut" || name === "weddingType") && value === "any") {
         setFilters(prev => ({ ...prev, [name]: "any" }));
+    } else if (name === "showAppliedEvents" && typeof value === 'boolean') {
+        setFilters(prev => ({ ...prev, [name]: value }));
     }
     else {
         setFilters(prev => ({ ...prev, [name]: value }));
@@ -104,6 +110,7 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
     const filtersToSubmit = {
         ...filters,
         minAvailableSpots: typeof filters.minAvailableSpots === 'number' ? filters.minAvailableSpots : 1,
+        showAppliedEvents: typeof filters.showAppliedEvents === 'boolean' ? filters.showAppliedEvents : false,
     };
     onFilterChange(filtersToSubmit);
   };
@@ -116,6 +123,7 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
         kashrut: "any",
         weddingType: "any",
         minAvailableSpots: 1, 
+        showAppliedEvents: false, // Reset new filter to default
     };
     setFilters(clearedFilters);
     onFilterChange(clearedFilters); 
@@ -221,9 +229,21 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
                     />
                 </div>
             </div>
+            <div className="md:col-span-2 flex items-center space-x-3 rtl:space-x-reverse pt-2 border-t border-border/70 md:border-none md:pt-0">
+                <Switch
+                    id="show-applied-events"
+                    checked={filters.showAppliedEvents}
+                    onCheckedChange={(checked) => handleInputChange("showAppliedEvents", checked)}
+                    dir="ltr" 
+                />
+                <Label htmlFor="show-applied-events" className="cursor-pointer text-sm">
+                    {HEBREW_TEXT.event.showAppliedEventsFilterLabel}
+                </Label>
+                {filters.showAppliedEvents ? <Eye className="h-4 w-4 text-primary" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+            </div>
         </div>
         <DialogFooter className="pt-6 border-t mt-2 sm:justify-between">
-             <Button type="button" variant="ghost" onClick={handleClearFilters}>
+            <Button type="button" variant="ghost" onClick={handleClearFilters}>
                 <Trash2 className="ml-2 h-4 w-4" />
                 {HEBREW_TEXT.general.clearFilters}
             </Button>
