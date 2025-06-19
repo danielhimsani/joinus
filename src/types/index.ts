@@ -127,13 +127,15 @@ export interface LeaderboardEntry { // Existing one, might deprecate or adapt
   rank?: number;
 }
 
-export interface LeaderboardUser { // More specific type for the new Hall of Fame
+export interface LeaderboardUser {
   userId: string;
   name: string;
   profileImageUrl?: string;
-  score: number;
+  score: number; // General score (events attended or guests hosted)
   rank?: number;
   isCurrentUser?: boolean;
+  thumbsUpCount?: number; // Specifically for "Most Liked Guests"
+  lastEventAttendedDate?: Date | null; // For "Top Attending Users" and "Most Liked Guests"
 }
 
 

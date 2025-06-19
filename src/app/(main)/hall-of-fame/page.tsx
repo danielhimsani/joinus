@@ -10,6 +10,8 @@ import { collection, query, where, getDocs, Timestamp, doc, getDoc } from 'fireb
 import type { User as FirebaseUser } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { safeToDate } from '@/lib/dateUtils';
+import { format } from 'date-fns';
+import { he } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,12 +19,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription as ShadAlertDescriptionComp, AlertTitle as ShadAlertTitle } from '@/components/ui/alert'; // Renamed AlertDescription to avoid conflict
-import { Loader2, AlertCircle, Award, Users, UserCheck, Contact as UserPlaceholderIcon, Crown, Trophy } from 'lucide-react';
+import { Alert, AlertDescription as ShadAlertDescriptionComp, AlertTitle as ShadAlertTitle } from '@/components/ui/alert';
+import { Loader2, AlertCircle, Award, Users, UserCheck, Contact as UserPlaceholderIcon, Crown, Trophy, ThumbsUp as ThumbsUpIcon, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
 type EventTimeFilter = 'all' | 'past';
+type LeaderboardType = 'attendees' | 'hosts' | 'liked';
 
 const MAX_LEADERBOARD_USERS = 10;
 
@@ -31,8 +34,11 @@ export default function HallOfFamePage() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [leaderboardAttendees, setLeaderboardAttendees] = useState<LeaderboardUser[]>([]);
   const [leaderboardHosts, setLeaderboardHosts] = useState<LeaderboardUser[]>([]);
+  const [leaderboardMostLiked, setLeaderboardMostLiked] = useState<LeaderboardUser[]>([]);
   const [currentUserAttendeeScore, setCurrentUserAttendeeScore] = useState<LeaderboardUser | null>(null);
   const [currentUserHostScore, setCurrentUserHostScore] = useState<LeaderboardUser | null>(null);
+  const [currentUserMostLikedScore, setCurrentUserMostLikedScore] = useState<LeaderboardUser | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [eventTimeFilter, setEventTimeFilter] = useState<EventTimeFilter>('all');
@@ -53,7 +59,6 @@ export default function HallOfFamePage() {
     setError(null);
 
     try {
-      // 1. Fetch all events and approved chats
       const eventsQuery = query(collection(db, "events"));
       const chatsQuery = query(collection(db, "eventChats"), where("status", "==", "request_approved"));
 
@@ -64,14 +69,11 @@ export default function HallOfFamePage() {
 
       const allEvents = eventsSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data(), dateTime: safeToDate(docSnap.data().dateTime) } as EventType));
       const allApprovedChats = chatsSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as EventChat));
-
-      // Create a map of eventId to its dateTime for quick lookup
+      
       const eventDateMap = new Map<string, Date>();
       allEvents.forEach(event => eventDateMap.set(event.id, event.dateTime));
-
       const now = new Date();
 
-      // Filter chats/events based on time filter
       const relevantChats = eventTimeFilter === 'past'
         ? allApprovedChats.filter(chat => {
             const eventDate = eventDateMap.get(chat.eventId);
@@ -83,17 +85,25 @@ export default function HallOfFamePage() {
         ? allEvents.filter(event => event.dateTime < now)
         : allEvents;
 
-      // 2. Calculate Top Attendees
-      const attendeeCounts: Record<string, number> = {};
+      // Calculate Top Attendees & Last Event Attended
+      const attendeeData: Record<string, { score: number; lastEventDate: Date | null }> = {};
       relevantChats.forEach(chat => {
-        attendeeCounts[chat.guestUid] = (attendeeCounts[chat.guestUid] || 0) + 1;
+        if (!attendeeData[chat.guestUid]) {
+          attendeeData[chat.guestUid] = { score: 0, lastEventDate: null };
+        }
+        attendeeData[chat.guestUid].score += 1;
+        const eventDate = eventDateMap.get(chat.eventId);
+        if (eventDate && eventDate < now) { // Only consider past events for last attended date
+          if (!attendeeData[chat.guestUid].lastEventDate || eventDate > attendeeData[chat.guestUid].lastEventDate!) {
+            attendeeData[chat.guestUid].lastEventDate = eventDate;
+          }
+        }
       });
+      const sortedAttendees = Object.entries(attendeeData)
+        .map(([userId, data]) => ({ userId, score: data.score, lastEventAttendedDate: data.lastEventDate }))
+        .sort((a, b) => b.score - a.score || (b.lastEventAttendedDate?.getTime() || 0) - (a.lastEventAttendedDate?.getTime() || 0));
 
-      const sortedAttendees = Object.entries(attendeeCounts)
-        .map(([userId, score]) => ({ userId, score }))
-        .sort((a, b) => b.score - a.score);
-
-      // 3. Calculate Most Guests Hosted
+      // Calculate Most Guests Hosted
       const hostGuestCounts: Record<string, number> = {};
       relevantEvents.forEach(event => {
         const approvedGuestsForThisEvent = relevantChats.filter(chat => chat.eventId === event.id).length;
@@ -101,37 +111,50 @@ export default function HallOfFamePage() {
           hostGuestCounts[ownerUid] = (hostGuestCounts[ownerUid] || 0) + approvedGuestsForThisEvent;
         });
       });
-
       const sortedHosts = Object.entries(hostGuestCounts)
         .map(([userId, score]) => ({ userId, score }))
         .sort((a, b) => b.score - a.score);
 
-      // 4. Fetch user details for top N + current user
+      // SIMULATE Most Liked Guests Data
+      const simulatedLikedGuestsData: { userId: string; score: number; lastEventAttendedDate: Date | null }[] = [];
+      const uniqueUserIdsForLikedSim = [...new Set(sortedAttendees.map(u => u.userId))];
+      uniqueUserIdsForLikedSim.forEach(uid => {
+        const attendeeEntry = sortedAttendees.find(a => a.userId === uid);
+        simulatedLikedGuestsData.push({
+          userId: uid,
+          score: Math.floor(Math.random() * 50) + 1, // Random thumbs up count 1-50
+          lastEventAttendedDate: attendeeEntry?.lastEventAttendedDate || null,
+        });
+      });
+      const sortedLikedGuests = simulatedLikedGuestsData.sort((a, b) => b.score - a.score || (b.lastEventAttendedDate?.getTime() || 0) - (a.lastEventAttendedDate?.getTime() || 0));
+      
+
+      // Fetch user details
       const attendeeUidsToFetch = [...new Set([...sortedAttendees.slice(0, MAX_LEADERBOARD_USERS).map(u => u.userId), currentUser.uid])];
       const hostUidsToFetch = [...new Set([...sortedHosts.slice(0, MAX_LEADERBOARD_USERS).map(u => u.userId), currentUser.uid])];
-      const allUidsToFetch = [...new Set([...attendeeUidsToFetch, ...hostUidsToFetch])];
+      const likedUidsToFetch = [...new Set([...sortedLikedGuests.slice(0, MAX_LEADERBOARD_USERS).map(u => u.userId), currentUser.uid])];
+      const allUidsToFetch = [...new Set([...attendeeUidsToFetch, ...hostUidsToFetch, ...likedUidsToFetch])];
       
       const userProfilesMap = new Map<string, UserProfileType>();
-      if (allUidsToFetch.length > 0) {
-        const MAX_IDS_PER_QUERY = 30; // Firestore 'in' query limit
-        for (let i = 0; i < allUidsToFetch.length; i += MAX_IDS_PER_QUERY) {
-            const uidsChunk = allUidsToFetch.slice(i, i + MAX_IDS_PER_QUERY);
-            if (uidsChunk.length > 0) {
-                const usersQuery = query(collection(db, "users"), where("firebaseUid", "in", uidsChunk));
-                const usersSnapshot = await getDocs(usersQuery);
-                usersSnapshot.forEach(userDoc => {
-                    const userData = userDoc.data() as UserProfileType;
-                    userProfilesMap.set(userData.firebaseUid, userData);
-                });
+        if (allUidsToFetch.length > 0) {
+            const MAX_IDS_PER_QUERY = 30;
+            for (let i = 0; i < allUidsToFetch.length; i += MAX_IDS_PER_QUERY) {
+                const uidsChunk = allUidsToFetch.slice(i, i + MAX_IDS_PER_QUERY);
+                if (uidsChunk.length > 0) {
+                    const usersQuery = query(collection(db, "users"), where("firebaseUid", "in", uidsChunk));
+                    const usersSnapshot = await getDocs(usersQuery);
+                    usersSnapshot.forEach(userDoc => {
+                        const userData = userDoc.data() as UserProfileType;
+                        userProfilesMap.set(userData.firebaseUid, userData);
+                    });
+                }
             }
-        }
       }
 
-
       const mapToLeaderboardUser = (
-        users: { userId: string; score: number }[],
+        users: { userId: string; score: number; lastEventAttendedDate?: Date | null; thumbsUpCount?: number }[],
         currentUserUid: string,
-        isHostList: boolean
+        type: LeaderboardType
       ): { leaderboard: LeaderboardUser[]; currentUserScore: LeaderboardUser | null } => {
         let rank = 1;
         const leaderboard: LeaderboardUser[] = [];
@@ -155,37 +178,34 @@ export default function HallOfFamePage() {
             score: userEntry.score,
             rank: rank,
             isCurrentUser: isCurrentUser,
+            lastEventAttendedDate: userEntry.lastEventAttendedDate,
+            thumbsUpCount: type === 'liked' ? userEntry.score : undefined, // Use score as thumbsUp for 'liked'
           };
 
           if (leaderboard.length < MAX_LEADERBOARD_USERS) {
             leaderboard.push(leaderboardItem);
             if (isCurrentUser) foundCurrentUserInTop = true;
           } else if (isCurrentUser && !foundCurrentUserInTop) {
-            // Add current user if they are not in top N and we haven't added them yet
-            currentUserData = leaderboardItem; // Store separately if not in top N
+            currentUserData = leaderboardItem;
           }
           
-          if (isCurrentUser && !currentUserData) { // If current user is in top N, capture their data
+          if (isCurrentUser && !currentUserData) {
             currentUserData = leaderboardItem;
           }
         }
         
-        // If current user was not in top N and not processed, and has a score
-        if (!foundCurrentUserInTop && users.find(u => u.userId === currentUserUid)) {
+        if (!foundCurrentUserInTop) {
             const currentUserEntry = users.find(u => u.userId === currentUserUid);
             if (currentUserEntry) {
                 const profile = userProfilesMap.get(currentUserEntry.userId);
                 const name = profile?.name || `User ${currentUserEntry.userId.substring(0, 5)}`;
-                // Find rank for current user if not in top N
                 let currentUserRank = users.findIndex(u => u.userId === currentUserUid) + 1;
-                // Adjust rank for ties
                 for(let i=0; i < currentUserRank -1; i++) {
                     if (users[i].score === currentUserEntry.score) {
-                        currentUserRank = i + 1; // Assign same rank as first user with this score
+                        currentUserRank = i + 1; 
                         break;
                     }
                 }
-                
                 currentUserData = {
                     userId: currentUserEntry.userId,
                     name: name,
@@ -193,45 +213,24 @@ export default function HallOfFamePage() {
                     score: currentUserEntry.score,
                     rank: currentUserRank,
                     isCurrentUser: true,
+                    lastEventAttendedDate: currentUserEntry.lastEventAttendedDate,
+                    thumbsUpCount: type === 'liked' ? currentUserEntry.score : undefined,
                 };
             }
         }
-
-        // Ensure current user data is correctly set if they have a score, even if not in top
-        if (!currentUserData && attendeeCounts[currentUserUid] !== undefined && !isHostList) {
-             const profile = userProfilesMap.get(currentUserUid);
-             currentUserData = {
-                 userId: currentUserUid,
-                 name: profile?.name || `User ${currentUserUid.substring(0,5)}`,
-                 profileImageUrl: profile?.profileImageUrl,
-                 score: attendeeCounts[currentUserUid],
-                 rank: sortedAttendees.findIndex(u => u.userId === currentUserUid) +1,
-                 isCurrentUser: true
-             };
-        }
-        if (!currentUserData && hostGuestCounts[currentUserUid] !== undefined && isHostList) {
-            const profile = userProfilesMap.get(currentUserUid);
-             currentUserData = {
-                 userId: currentUserUid,
-                 name: profile?.name || `User ${currentUserUid.substring(0,5)}`,
-                 profileImageUrl: profile?.profileImageUrl,
-                 score: hostGuestCounts[currentUserUid],
-                 rank: sortedHosts.findIndex(u => u.userId === currentUserUid) +1,
-                 isCurrentUser: true
-             };
-        }
-
-
         return { leaderboard, currentUserScore: currentUserData };
       };
 
-      const { leaderboard: attendees, currentUserScore: currentAttendee } = mapToLeaderboardUser(sortedAttendees, currentUser.uid, false);
-      const { leaderboard: hosts, currentUserScore: currentHost } = mapToLeaderboardUser(sortedHosts, currentUser.uid, true);
+      const { leaderboard: attendees, currentUserScore: currentAttendee } = mapToLeaderboardUser(sortedAttendees, currentUser.uid, 'attendees');
+      const { leaderboard: hosts, currentUserScore: currentHost } = mapToLeaderboardUser(sortedHosts, currentUser.uid, 'hosts');
+      const { leaderboard: liked, currentUserScore: currentLiked } = mapToLeaderboardUser(sortedLikedGuests, currentUser.uid, 'liked');
 
       setLeaderboardAttendees(attendees);
       setCurrentUserAttendeeScore(currentAttendee);
       setLeaderboardHosts(hosts);
       setCurrentUserHostScore(currentHost);
+      setLeaderboardMostLiked(liked);
+      setCurrentUserMostLikedScore(currentLiked);
 
     } catch (e) {
       console.error("Error fetching leaderboard data:", e);
@@ -246,7 +245,7 @@ export default function HallOfFamePage() {
     fetchLeaderboardData();
   }, [fetchLeaderboardData]);
 
-  const renderLeaderboardTable = (data: LeaderboardUser[], scoreType: 'events' | 'guests') => {
+  const renderLeaderboardTable = (data: LeaderboardUser[], type: LeaderboardType) => {
     if (data.length === 0) {
       return <p className="text-center text-muted-foreground py-4">{HEBREW_TEXT.hallOfFame.noData}</p>;
     }
@@ -256,12 +255,15 @@ export default function HallOfFamePage() {
           <TableRow>
             <TableHead className="w-[50px] text-center">{HEBREW_TEXT.hallOfFame.rank}</TableHead>
             <TableHead className="text-center">{HEBREW_TEXT.hallOfFame.userName}</TableHead>
-            <TableHead className="text-center">{scoreType === 'events' ? HEBREW_TEXT.hallOfFame.eventsAttended : HEBREW_TEXT.hallOfFame.guestsHosted}</TableHead>
+            {type === 'attendees' && <TableHead className="text-center">{HEBREW_TEXT.hallOfFame.eventsAttended}</TableHead>}
+            {type === 'hosts' && <TableHead className="text-center">{HEBREW_TEXT.hallOfFame.guestsHosted}</TableHead>}
+            {type === 'liked' && <TableHead className="text-center">{HEBREW_TEXT.hallOfFame.thumbsUp}</TableHead>}
+            {(type === 'attendees' || type === 'liked') && <TableHead className="text-center">{HEBREW_TEXT.hallOfFame.lastEventAttended}</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((user) => (
-            <TableRow key={user.userId} className={cn(user.isCurrentUser && "bg-primary/10")}>
+            <TableRow key={user.userId + type} className={cn(user.isCurrentUser && "bg-primary/10")}>
               <TableCell className="font-medium text-center">{user.rank || '-'}</TableCell>
               <TableCell>
                 <Link href={`/profile/${user.userId}`} className="flex items-center gap-2 hover:underline justify-end">
@@ -276,7 +278,14 @@ export default function HallOfFamePage() {
                   </Avatar>
                 </Link>
               </TableCell>
-              <TableCell className="text-center">{user.score}</TableCell>
+              <TableCell className="text-center">
+                {type === 'liked' ? user.thumbsUpCount : user.score}
+              </TableCell>
+              {(type === 'attendees' || type === 'liked') && (
+                <TableCell className="text-center text-xs text-muted-foreground">
+                  {user.lastEventAttendedDate ? format(user.lastEventAttendedDate, 'dd/MM/yy', { locale: he }) : '-'}
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
@@ -284,15 +293,21 @@ export default function HallOfFamePage() {
     );
   };
 
-  const renderCurrentUserScore = (userData: LeaderboardUser | null, scoreType: 'events' | 'guests', title: string) => {
-    if (!userData || leaderboardAttendees.find(u => u.userId === userData.userId && scoreType === 'events') || leaderboardHosts.find(u => u.userId === userData.userId && scoreType === 'guests')) {
-      // Don't render if user is in top list or no data
-      return null;
-    }
+  const renderCurrentUserScore = (userData: LeaderboardUser | null, type: LeaderboardType, title: string) => {
+    if (!userData) return null;
+    
+    // Determine if user is already in the displayed top list for this type
+    let isUserInTopList = false;
+    if (type === 'attendees') isUserInTopList = leaderboardAttendees.some(u => u.userId === userData.userId);
+    else if (type === 'hosts') isUserInTopList = leaderboardHosts.some(u => u.userId === userData.userId);
+    else if (type === 'liked') isUserInTopList = leaderboardMostLiked.some(u => u.userId === userData.userId);
+
+    if (isUserInTopList) return null;
+
     return (
       <Card className="mt-4 bg-muted/50" dir="rtl">
         <CardHeader>
-          <CardTitle className="text-md font-medium flex items-center justify-end">
+          <CardTitle className="text-md font-medium flex items-center justify-end" dir="rtl">
             {title} - {HEBREW_TEXT.hallOfFame.yourScore}
             <Trophy className="mr-2 h-5 w-5 text-amber-500" />
           </CardTitle>
@@ -310,8 +325,20 @@ export default function HallOfFamePage() {
               <span>{userData.name}</span>
             </div>
             <div className="text-left">
-              <p className="font-semibold text-lg">{userData.score} <span className="text-xs text-muted-foreground">{scoreType === 'events' ? HEBREW_TEXT.hallOfFame.events : HEBREW_TEXT.hallOfFame.guests}</span></p>
+              <p className="font-semibold text-lg">
+                {type === 'liked' ? userData.thumbsUpCount : userData.score}{' '}
+                <span className="text-xs text-muted-foreground">
+                  {type === 'attendees' ? HEBREW_TEXT.hallOfFame.events : 
+                   type === 'hosts' ? HEBREW_TEXT.hallOfFame.guests : 
+                   HEBREW_TEXT.hallOfFame.thumbsUp.toLowerCase()}
+                </span>
+              </p>
               <p className="text-xs text-muted-foreground">{HEBREW_TEXT.hallOfFame.rank}: {userData.rank || HEBREW_TEXT.hallOfFame.notRanked}</p>
+              {(type === 'attendees' || type === 'liked') && userData.lastEventAttendedDate && (
+                 <p className="text-xs text-muted-foreground">
+                   {HEBREW_TEXT.hallOfFame.lastEventAttended}: {format(userData.lastEventAttendedDate, 'dd/MM/yy', { locale: he })}
+                 </p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -319,22 +346,25 @@ export default function HallOfFamePage() {
     );
   };
 
-  if (isLoading && !leaderboardAttendees.length && !leaderboardHosts.length) {
+  if (isLoading && !leaderboardAttendees.length && !leaderboardHosts.length && !leaderboardMostLiked.length) {
     return (
       <div className="container mx-auto px-4 py-12" dir="rtl">
-        <div className="flex justify-center items-center mb-6">
-          <h1 className="text-3xl font-bold font-headline">{HEBREW_TEXT.hallOfFame.title}</h1>
-          <Award className="h-10 w-10 text-primary ml-3" />
+        <div className="flex flex-col items-center mb-6">
+          <div className="flex items-center justify-center mb-4">
+            <h1 className="text-3xl md:text-4xl font-bold font-headline">{HEBREW_TEXT.hallOfFame.title}</h1>
+            <Crown className="h-10 w-10 text-amber-500 mr-3" />
+          </div>
+          <Skeleton className="h-10 w-48" />
         </div>
-        <Skeleton className="h-10 w-48 mb-6 mx-auto" />
         <Tabs defaultValue="attendees" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsList className="grid w-full grid-cols-3 mb-4 h-12">
             <TabsTrigger value="attendees"><Skeleton className="h-5 w-32" /></TabsTrigger>
             <TabsTrigger value="hosts"><Skeleton className="h-5 w-32" /></TabsTrigger>
+            <TabsTrigger value="liked"><Skeleton className="h-5 w-32" /></TabsTrigger>
           </TabsList>
           <TabsContent value="attendees">
-            <Card>
-              <CardHeader className="text-right"><CardTitle><Skeleton className="h-6 w-40" /></CardTitle></CardHeader>
+            <Card dir="rtl">
+              <CardHeader className="text-right"><CardDescription dir="rtl"><Skeleton className="h-6 w-40" /></CardDescription></CardHeader>
               <CardContent className="space-y-3">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
               </CardContent>
@@ -378,7 +408,7 @@ export default function HallOfFamePage() {
       </div>
 
       <Tabs defaultValue="attendees" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6 h-12">
+        <TabsList className="grid w-full grid-cols-3 mb-6 h-12">
           <TabsTrigger value="attendees" className="text-sm sm:text-base" dir="rtl">
             {HEBREW_TEXT.hallOfFame.topAttendees}
             <Users className="mr-2 h-5 w-5" />
@@ -387,28 +417,41 @@ export default function HallOfFamePage() {
             {HEBREW_TEXT.hallOfFame.mostGuestsHosted}
             <UserCheck className="mr-2 h-5 w-5" />
           </TabsTrigger>
+          <TabsTrigger value="liked" className="text-sm sm:text-base" dir="rtl">
+            {HEBREW_TEXT.hallOfFame.mostLikedGuests}
+            <ThumbsUpIcon className="mr-2 h-5 w-5" />
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="attendees">
           <Card dir="rtl">
-            <CardHeader className="text-right">
-              {/* CardTitle removed as requested */}
+            <CardHeader className="text-right" dir="rtl">
               <CardDescription dir="rtl">משתמשים שהשתתפו במספר האירועים הרב ביותר!</CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-40 w-full" /> : renderLeaderboardTable(leaderboardAttendees, 'events')}
-              {renderCurrentUserScore(currentUserAttendeeScore, 'events', HEBREW_TEXT.hallOfFame.topAttendees)}
+              {isLoading ? <Skeleton className="h-40 w-full" /> : renderLeaderboardTable(leaderboardAttendees, 'attendees')}
+              {renderCurrentUserScore(currentUserAttendeeScore, 'attendees', HEBREW_TEXT.hallOfFame.topAttendees)}
             </CardContent>
           </Card>
         </TabsContent>
         <TabsContent value="hosts">
           <Card dir="rtl">
-            <CardHeader className="text-right">
-              {/* CardTitle removed as requested */}
+            <CardHeader className="text-right" dir="rtl">
               <CardDescription dir="rtl">משתמשים שאירחו את מספר האורחים הרב ביותר!</CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-40 w-full" /> : renderLeaderboardTable(leaderboardHosts, 'guests')}
-              {renderCurrentUserScore(currentUserHostScore, 'guests', HEBREW_TEXT.hallOfFame.mostGuestsHosted)}
+              {isLoading ? <Skeleton className="h-40 w-full" /> : renderLeaderboardTable(leaderboardHosts, 'hosts')}
+              {renderCurrentUserScore(currentUserHostScore, 'hosts', HEBREW_TEXT.hallOfFame.mostGuestsHosted)}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="liked">
+          <Card dir="rtl">
+            <CardHeader className="text-right" dir="rtl">
+              <CardDescription dir="rtl">האורחים שקיבלו הכי הרבה דירוגים חיוביים!</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? <Skeleton className="h-40 w-full" /> : renderLeaderboardTable(leaderboardMostLiked, 'liked')}
+              {renderCurrentUserScore(currentUserMostLikedScore, 'liked', HEBREW_TEXT.hallOfFame.mostLikedGuests)}
             </CardContent>
           </Card>
         </TabsContent>

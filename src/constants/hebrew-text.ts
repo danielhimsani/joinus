@@ -377,10 +377,13 @@ export const HEBREW_TEXT = {
     title: "היכל התהילה",
     topAttendees: "המשתתפים המובילים",
     mostGuestsHosted: "המארחים המובילים",
+    mostLikedGuests: "האורחים האהובים",
     rank: "דירוג",
     userName: "שם משתמש",
     eventsAttended: "אירועים שהשתתף",
     guestsHosted: "אורחים שאירח",
+    thumbsUp: "לייקים",
+    lastEventAttended: "אירוע אחרון",
     filterPastEvents: "אירועי עבר בלבד",
     filterAllEvents: "כל האירועים (עבר ועתיד)",
     yourScore: "הניקוד שלך",
@@ -392,18 +395,3 @@ export const HEBREW_TEXT = {
     guests: "אורחים",
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
