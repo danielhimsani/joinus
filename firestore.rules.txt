@@ -15,6 +15,9 @@ service cloud.firestore {
     match /userEventGuestRatings/{ratingDocId} {
       // Allow read if user is authenticated (adjust as needed for privacy)
       allow read: if request.auth != null;
+      
+      // Allow list if user is authenticated (needed for queries like Hall of Fame & Profile stats)
+      allow list: if request.auth != null;
 
       // Allow create if the authenticated user's UID matches the raterUID part of the doc ID
       // and the document being written contains the correct fields.
