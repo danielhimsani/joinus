@@ -255,7 +255,7 @@ export default function HallOfFamePage() {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[50px] text-center">{HEBREW_TEXT.hallOfFame.rank}</TableHead>
-            <TableHead className="text-right">{HEBREW_TEXT.hallOfFame.userName}</TableHead>
+            <TableHead className="text-center">{HEBREW_TEXT.hallOfFame.userName}</TableHead>
             <TableHead className="text-center">{scoreType === 'events' ? HEBREW_TEXT.hallOfFame.eventsAttended : HEBREW_TEXT.hallOfFame.guestsHosted}</TableHead>
           </TableRow>
         </TableHeader>
@@ -359,12 +359,12 @@ export default function HallOfFamePage() {
 
   return (
     <div className="container mx-auto px-4 py-12" dir="rtl">
-      <div className="flex flex-col sm:flex-row-reverse justify-between items-center mb-8 gap-4">
-        <div className="flex items-center">
+      <div className="flex flex-col items-center mb-8">
+        <div className="flex items-center justify-center mb-4">
             <h1 className="text-3xl md:text-4xl font-bold font-headline">{HEBREW_TEXT.hallOfFame.title}</h1>
             <Crown className="h-10 w-10 text-amber-500 mr-3" />
         </div>
-        <div className="w-full sm:w-auto min-w-[200px]">
+        <div className="w-full sm:w-auto min-w-[240px] max-w-xs">
           <Select value={eventTimeFilter} onValueChange={(value) => setEventTimeFilter(value as EventTimeFilter)} dir="rtl">
             <SelectTrigger className="w-full" aria-label="Filter event time frame">
               <SelectValue placeholder="בחר טווח זמן" />
@@ -422,5 +422,3 @@ export default function HallOfFamePage() {
   );
 }
 
-
-    
