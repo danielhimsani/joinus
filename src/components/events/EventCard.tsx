@@ -44,7 +44,7 @@ const getPriceDisplay = (event: Event) => {
     switch (event.paymentOption) {
         case 'free': return HEBREW_TEXT.event.free;
         case 'payWhatYouWant': return HEBREW_TEXT.event.payWhatYouWant;
-        case 'fixed': return `₪${event.pricePerGuest || 0} ${HEBREW_TEXT.event.pricePerGuest}`;
+        case 'fixed': return `${HEBREW_TEXT.event.pricePerGuest}: ₪${event.pricePerGuest || 0}`;
         default: return '';
     }
 }
@@ -112,4 +112,3 @@ export function EventCard({ event, availableSpots }: EventCardProps) {
     </Card>
   );
 }
-
