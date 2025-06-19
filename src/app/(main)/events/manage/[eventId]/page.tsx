@@ -85,7 +85,7 @@ export default function ManageEventGuestsPage() {
   
   const [ratingInProgressForGuest, setRatingInProgressForGuest] = useState<string | null>(null);
   const [guestRatings, setGuestRatings] = useState<Map<string, 'positive' | 'negative'>>(new Map());
-  const [isLoadingRatings, setIsLoadingRatings] = useState(false);
+  const [isLoadingRatings, setIsLoadingRatings] = useState(true);
 
 
   const totalGuestPages = Math.ceil(approvedGuests.length / GUESTS_PER_PAGE);
@@ -104,12 +104,14 @@ export default function ManageEventGuestsPage() {
   const fetchGuestRatings = useCallback(async (guests: ApprovedGuestWithProfile[]) => {
     if (!currentUser || !eventId || !isEventPast || guests.length === 0) {
       setIsLoadingRatings(false);
+      setGuestRatings(new Map()); // Clear ratings if not applicable
       return;
     }
     setIsLoadingRatings(true);
     const newRatingsMap = new Map<string, 'positive' | 'negative'>();
     try {
       for (const guest of guests) {
+        // Document ID structure: raterUid_eventId_guestUid
         const ratingDocId = `${currentUser.uid}_${eventId}_${guest.id}`;
         const ratingDocRef = doc(db, "userEventGuestRatings", ratingDocId);
         const ratingDocSnap = await getDoc(ratingDocRef);
@@ -124,7 +126,7 @@ export default function ManageEventGuestsPage() {
     } finally {
       setIsLoadingRatings(false);
     }
-  }, [currentUser, eventId, isEventPast, toast]);
+  }, [currentUser, eventId, isEventPast, toast]); // isEventPast dependency added
 
   const fetchPageData = useCallback(async () => {
     if (!currentUser || !eventId) {
@@ -187,8 +189,10 @@ export default function ManageEventGuestsPage() {
       setApprovedGuests(validGuests);
 
       if (eventIsPastCurrently && validGuests.length > 0) {
+        // Pass validGuests to fetchGuestRatings
         await fetchGuestRatings(validGuests);
       } else {
+        setGuestRatings(new Map()); // Clear ratings if event is not past or no guests
         setIsLoadingRatings(false);
       }
 
@@ -304,7 +308,7 @@ export default function ManageEventGuestsPage() {
         updatedAt: serverTimestamp()
       });
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.event.guestApprovalRevoked.replace('{guestName}', guestToRevoke.name || HEBREW_TEXT.chat.guest) });
-      setApprovedGuests(prev => prev.filter(g => g.id !== guestToRevoke.id)); // Optimistically update UI
+      setApprovedGuests(prev => prev.filter(g => g.id !== guestToRevoke.id)); 
     } catch (error: any) {
       console.error("Error revoking guest approval:", error);
       toast({ title: HEBREW_TEXT.general.error, description: HEBREW_TEXT.event.errorRevokingApproval + (error.message ? `: ${error.message}` : ''), variant: "destructive" });
@@ -316,20 +320,23 @@ export default function ManageEventGuestsPage() {
   };
 
   const handleRateGuest = async (guest: ApprovedGuestWithProfile, rating: 'positive' | 'negative') => {
-    if (!guest || !event || !currentUser || guestRatings.has(guest.id)) return; // Prevent re-rating if already rated (from state)
+    if (!guest || !event || !currentUser || guestRatings.has(guest.id)) return; 
     setRatingInProgressForGuest(guest.id);
     
     const ratingDocId = `${currentUser.uid}_${eventId}_${guest.id}`;
     const ratingDocRef = doc(db, "userEventGuestRatings", ratingDocId);
 
     try {
-      await setDoc(ratingDocRef, {
+      // Prepare data for Firestore
+      const ratingData = {
         raterUid: currentUser.uid,
         guestUid: guest.id,
         eventId: eventId,
         ratingType: rating,
         timestamp: serverTimestamp()
-      });
+      };
+
+      await setDoc(ratingDocRef, ratingData);
 
       const ratingText = rating === 'positive' ? HEBREW_TEXT.general.ratePositive.toLowerCase() : HEBREW_TEXT.general.rateNegative.toLowerCase();
       toast({
@@ -337,10 +344,11 @@ export default function ManageEventGuestsPage() {
           description: HEBREW_TEXT.event.guestRatedSuccessfully.replace('{guestName}', guest.name || HEBREW_TEXT.chat.guest).replace('{ratingType}', ratingText)
       });
       
+      // Update local state to reflect the new rating
       setGuestRatings(prevRatings => new Map(prevRatings).set(guest.id, rating));
     } catch (error: any) {
       console.error(`Error saving rating for guest ${guest.id}:`, error);
-      toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בשמירת הדירוג. " + error.message, variant: "destructive" });
+      toast({ title: HEBREW_TEXT.general.error, description: HEBREW_TEXT.event.errorSavingRating + (error.message ? `: ${error.message}` : ""), variant: "destructive" });
     } finally {
       setRatingInProgressForGuest(null);
     }
@@ -559,7 +567,7 @@ export default function ManageEventGuestsPage() {
                         <Button
                             variant="outline"
                             onClick={() => setCurrentPage(prev => Math.min(totalGuestPages, prev + 1))}
-                            disabled={currentPage === totalPages}
+                            disabled={currentPage === totalGuestPages}
                         >
                             {HEBREW_TEXT.general.next}
                             <ChevronLeft className="h-4 w-4" />
