@@ -305,9 +305,9 @@ export const HEBREW_TEXT = {
     allStatuses: "כל הסטטוסים",
     pendingRequests: "בקשות ממתינות",
     approvedRequests: "בקשות שאושרו",
-    activeChats: "שיחות פעילות",
+    activeChats: "בקשות פעילות",
     rejectedRequests: "בקשות שנדחו",
-    closedChats: "שיחות שנסגרו",
+    closedChats: "בקשות שנסגרו",
   },
   general: {
     loading: "טוען...",
