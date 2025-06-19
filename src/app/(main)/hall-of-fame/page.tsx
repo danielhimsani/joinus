@@ -61,7 +61,6 @@ export default function HallOfFamePage() {
     try {
       const eventsQuery = query(collection(db, "events"));
       const chatsQuery = query(collection(db, "eventChats"), where("status", "==", "request_approved"));
-      // Fetch all positive ratings for the "Most Liked" leaderboard
       const ratingsQuery = query(collection(db, "userEventGuestRatings"), where("ratingType", "==", "positive"));
 
 
@@ -73,7 +72,7 @@ export default function HallOfFamePage() {
 
       const allEvents = eventsSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data(), dateTime: safeToDate(docSnap.data().dateTime) } as EventType));
       const allApprovedChats = chatsSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as EventChat));
-      const allPositiveRatings = ratingsSnapshot.docs.map(docSnap => docSnap.data() as { guestUid: string, eventId: string, ratingType: 'positive' | 'negative' });
+      const allPositiveRatings = ratingsSnapshot.docs.map(docSnap => docSnap.data() as { guestUid: string, eventId: string, ratingType: 'positive' | 'negative', raterUid: string });
       
       const eventDateMap = new Map<string, Date>();
       allEvents.forEach(event => eventDateMap.set(event.id, event.dateTime));
@@ -98,7 +97,6 @@ export default function HallOfFamePage() {
         : allPositiveRatings;
 
 
-      // Calculate Top Attendees & Last Event Attended
       const attendeeData: Record<string, { score: number; lastEventDate: Date | null }> = {};
       relevantChats.forEach(chat => {
         if (!attendeeData[chat.guestUid]) {
@@ -116,7 +114,6 @@ export default function HallOfFamePage() {
         .map(([userId, data]) => ({ userId, score: data.score, lastEventAttendedDate: data.lastEventDate }))
         .sort((a, b) => b.score - a.score || (b.lastEventAttendedDate?.getTime() || 0) - (a.lastEventAttendedDate?.getTime() || 0));
 
-      // Calculate Most Guests Hosted
       const hostGuestCounts: Record<string, number> = {};
       relevantEvents.forEach(event => {
         const approvedGuestsForThisEvent = relevantChats.filter(chat => chat.eventId === event.id).length;
@@ -128,7 +125,6 @@ export default function HallOfFamePage() {
         .map(([userId, score]) => ({ userId, score }))
         .sort((a, b) => b.score - a.score);
 
-      // Calculate Most Liked Guests Data
       const likedGuestsCounts: Record<string, number> = {};
       relevantPositiveRatings.forEach(rating => {
           likedGuestsCounts[rating.guestUid] = (likedGuestsCounts[rating.guestUid] || 0) + 1;
@@ -139,14 +135,12 @@ export default function HallOfFamePage() {
             const attendeeEntry = sortedAttendees.find(a => a.userId === userId);
             return {
                 userId,
-                score, // This score is the thumbsUpCount
+                score, 
                 lastEventAttendedDate: attendeeEntry?.lastEventAttendedDate || null,
             };
         })
         .sort((a, b) => b.score - a.score || (b.lastEventAttendedDate?.getTime() || 0) - (a.lastEventAttendedDate?.getTime() || 0));
       
-
-      // Fetch user details
       const attendeeUidsToFetch = [...new Set([...sortedAttendees.slice(0, MAX_LEADERBOARD_USERS).map(u => u.userId), currentUser.uid])];
       const hostUidsToFetch = [...new Set([...sortedHosts.slice(0, MAX_LEADERBOARD_USERS).map(u => u.userId), currentUser.uid])];
       const likedUidsToFetch = [...new Set([...likedGuestsData.slice(0, MAX_LEADERBOARD_USERS).map(u => u.userId), currentUser.uid])];
@@ -273,12 +267,12 @@ export default function HallOfFamePage() {
   }, [currentUser, eventTimeFilter, toast]);
 
   useEffect(() => {
-    if (currentUser) { // Only call if currentUser is set
+    if (currentUser) { 
       fetchLeaderboardData();
     } else {
-      setIsLoading(false); // Explicitly set loading to false if no user
+      setIsLoading(false); 
     }
-  }, [currentUser, fetchLeaderboardData]); // fetchLeaderboardData dependency will re-run if eventTimeFilter changes
+  }, [currentUser, fetchLeaderboardData]); 
 
   const renderLeaderboardTable = (data: LeaderboardUser[], type: LeaderboardType) => {
     if (isLoading && data.length === 0) { 
@@ -354,8 +348,8 @@ export default function HallOfFamePage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="py-3 px-4">
-          <div className="flex items-center justify-between flex-row-reverse">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between"> {/* Removed flex-row-reverse */}
+            <div className="flex items-center gap-2"> {/* User Avatar and Name - will be on the right by default in RTL */}
               <Avatar className="h-8 w-8 border">
                 {userData.profileImageUrl ? (
                   <AvatarImage src={userData.profileImageUrl} alt={userData.name} />
@@ -365,7 +359,7 @@ export default function HallOfFamePage() {
               </Avatar>
               <span>{userData.name}</span>
             </div>
-            <div className="text-left">
+            <div className="text-left"> {/* Score Details - will be on the left; text-left aligns text to the right in RTL */}
               <p className="font-semibold text-lg">
                 {type === 'liked' ? userData.thumbsUpCount : userData.score}{' '}
                 <span className="text-xs text-muted-foreground">
@@ -399,13 +393,15 @@ export default function HallOfFamePage() {
         </div>
         <Tabs defaultValue="attendees" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-4 h-12">
-            <TabsTrigger value="attendees"><Skeleton className="h-5 w-32" /></TabsTrigger>
-            <TabsTrigger value="hosts"><Skeleton className="h-5 w-32" /></TabsTrigger>
-            <TabsTrigger value="liked"><Skeleton className="h-5 w-32" /></TabsTrigger>
+            <TabsTrigger value="attendees" dir="rtl"><Skeleton className="h-5 w-32" /></TabsTrigger>
+            <TabsTrigger value="hosts" dir="rtl"><Skeleton className="h-5 w-32" /></TabsTrigger>
+            <TabsTrigger value="liked" dir="rtl"><Skeleton className="h-5 w-32" /></TabsTrigger>
           </TabsList>
           <TabsContent value="attendees">
             <Card dir="rtl">
-              <CardHeader dir="rtl" className="py-4 px-4"><CardDescription dir="rtl"><Skeleton className="h-6 w-full max-w-xs" /></CardDescription></CardHeader>
+              <CardHeader dir="rtl" className="py-4 px-4">
+                <CardDescription dir="rtl"><Skeleton className="h-6 w-full max-w-xs" /></CardDescription>
+              </CardHeader>
               <CardContent className="space-y-3 p-4">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
               </CardContent>
