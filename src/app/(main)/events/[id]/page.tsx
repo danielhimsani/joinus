@@ -102,8 +102,7 @@ export default function EventDetailPage() {
   const [approvedGuestsData, setApprovedGuestsData] = useState<ApprovedGuestData[]>([]);
   const [isLoadingApprovedGuestsData, setIsLoadingApprovedGuestsData] = useState(false);
   const [existingChatId, setExistingChatId] = useState<string | null>(null);
-  const [isLoadingExistingChat, setIsLoadingExistingChat] = useState(false);
-
+  const [isLoadingExistingChat, setIsLoadingExistingChat] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
@@ -111,8 +110,6 @@ export default function EventDetailPage() {
     });
     return () => unsubscribe();
   }, []);
-
-  const isOwner = !!(event && currentUser && event.ownerUids.includes(currentUser.uid));
 
   const fetchEventAndRelatedData = useCallback(async () => {
     if (!eventId) {
@@ -126,11 +123,11 @@ export default function EventDetailPage() {
 
     setIsLoading(true);
     setIsLoadingApprovedCount(true);
-    setIsLoadingApprovedGuestsData(true); // Assume loading until owner check
-    setIsLoadingExistingChat(true); // Assume loading until guest check
-    
+    setEvent(null);
+    setApprovedGuestsCount(0);
+    setApprovedGuestsData([]);
+    setExistingChatId(null);
     setFetchError(null);
-    setExistingChatId(null); // Reset existing chat ID on new fetch
 
     try {
       const eventDocRef = doc(db, "events", eventId);
@@ -172,9 +169,9 @@ export default function EventDetailPage() {
           longitude: data.longitude || null,
           description: data.description || "",
           ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
-          foodType: data.foodType as FoodType || "meat", 
-          kashrut: data.kashrut as KashrutType || "kosher", 
-          weddingType: data.weddingType || (data as any).religionStyle || "traditional", 
+          foodType: data.foodType as FoodType || "meat",
+          kashrut: data.kashrut as KashrutType || "kosher",
+          weddingType: data.weddingType || (data as any).religionStyle || "traditional",
           imageUrl: data.imageUrl,
         } as Event;
         setEvent(fetchedEvent);
@@ -188,8 +185,7 @@ export default function EventDetailPage() {
         const currentIsOwnerCheck = fetchedEvent && currentUser && fetchedEvent.ownerUids.includes(currentUser.uid);
 
         if (currentIsOwnerCheck) {
-          // Owner specific data
-          setIsLoadingExistingChat(false); // Owner doesn't need this check
+          setIsLoadingExistingChat(false);
           setIsLoadingApprovedGuestsData(true);
           const qApprovedData = query(chatsRef, where("eventId", "==", eventId), where("status", "==", "request_approved"));
           const approvedSnapshot = await getDocs(qApprovedData);
@@ -207,9 +203,8 @@ export default function EventDetailPage() {
           setApprovedGuestsData(guests);
           setIsLoadingApprovedGuestsData(false);
         } else {
-          // Non-owner specific data
-          setIsLoadingApprovedGuestsData(false); // Not loading guest list for non-owner
-          if (currentUser && eventId) { 
+          setIsLoadingApprovedGuestsData(false);
+          if (currentUser && eventId) {
               setIsLoadingExistingChat(true);
               const existingChatQuery = query(
                   chatsRef,
@@ -226,7 +221,7 @@ export default function EventDetailPage() {
               setIsLoadingExistingChat(false);
           } else {
              setExistingChatId(null);
-             setIsLoadingExistingChat(false); 
+             setIsLoadingExistingChat(false);
           }
         }
       } else {
@@ -246,12 +241,13 @@ export default function EventDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [eventId, currentUser]); 
+  }, [eventId, currentUser, toast, router]);
 
   useEffect(() => {
     fetchEventAndRelatedData();
   }, [fetchEventAndRelatedData]);
 
+  const isOwner = !!(event && currentUser && event.ownerUids.includes(currentUser.uid));
   const availableSpots = event ? event.numberOfGuests - approvedGuestsCount : 0;
 
   const handleOpenRequestToJoinModal = () => {
@@ -321,7 +317,7 @@ export default function EventDetailPage() {
           title: HEBREW_TEXT.general.success,
           description: HEBREW_TEXT.event.eventSharedSuccessfully,
         });
-        return; 
+        return;
       } catch (shareError) {
         console.error('Web Share API attempt failed:', shareError);
       }
@@ -343,8 +339,7 @@ export default function EventDetailPage() {
     }
   };
 
-
-  if (isLoading || isLoadingApprovedCount) { 
+  if (isLoading || isLoadingApprovedCount) {
     return (
       <div className="container mx-auto px-4 py-12">
         <Card className="overflow-hidden">
@@ -397,7 +392,7 @@ export default function EventDetailPage() {
   }
 
   const imageToDisplay = event.imageUrl || "/onboarding/slide-2.png";
-  
+
   let googleMapsLink: string;
   if (event.placeId) {
     const queryParam = encodeURIComponent(event.locationDisplayName || event.name || event.location);
@@ -540,7 +535,7 @@ export default function EventDetailPage() {
                       </div>
                     ) : approvedGuestsData.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {approvedGuestsData.slice(0, 4).map(guest => ( 
+                        {approvedGuestsData.slice(0, 4).map(guest => (
                           <ApprovedGuestListItem key={guest.guestUid} guest={guest} />
                         ))}
                       </div>
