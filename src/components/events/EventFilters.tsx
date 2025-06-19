@@ -232,9 +232,8 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
             <div className="md:col-span-2 flex items-center space-x-3 rtl:space-x-reverse pt-2 border-t border-border/70 md:border-none md:pt-0">
                 <Switch
                     id="show-applied-events"
-                    checked={filters.showAppliedEvents}
+                    checked={!!filters.showAppliedEvents}
                     onCheckedChange={(checked) => handleInputChange("showAppliedEvents", checked)}
-                    dir="ltr" 
                 />
                 <Label htmlFor="show-applied-events" className="cursor-pointer text-sm">
                     {HEBREW_TEXT.event.showAppliedEventsFilterLabel}
@@ -257,4 +256,3 @@ export function EventFilters({ onFilterChange, initialFilters = {} }: EventFilte
     </form>
   );
 }
-    
