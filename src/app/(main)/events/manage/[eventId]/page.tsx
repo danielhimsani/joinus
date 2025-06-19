@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, serverTimestamp, Timestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, serverTimestamp, Timestamp, updateDoc, setDoc } from "firebase/firestore";
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
@@ -85,6 +85,7 @@ export default function ManageEventGuestsPage() {
   
   const [ratingInProgressForGuest, setRatingInProgressForGuest] = useState<string | null>(null);
   const [guestRatings, setGuestRatings] = useState<Map<string, 'positive' | 'negative'>>(new Map());
+  const [isLoadingRatings, setIsLoadingRatings] = useState(false);
 
 
   const totalGuestPages = Math.ceil(approvedGuests.length / GUESTS_PER_PAGE);
@@ -99,6 +100,31 @@ export default function ManageEventGuestsPage() {
     });
     return () => unsubscribe();
   }, []);
+
+  const fetchGuestRatings = useCallback(async (guests: ApprovedGuestWithProfile[]) => {
+    if (!currentUser || !eventId || !isEventPast || guests.length === 0) {
+      setIsLoadingRatings(false);
+      return;
+    }
+    setIsLoadingRatings(true);
+    const newRatingsMap = new Map<string, 'positive' | 'negative'>();
+    try {
+      for (const guest of guests) {
+        const ratingDocId = `${currentUser.uid}_${eventId}_${guest.id}`;
+        const ratingDocRef = doc(db, "userEventGuestRatings", ratingDocId);
+        const ratingDocSnap = await getDoc(ratingDocRef);
+        if (ratingDocSnap.exists()) {
+          newRatingsMap.set(guest.id, ratingDocSnap.data().ratingType as 'positive' | 'negative');
+        }
+      }
+      setGuestRatings(newRatingsMap);
+    } catch (error) {
+      console.error("Error fetching guest ratings:", error);
+      toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בטעינת דירוגי אורחים קיימים.", variant: "destructive" });
+    } finally {
+      setIsLoadingRatings(false);
+    }
+  }, [currentUser, eventId, isEventPast, toast]);
 
   const fetchPageData = useCallback(async () => {
     if (!currentUser || !eventId) {
@@ -122,6 +148,8 @@ export default function ManageEventGuestsPage() {
         throw new Error("Unauthorized access attempt.");
       }
       setEvent(eventData);
+      const eventIsPastCurrently = new Date(eventData.dateTime) < new Date();
+
 
       const tempOwnerProfiles = new Map<string, UserProfile>();
       for (const ownerUid of eventData.ownerUids) {
@@ -147,7 +175,6 @@ export default function ManageEventGuestsPage() {
           guestFetchPromises.push(
             getDoc(doc(db, "users", chatData.guestUid)).then(userDoc => {
               if (userDoc.exists()) {
-                // Use userDoc.id (Firestore document ID which is the firebaseUid) as the guest's unique ID
                 return { ...userDoc.data(), id: userDoc.id, firebaseUid: userDoc.id, chatId: chatDoc.id } as ApprovedGuestWithProfile;
               }
               return null;
@@ -156,7 +183,15 @@ export default function ManageEventGuestsPage() {
         }
       });
       const fetchedGuestsRaw = await Promise.all(guestFetchPromises);
-      setApprovedGuests(fetchedGuestsRaw.filter(g => g !== null) as ApprovedGuestWithProfile[]);
+      const validGuests = fetchedGuestsRaw.filter(g => g !== null) as ApprovedGuestWithProfile[];
+      setApprovedGuests(validGuests);
+
+      if (eventIsPastCurrently && validGuests.length > 0) {
+        await fetchGuestRatings(validGuests);
+      } else {
+        setIsLoadingRatings(false);
+      }
+
 
       const announcementsQuery = query(
         collection(db, "eventAnnouncements"),
@@ -185,7 +220,7 @@ export default function ManageEventGuestsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser, eventId, router, fetchError]);
+  }, [currentUser, eventId, router, fetchError, fetchGuestRatings]);
 
   useEffect(() => {
     if (currentUser && eventId) {
@@ -269,7 +304,7 @@ export default function ManageEventGuestsPage() {
         updatedAt: serverTimestamp()
       });
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.event.guestApprovalRevoked.replace('{guestName}', guestToRevoke.name || HEBREW_TEXT.chat.guest) });
-      fetchPageData(); 
+      setApprovedGuests(prev => prev.filter(g => g.id !== guestToRevoke.id)); // Optimistically update UI
     } catch (error: any) {
       console.error("Error revoking guest approval:", error);
       toast({ title: HEBREW_TEXT.general.error, description: HEBREW_TEXT.event.errorRevokingApproval + (error.message ? `: ${error.message}` : ''), variant: "destructive" });
@@ -281,21 +316,34 @@ export default function ManageEventGuestsPage() {
   };
 
   const handleRateGuest = async (guest: ApprovedGuestWithProfile, rating: 'positive' | 'negative') => {
-    if (!guest || !event || guestRatings.has(guest.id)) return;
+    if (!guest || !event || !currentUser || guestRatings.has(guest.id)) return; // Prevent re-rating if already rated (from state)
     setRatingInProgressForGuest(guest.id);
     
-    console.log(`Rating guest ${guest.id} (${guest.name}) for event ${event.id} with: ${rating}`);
-    
-    await new Promise(resolve => setTimeout(resolve, 700)); // Simulate API call
+    const ratingDocId = `${currentUser.uid}_${eventId}_${guest.id}`;
+    const ratingDocRef = doc(db, "userEventGuestRatings", ratingDocId);
 
-    const ratingText = rating === 'positive' ? 'חיובית' : 'שלילית';
-    toast({
-        title: HEBREW_TEXT.general.success,
-        description: HEBREW_TEXT.event.guestRatedSuccessfully.replace('{guestName}', guest.name || HEBREW_TEXT.chat.guest).replace('{ratingType}', ratingText)
-    });
-    
-    setGuestRatings(prevRatings => new Map(prevRatings).set(guest.id, rating));
-    setRatingInProgressForGuest(null);
+    try {
+      await setDoc(ratingDocRef, {
+        raterUid: currentUser.uid,
+        guestUid: guest.id,
+        eventId: eventId,
+        ratingType: rating,
+        timestamp: serverTimestamp()
+      });
+
+      const ratingText = rating === 'positive' ? HEBREW_TEXT.general.ratePositive.toLowerCase() : HEBREW_TEXT.general.rateNegative.toLowerCase();
+      toast({
+          title: HEBREW_TEXT.general.success,
+          description: HEBREW_TEXT.event.guestRatedSuccessfully.replace('{guestName}', guest.name || HEBREW_TEXT.chat.guest).replace('{ratingType}', ratingText)
+      });
+      
+      setGuestRatings(prevRatings => new Map(prevRatings).set(guest.id, rating));
+    } catch (error: any) {
+      console.error(`Error saving rating for guest ${guest.id}:`, error);
+      toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בשמירת הדירוג. " + error.message, variant: "destructive" });
+    } finally {
+      setRatingInProgressForGuest(null);
+    }
   };
 
 
@@ -402,7 +450,8 @@ export default function ManageEventGuestsPage() {
                   {HEBREW_TEXT.event.exportToCsv}
                 </Button>
               </div>
-              {approvedGuests.length > 0 ? (
+              {isLoadingRatings && <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
+              {!isLoadingRatings && approvedGuests.length > 0 ? (
                 <div className="space-y-3">
                   {paginatedGuests.map(guest => {
                     const currentRating = guestRatings.get(guest.id);
@@ -510,7 +559,7 @@ export default function ManageEventGuestsPage() {
                         <Button
                             variant="outline"
                             onClick={() => setCurrentPage(prev => Math.min(totalGuestPages, prev + 1))}
-                            disabled={currentPage === totalGuestPages}
+                            disabled={currentPage === totalPages}
                         >
                             {HEBREW_TEXT.general.next}
                             <ChevronLeft className="h-4 w-4" />

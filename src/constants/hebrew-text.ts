@@ -149,7 +149,7 @@ export const HEBREW_TEXT = {
     exportingGuests: "מייצא רשימת אורחים...",
     guestsExportedSuccessfully: "רשימת האורחים יוצאה בהצלחה!",
     errorExportingGuests: "שגיאה ביצוא רשימת האורחים.",
-    noGuestsToExport: "אין אורחים מאושרים לייצוא.",
+    noGuestsToExport: "אין אורחים לייצוא.",
     guestList: "רשימת אורחים",
     broadcastAnnouncements: "הודעות לכלל האורחים",
     latestAnnouncements: "הודעות אחרונות",
@@ -173,6 +173,8 @@ export const HEBREW_TEXT = {
     guestRatedSuccessfully: "האורח {guestName} דורג {ratingType}.",
     errorRatingGuest: "שגיאה בדירוג האורח.",
     showAppliedEventsFilterLabel: "הצג אירועים שכבר ביקשתי להצטרף אליהם",
+    ratingSaved: "הדירוג נשמר בהצלחה.",
+    errorSavingRating: "שגיאה בשמירת הדירוג.",
   },
   profile: {
     userProfile: "פרופיל משתמש",
@@ -395,3 +397,4 @@ export const HEBREW_TEXT = {
     guests: "אורחים",
   }
 };
+
