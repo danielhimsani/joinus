@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
-import type { Event, EventOwnerInfo, EventChat, FoodType, KashrutType, WeddingType, ApprovedGuestData } from '@/types';
+import type { Event, EventOwnerInfo, FoodType, KashrutType, WeddingType, ApprovedGuestData, EventChat } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -122,6 +123,8 @@ export default function EventDetailPage() {
 
     setIsLoading(true);
     setIsLoadingApprovedCount(true);
+    setIsLoadingApprovedGuestsData(true);
+    setIsLoadingExistingChat(true);
     setEvent(null);
     setApprovedGuestsCount(0);
     setApprovedGuestsData([]);
@@ -185,7 +188,6 @@ export default function EventDetailPage() {
 
         if (currentIsOwnerCheck) {
           setIsLoadingExistingChat(false);
-          setIsLoadingApprovedGuestsData(true);
           const qApprovedData = query(chatsRef, where("eventId", "==", eventId), where("status", "==", "request_approved"));
           const approvedSnapshot = await getDocs(qApprovedData);
           const guests: ApprovedGuestData[] = [];
@@ -201,10 +203,9 @@ export default function EventDetailPage() {
           });
           setApprovedGuestsData(guests);
           setIsLoadingApprovedGuestsData(false);
-        } else {
+        } else { // Not owner
           setIsLoadingApprovedGuestsData(false);
           if (currentUser && eventId) {
-              setIsLoadingExistingChat(true);
               const existingChatQuery = query(
                   chatsRef,
                   where("eventId", "==", eventId),
@@ -217,30 +218,36 @@ export default function EventDetailPage() {
               } else {
                   setExistingChatId(null);
               }
-              setIsLoadingExistingChat(false);
           } else {
              setExistingChatId(null);
-             setIsLoadingExistingChat(false);
           }
-        }
-      } else {
+          setIsLoadingExistingChat(false);
+        } // End of currentIsOwnerCheck block
+      } else { // docSnap does not exist
         setFetchError(HEBREW_TEXT.event.noEventsFound);
         setEvent(null);
+        // Ensure all specific loading states are false here
         setIsLoadingApprovedCount(false);
         setIsLoadingApprovedGuestsData(false);
         setIsLoadingExistingChat(false);
-      }
-    } catch (error) {
+      } // End of docSnap.exists() block
+    } catch (error) { // Catch block
       console.error("Error fetching event or related data:", error);
       setFetchError(HEBREW_TEXT.general.error + " " + (error instanceof Error ? error.message : String(error)));
       setEvent(null);
+      // Ensure all specific loading states are false in catch
       setIsLoadingApprovedCount(false);
       setIsLoadingApprovedGuestsData(false);
       setIsLoadingExistingChat(false);
-    } finally {
-      setIsLoading(false);
+    } finally { // Finally block
+      setIsLoading(false); // General loading state
+      // Unconditionally set specific loading states to false
+      setIsLoadingApprovedCount(false);
+      setIsLoadingApprovedGuestsData(false);
+      setIsLoadingExistingChat(false);
     }
   }, [eventId, currentUser, toast, router]);
+
 
   useEffect(() => {
     fetchEventAndRelatedData();
@@ -286,6 +293,8 @@ export default function EventDetailPage() {
               variant: "destructive",
               duration: 7000,
             });
+            // Decide if you want to proceed with deleting the Firestore document if image deletion fails.
+            // For now, we continue.
           }
         }
       }
@@ -316,12 +325,14 @@ export default function EventDetailPage() {
           title: HEBREW_TEXT.general.success,
           description: HEBREW_TEXT.event.eventSharedSuccessfully,
         });
-        return;
+        return; 
       } catch (shareError) {
         console.error('Web Share API attempt failed:', shareError);
+        // Fallback to clipboard copy if Web Share API fails or is not available
       }
     }
 
+    // Fallback to clipboard copy
     try {
       await navigator.clipboard.writeText(window.location.href);
       toast({
@@ -338,7 +349,8 @@ export default function EventDetailPage() {
     }
   };
 
-  if (isLoading || isLoadingApprovedCount) {
+
+  if (isLoading || isLoadingApprovedCount) { // isLoadingApprovedCount check is important here
     return (
       <div className="container mx-auto px-4 py-12">
         <Card className="overflow-hidden">
@@ -637,5 +649,6 @@ export default function EventDetailPage() {
     </div>
   );
 }
+    
 
     
