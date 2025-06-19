@@ -31,7 +31,6 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { RequestToJoinModal } from '@/components/events/RequestToJoinModal';
-import { ApprovedGuestListItem } from '@/components/events/ApprovedGuestListItem';
 
 import { db, auth as firebaseAuthInstance, storage } from "@/lib/firebase";
 import { doc, getDoc, Timestamp, deleteDoc, collection, query, where, getDocs, getCountFromServer, limit } from "firebase/firestore";
@@ -98,8 +97,6 @@ export default function EventDetailPage() {
   const [approvedGuestsCount, setApprovedGuestsCount] = useState(0);
   const [isLoadingApprovedCount, setIsLoadingApprovedCount] = useState(true);
 
-  const [approvedGuestsData, setApprovedGuestsData] = useState<ApprovedGuestData[]>([]);
-  const [isLoadingApprovedGuestsData, setIsLoadingApprovedGuestsData] = useState(false);
   const [existingChatId, setExistingChatId] = useState<string | null>(null);
   const [isLoadingExistingChat, setIsLoadingExistingChat] = useState(true);
 
@@ -114,7 +111,6 @@ export default function EventDetailPage() {
     if (!eventId) {
         setIsLoading(false);
         setIsLoadingApprovedCount(false);
-        setIsLoadingApprovedGuestsData(false);
         setIsLoadingExistingChat(false);
         setFetchError("Event ID is missing.");
         return;
@@ -122,11 +118,9 @@ export default function EventDetailPage() {
 
     setIsLoading(true);
     setIsLoadingApprovedCount(true);
-    setIsLoadingApprovedGuestsData(true);
     setIsLoadingExistingChat(true);
     setEvent(null);
     setApprovedGuestsCount(0);
-    setApprovedGuestsData([]);
     setExistingChatId(null);
     setFetchError(null);
 
@@ -186,24 +180,8 @@ export default function EventDetailPage() {
         const currentIsOwnerCheck = fetchedEvent && currentUser && fetchedEvent.ownerUids.includes(currentUser.uid);
 
         if (currentIsOwnerCheck) {
-          setIsLoadingExistingChat(false);
-          const qApprovedData = query(chatsRef, where("eventId", "==", eventId), where("status", "==", "request_approved"));
-          const approvedSnapshot = await getDocs(qApprovedData);
-          const guests: ApprovedGuestData[] = [];
-          approvedSnapshot.forEach(docData => {
-            const chatData = docData.data() as EventChat;
-            if (chatData.guestInfo && chatData.guestUid) {
-              guests.push({
-                guestUid: chatData.guestUid,
-                guestInfo: chatData.guestInfo,
-                chatId: docData.id
-              });
-            }
-          });
-          setApprovedGuestsData(guests);
-          setIsLoadingApprovedGuestsData(false);
+          setIsLoadingExistingChat(false); // No specific chat to load for owner on this page
         } else { // Not owner
-          setIsLoadingApprovedGuestsData(false);
           if (currentUser && eventId) {
               const existingChatQuery = query(
                   chatsRef,
@@ -221,31 +199,25 @@ export default function EventDetailPage() {
              setExistingChatId(null);
           }
           setIsLoadingExistingChat(false);
-        } // End of currentIsOwnerCheck block
-      } else { // docSnap does not exist
+        }
+      } else {
         setFetchError(HEBREW_TEXT.event.noEventsFound);
         setEvent(null);
-        // Ensure all specific loading states are false here
         setIsLoadingApprovedCount(false);
-        setIsLoadingApprovedGuestsData(false);
         setIsLoadingExistingChat(false);
-      } // End of docSnap.exists() block
-    } catch (error) { // Catch block
+      }
+    } catch (error) {
       console.error("Error fetching event or related data:", error);
       setFetchError(HEBREW_TEXT.general.error + " " + (error instanceof Error ? error.message : String(error)));
       setEvent(null);
-      // Ensure all specific loading states are false in catch
       setIsLoadingApprovedCount(false);
-      setIsLoadingApprovedGuestsData(false);
       setIsLoadingExistingChat(false);
-    } finally { // Finally block
-      setIsLoading(false); // General loading state
-      // Unconditionally set specific loading states to false
+    } finally {
+      setIsLoading(false);
       setIsLoadingApprovedCount(false);
-      setIsLoadingApprovedGuestsData(false);
       setIsLoadingExistingChat(false);
     }
-  }, [eventId, currentUser, toast, router]);
+  }, [eventId, currentUser]);
 
 
   useEffect(() => {
@@ -292,8 +264,6 @@ export default function EventDetailPage() {
               variant: "destructive",
               duration: 7000,
             });
-            // Decide if you want to proceed with deleting the Firestore document if image deletion fails.
-            // For now, we continue.
           }
         }
       }
@@ -327,11 +297,9 @@ export default function EventDetailPage() {
         return; 
       } catch (shareError) {
         console.error('Web Share API attempt failed:', shareError);
-        // Fallback to clipboard copy if Web Share API fails or is not available
       }
     }
 
-    // Fallback to clipboard copy
     try {
       await navigator.clipboard.writeText(window.location.href);
       toast({
@@ -349,7 +317,7 @@ export default function EventDetailPage() {
   };
 
 
-  if (isLoading || isLoadingApprovedCount) { // isLoadingApprovedCount check is important here
+  if (isLoading || isLoadingApprovedCount) {
     return (
       <div className="container mx-auto px-4 py-12">
         <Card className="overflow-hidden">
@@ -516,42 +484,16 @@ export default function EventDetailPage() {
                 <>
                   <Separator className="my-8" />
                   <div>
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-headline text-xl font-semibold flex items-center">
-                            <ListChecks className="ml-2 h-6 w-6 text-primary" />
-                            {HEBREW_TEXT.event.approvedGuests} ({approvedGuestsData.length})
-                        </h3>
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={`/events/manage/${event.id}`}>
-                                <Users className="ml-1.5 h-4 w-4" />
-                                {HEBREW_TEXT.event.manageGuestsTitle}
-                            </Link>
-                        </Button>
-                    </div>
-                    {isLoadingApprovedGuestsData ? (
-                      <div className="space-y-3">
-                        {[...Array(2)].map((_, i) => (
-                           <Card key={i} className="p-3 shadow-sm">
-                                <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                                    <Skeleton className="h-10 w-10 rounded-full" />
-                                    <div className="flex-1 space-y-1">
-                                        <Skeleton className="h-4 w-2/4" />
-                                        <Skeleton className="h-3 w-1/4" />
-                                    </div>
-                                    <Skeleton className="h-8 w-20 rounded-md" />
-                                </div>
-                            </Card>
-                        ))}
-                      </div>
-                    ) : approvedGuestsData.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {approvedGuestsData.slice(0, 4).map(guest => (
-                          <ApprovedGuestListItem key={guest.guestUid} guest={guest} />
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground">{HEBREW_TEXT.event.noApprovedGuestsYet}</p>
-                    )}
+                    <h3 className="font-headline text-xl font-semibold mb-3 flex items-center">
+                        <ListChecks className="ml-2 h-6 w-6 text-primary" />
+                        {HEBREW_TEXT.event.approvedGuests}: {isLoadingApprovedCount ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : `${approvedGuestsCount} / ${event.numberOfGuests}`}
+                    </h3>
+                    <Button asChild variant="default" size="lg" className="w-full sm:w-auto">
+                        <Link href={`/events/manage/${event.id}`}>
+                            <Users className="ml-2 h-5 w-5" />
+                            {HEBREW_TEXT.event.manageGuestsTitle}
+                        </Link>
+                    </Button>
                   </div>
                 </>
               )}
@@ -649,5 +591,6 @@ export default function EventDetailPage() {
   );
 }
     
-
+    
+    
     
