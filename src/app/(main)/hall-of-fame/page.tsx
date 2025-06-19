@@ -301,17 +301,17 @@ export default function HallOfFamePage() {
           {data.map((user) => (
             <TableRow key={user.userId + type} className={cn(user.isCurrentUser && "bg-primary/10")}>
               <TableCell className="font-medium text-center">{user.rank || '-'}</TableCell>
-              <TableCell>
-                <Link href={`/profile/${user.userId}`} className="flex items-center gap-2 hover:underline justify-end">
-                  {user.isCurrentUser && <UserCheck className="h-4 w-4 text-green-500 order-1" />}
-                  <span className="order-2">{user.name}</span>
-                  <Avatar className="h-8 w-8 border order-3">
+              <TableCell className="text-center">
+                <Link href={`/profile/${user.userId}`} className="inline-flex items-center gap-2 hover:underline justify-center">
+                  <Avatar className="h-8 w-8 border">
                     {user.profileImageUrl ? (
                       <AvatarImage src={user.profileImageUrl} alt={user.name} data-ai-hint="leaderboard user"/>
                     ) : (
                       <AvatarFallback><UserPlaceholderIcon className="h-5 w-5" /></AvatarFallback>
                     )}
                   </Avatar>
+                  <span>{user.name}</span>
+                  {user.isCurrentUser && <UserCheck className="h-4 w-4 text-green-500" />}
                 </Link>
               </TableCell>
               <TableCell className="text-center">
@@ -348,8 +348,8 @@ export default function HallOfFamePage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="py-3 px-4">
-          <div className="flex items-center justify-between"> {/* Removed flex-row-reverse */}
-            <div className="flex items-center gap-2"> {/* User Avatar and Name - will be on the right by default in RTL */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8 border">
                 {userData.profileImageUrl ? (
                   <AvatarImage src={userData.profileImageUrl} alt={userData.name} />
@@ -359,7 +359,7 @@ export default function HallOfFamePage() {
               </Avatar>
               <span>{userData.name}</span>
             </div>
-            <div className="text-left"> {/* Score Details - will be on the left; text-left aligns text to the right in RTL */}
+            <div className="text-left">
               <p className="font-semibold text-lg">
                 {type === 'liked' ? userData.thumbsUpCount : userData.score}{' '}
                 <span className="text-xs text-muted-foreground">
