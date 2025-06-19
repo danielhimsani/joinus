@@ -386,8 +386,8 @@ export const HEBREW_TEXT = {
     guestsHosted: "אורחים שאירח",
     thumbsUp: "כמות לייקים",
     lastEventAttended: "תאריך אירוע אחרון",
-    filterPastEvents: "אירועי עבר בלבד",
-    filterAllEvents: "כל האירועים (עבר ועתיד)",
+    filterAllEvents: "כלול אירועים עתידיים",
+    filterPastEvents: "אירועי עבר בלבד", // This might not be used directly anymore
     yourScore: "הניקוד שלך",
     notRanked: "עדיין לא מדורג",
     noData: "אין נתונים להצגה עדיין.",

@@ -15,7 +15,8 @@ import { he } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,7 +25,6 @@ import { Loader2, AlertCircle, Award, Users, UserCheck, Contact as UserPlacehold
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
-type EventTimeFilter = 'all' | 'past';
 type LeaderboardType = 'attendees' | 'hosts' | 'liked';
 
 const MAX_LEADERBOARD_USERS = 10;
@@ -41,7 +41,7 @@ export default function HallOfFamePage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [eventTimeFilter, setEventTimeFilter] = useState<EventTimeFilter>('all');
+  const [includeFutureEvents, setIncludeFutureEvents] = useState<boolean>(false); // Default to false (past events only)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
@@ -78,18 +78,18 @@ export default function HallOfFamePage() {
       allEvents.forEach(event => eventDateMap.set(event.id, event.dateTime));
       const now = new Date();
 
-      const relevantChats = eventTimeFilter === 'past'
+      const relevantChats = !includeFutureEvents
         ? allApprovedChats.filter(chat => {
             const eventDate = eventDateMap.get(chat.eventId);
             return eventDate && eventDate < now;
           })
         : allApprovedChats;
 
-      const relevantEvents = eventTimeFilter === 'past'
+      const relevantEvents = !includeFutureEvents
         ? allEvents.filter(event => event.dateTime < now)
         : allEvents;
 
-      const relevantPositiveRatings = eventTimeFilter === 'past'
+      const relevantPositiveRatings = !includeFutureEvents
         ? allPositiveRatings.filter(rating => {
             const eventDate = eventDateMap.get(rating.eventId);
             return eventDate && eventDate < now;
@@ -264,7 +264,7 @@ export default function HallOfFamePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser, eventTimeFilter, toast]);
+  }, [currentUser, includeFutureEvents, toast]);
 
   useEffect(() => {
     if (currentUser) { 
@@ -352,7 +352,7 @@ export default function HallOfFamePage() {
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8 border">
                 {userData.profileImageUrl ? (
-                  <AvatarImage src={userData.profileImageUrl} alt={userData.name} />
+                  <AvatarImage src={userData.profileImageUrl} alt={userData.name} data-ai-hint="user avatar"/>
                 ) : (
                   <AvatarFallback><UserPlaceholderIcon className="h-5 w-5" /></AvatarFallback>
                 )}
@@ -431,16 +431,16 @@ export default function HallOfFamePage() {
             <h1 className="text-3xl md:text-4xl font-bold font-headline">{HEBREW_TEXT.hallOfFame.title}</h1>
             <Crown className="h-10 w-10 text-amber-500 mr-3" />
         </div>
-        <div className="w-full sm:w-auto min-w-[240px] max-w-xs">
-          <Select value={eventTimeFilter} onValueChange={(value) => setEventTimeFilter(value as EventTimeFilter)} dir="rtl">
-            <SelectTrigger className="w-full" aria-label="Filter event time frame">
-              <SelectValue placeholder="בחר טווח זמן" />
-            </SelectTrigger>
-            <SelectContent dir="rtl">
-              <SelectItem value="all">{HEBREW_TEXT.hallOfFame.filterAllEvents}</SelectItem>
-              <SelectItem value="past">{HEBREW_TEXT.hallOfFame.filterPastEvents}</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center space-x-2 rtl:space-x-reverse w-full sm:w-auto min-w-[240px] max-w-xs">
+          <Switch
+            id="includeFutureEvents"
+            checked={includeFutureEvents}
+            onCheckedChange={setIncludeFutureEvents}
+            aria-label={HEBREW_TEXT.hallOfFame.filterAllEvents}
+          />
+          <Label htmlFor="includeFutureEvents" className="cursor-pointer text-sm text-muted-foreground">
+            {HEBREW_TEXT.hallOfFame.filterAllEvents}
+          </Label>
         </div>
       </div>
 
