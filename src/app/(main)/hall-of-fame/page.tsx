@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle as ShadAlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription as ShadAlertDescriptionComp, AlertTitle as ShadAlertTitle } from '@/components/ui/alert'; // Renamed AlertDescription to avoid conflict
 import { Loader2, AlertCircle, Award, Users, UserCheck, Contact as UserPlaceholderIcon, Crown, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -351,7 +351,7 @@ export default function HallOfFamePage() {
         <Alert variant="destructive" className="max-w-lg mx-auto">
           <AlertCircle className="h-5 w-5" />
           <ShadAlertTitle>{HEBREW_TEXT.general.error}</ShadAlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <ShadAlertDescriptionComp>{error}</ShadAlertDescriptionComp>
         </Alert>
       </div>
     );
@@ -379,20 +379,20 @@ export default function HallOfFamePage() {
 
       <Tabs defaultValue="attendees" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6 h-12">
-          <TabsTrigger value="attendees" className="text-sm sm:text-base">
+          <TabsTrigger value="attendees" className="text-sm sm:text-base" dir="rtl">
             {HEBREW_TEXT.hallOfFame.topAttendees}
             <Users className="mr-2 h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="hosts" className="text-sm sm:text-base">
+          <TabsTrigger value="hosts" className="text-sm sm:text-base" dir="rtl">
             {HEBREW_TEXT.hallOfFame.mostGuestsHosted}
             <UserCheck className="mr-2 h-5 w-5" />
           </TabsTrigger>
         </TabsList>
         <TabsContent value="attendees">
-          <Card>
+          <Card dir="rtl">
             <CardHeader className="text-right">
               <CardTitle className="font-headline text-xl">{HEBREW_TEXT.hallOfFame.topAttendees}</CardTitle>
-              <CardDescription>משתמשים שהשתתפו במספר האירועים הרב ביותר דרך האפליקציה.</CardDescription>
+              <CardDescription dir="rtl">משתמשים שהשתתפו במספר האירועים הרב ביותר דרך האפליקציה.</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? <Skeleton className="h-40 w-full" /> : renderLeaderboardTable(leaderboardAttendees, 'events')}
@@ -401,10 +401,10 @@ export default function HallOfFamePage() {
           </Card>
         </TabsContent>
         <TabsContent value="hosts">
-          <Card>
+          <Card dir="rtl">
             <CardHeader className="text-right">
               <CardTitle className="font-headline text-xl">{HEBREW_TEXT.hallOfFame.mostGuestsHosted}</CardTitle>
-              <CardDescription>משתמשים שאירחו את מספר האורחים הרב ביותר דרך האירועים שלהם.</CardDescription>
+              <CardDescription dir="rtl">משתמשים שאירחו את מספר האורחים הרב ביותר דרך האירועים שלהם.</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? <Skeleton className="h-40 w-full" /> : renderLeaderboardTable(leaderboardHosts, 'guests')}
