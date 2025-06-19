@@ -25,7 +25,7 @@ import { Chrome, Loader2, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { auth as firebaseAuthInstance, db } from "@/lib/firebase";
 import { useState, useEffect, useRef } from "react";
-import { Badge } from "@/components/ui/badge"; // Import Badge
+import { Badge } from "@/components/ui/badge";
 
 const emailPasswordSchema = z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
@@ -86,46 +86,72 @@ export function SignUpForm() {
    useEffect(() => {
     return () => {
       if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
+        try {
+          recaptchaVerifierRef.current.clear();
+        } catch (e) {
+          console.warn("Error clearing reCAPTCHA verifier on SignUpForm unmount:", e);
+        }
         recaptchaVerifierRef.current = null;
       }
     };
   }, []);
 
   const setupRecaptcha = () => {
-    if (typeof window !== 'undefined') {
-      // Clear any existing verifier and its container
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      // Clear the existing verifier instance (object)
       if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
-        recaptchaVerifierRef.current = null;
-      }
-      const container = document.getElementById(recaptchaContainerId);
-      if (container) {
-        container.innerHTML = ''; // Ensure container is empty before creating new verifier
-      } else {
-        console.error(`[reCAPTCHA Setup - SignUp] Container with ID '${recaptchaContainerId}' not found.`);
-        toast({ title: HEBREW_TEXT.auth.recaptchaError, description: "שגיאה פנימית בהגדרת reCAPTCHA.", variant: "destructive" });
-        return null;
+        try {
+          recaptchaVerifierRef.current.clear(); // Clears the reCAPTCHA widget from the DOM
+        } catch (e) {
+          console.warn("[reCAPTCHA SignUp] Error clearing previous reCAPTCHA verifier UI:", e);
+        }
+        recaptchaVerifierRef.current = null; // Discard the JS object reference
       }
 
-      // Create a new verifier instance
-      const verifier = new RecaptchaVerifier(firebaseAuthInstance, recaptchaContainerId, {
-        size: 'invisible',
-        'callback': (response: any) => {
-            console.log("reCAPTCHA (signup) solved (callback):", response);
-        },
-        'expired-callback': () => {
-          console.log("reCAPTCHA (signup) expired");
-          toast({ title: HEBREW_TEXT.auth.recaptchaError, description: "אימות reCAPTCHA פג תוקף. אנא נסה לשלוח קוד שוב.", variant: "destructive" });
-          setIsSendingOtp(false); // Reset sending state
-        }
-      });
-      recaptchaVerifierRef.current = verifier;
-      return verifier;
+      // Ensure the HTML container for reCAPTCHA is present and empty
+      const container = document.getElementById(recaptchaContainerId);
+      if (container) {
+        container.innerHTML = ''; // Make sure it's empty for the new verifier
+      } else {
+        console.error(`[reCAPTCHA SignUp] Critical: Container element with ID '${recaptchaContainerId}' NOT FOUND in the DOM.`);
+        toast({ title: HEBREW_TEXT.auth.recaptchaError, description: "שגיאה קריטית: מיקום הרכיב לאימות reCAPTCHA לא נמצא. (ID: " + recaptchaContainerId + ")", variant: "destructive", duration: 10000 });
+        return null; // Stop if container is missing
+      }
+
+      console.log(`[reCAPTCHA Setup - SignUp] Creating new RecaptchaVerifier for container '${recaptchaContainerId}'.`);
+      try {
+        const verifier = new RecaptchaVerifier(firebaseAuthInstance, recaptchaContainerId, {
+          size: 'invisible',
+          'callback': (response: any) => {
+            console.log("[reCAPTCHA SignUp] 'callback' triggered. Response:", response);
+            // For invisible reCAPTCHA, this usually means it's ready or has been invoked.
+            // signInWithPhoneNumber will proceed.
+          },
+          'expired-callback': () => {
+            console.warn("[reCAPTCHA SignUp] 'expired-callback' triggered. The user needs to verify again.");
+            toast({ title: HEBREW_TEXT.auth.recaptchaError, description: "אימות reCAPTCHA פג תוקף. אנא נסה לשלוח קוד שוב.", variant: "destructive" });
+            setIsSendingOtp(false); // Allow user to retry
+            // Consider also calling resetPhoneAuthFlow() here if a full reset is desired.
+          },
+          'error-callback': (error: any) => {
+            // This is for errors during the reCAPTCHA verification process itself.
+            console.error("[reCAPTCHA SignUp] 'error-callback' triggered. Error:", error);
+            toast({ title: HEBREW_TEXT.auth.recaptchaError, description: `שגיאה בתהליך אימות reCAPTCHA: ${error?.message || 'Unknown reCAPTCHA error'}. נסה שוב.`, variant: "destructive", duration: 10000 });
+            setIsSendingOtp(false); // Allow user to retry
+          }
+        });
+        recaptchaVerifierRef.current = verifier;
+        return verifier;
+      } catch (e) {
+        console.error("[reCAPTCHA SignUp] Error creating RecaptchaVerifier instance:", e);
+        toast({ title: HEBREW_TEXT.auth.recaptchaError, description: `שגיאה ביצירת רכיב reCAPTCHA: ${e instanceof Error ? e.message : String(e)}`, variant: "destructive", duration: 10000 });
+        return null;
+      }
     }
-    console.error("[reCAPTCHA Setup - SignUp] Window is undefined, cannot setup reCAPTCHA.");
+    console.error("[reCAPTCHA Setup - SignUp] Window or document is undefined. Cannot setup reCAPTCHA.");
     return null;
   };
+
 
   const createUserDocument = async (user: User, name?: string, birthday?: string, profileImageUrl?: string) => {
     const userDocRef = doc(db, "users", user.uid);
@@ -272,7 +298,7 @@ export function SignUpForm() {
       firebaseAuthInstance.languageCode = 'he';
       const verifier = setupRecaptcha();
       if (!verifier) {
-          setIsSendingOtp(false); // Reset loading state if verifier setup failed
+          setIsSendingOtp(false);
           return;
       }
 
@@ -280,13 +306,15 @@ export function SignUpForm() {
       if (firebasePhoneNumber.startsWith('0')) {
         firebasePhoneNumber = '+972' + firebasePhoneNumber.substring(1);
       }
-
+      
+      console.log(`[SignUpForm] Calling signInWithPhoneNumber for ${firebasePhoneNumber}`);
       const result = await signInWithPhoneNumber(firebaseAuthInstance, firebasePhoneNumber, verifier);
       setConfirmationResult(result);
       setIsOtpSent(true);
       otpForm.reset(); // Clear previous OTP if any
       toast({ title: HEBREW_TEXT.general.success, description: HEBREW_TEXT.auth.otpSent });
     } catch (error: any) {
+      console.error("[SignUpForm] Error in onSendOtp:", error);
       handleAuthError(error, "Phone OTP Send (SignUp)");
     } finally {
       setIsSendingOtp(false);
@@ -314,10 +342,15 @@ export function SignUpForm() {
   const resetPhoneAuthFlow = () => {
     setIsOtpSent(false);
     otpForm.reset();
-    phoneForm.reset({ phoneNumber: "05", name: persistedNameForOtp, birthday: persistedBirthdayForOtp });
+    // Only reset phoneForm if explicitly switching methods or a full reset is desired.
+    // phoneForm.reset({ phoneNumber: "05", name: persistedNameForOtp, birthday: persistedBirthdayForOtp });
     setConfirmationResult(null);
     if (recaptchaVerifierRef.current) {
-      recaptchaVerifierRef.current.clear();
+      try {
+        recaptchaVerifierRef.current.clear();
+      } catch (e) {
+        console.warn("[SignUpForm] Error clearing reCAPTCHA in resetPhoneAuthFlow:", e);
+      }
       recaptchaVerifierRef.current = null;
     }
     const container = document.getElementById(recaptchaContainerId);
@@ -484,7 +517,14 @@ export function SignUpForm() {
                   <Button
                     variant="link"
                     type="button"
-                    onClick={resetPhoneAuthFlow}
+                    onClick={() => {
+                      // More explicit reset for retrying OTP send for the same number
+                      setIsOtpSent(false); // Go back to phone number input step
+                      otpForm.reset();
+                      // No need to fully reset phoneForm or persistedName/Birthday here,
+                      // as the user might want to resend OTP for the same details.
+                      // setupRecaptcha will be called again in onSendOtp.
+                    }}
                     className="w-full text-sm"
                     disabled={isLoadingOverall}
                   >
@@ -525,6 +565,10 @@ export function SignUpForm() {
                     onClick={() => {
                         setSignUpMethod('email');
                         resetPhoneAuthFlow();
+                        // Also clear persisted name/birthday when switching method from phone to email
+                        setPersistedNameForOtp("");
+                        setPersistedBirthdayForOtp("");
+                        phoneForm.reset({ phoneNumber: "05", name: "", birthday: ""}); // Full reset for phone form
                     }}
                     disabled={isLoadingOverall}
                 >
@@ -538,7 +582,7 @@ export function SignUpForm() {
               Google
             </Button>
             <div className="relative">
-                <Button variant="outline" type="button" onClick={handleAppleSignUp} disabled={isLoadingOverall} className="w-full">
+                 <Button variant="outline" type="button" onClick={handleAppleSignUp} disabled={isLoadingOverall} className="w-full">
                 {isSubmittingApple ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
                     <svg
                     version="1.1"
