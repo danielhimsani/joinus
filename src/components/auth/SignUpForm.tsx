@@ -302,6 +302,12 @@ export function SignUpForm() {
           return;
       }
 
+      // Explicitly render the reCAPTCHA and wait for it to be ready
+      console.log("[SignUpForm] Attempting to render reCAPTCHA...");
+      await verifier.render(); // This returns a promise that resolves with the widget ID
+      console.log("[SignUpForm] reCAPTCHA rendered successfully or already rendered.");
+
+
       let firebasePhoneNumber = data.phoneNumber;
       if (firebasePhoneNumber.startsWith('0')) {
         firebasePhoneNumber = '+972' + firebasePhoneNumber.substring(1);
