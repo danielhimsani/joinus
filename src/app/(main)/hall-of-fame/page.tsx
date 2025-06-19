@@ -251,11 +251,11 @@ export default function HallOfFamePage() {
       return <p className="text-center text-muted-foreground py-4">{HEBREW_TEXT.hallOfFame.noData}</p>;
     }
     return (
-      <Table>
+      <Table dir="rtl">
         <TableHeader>
           <TableRow>
             <TableHead className="w-[50px] text-center">{HEBREW_TEXT.hallOfFame.rank}</TableHead>
-            <TableHead>{HEBREW_TEXT.hallOfFame.userName}</TableHead>
+            <TableHead className="text-right">{HEBREW_TEXT.hallOfFame.userName}</TableHead>
             <TableHead className="text-center">{scoreType === 'events' ? HEBREW_TEXT.hallOfFame.eventsAttended : HEBREW_TEXT.hallOfFame.guestsHosted}</TableHead>
           </TableRow>
         </TableHeader>
@@ -264,16 +264,16 @@ export default function HallOfFamePage() {
             <TableRow key={user.userId} className={cn(user.isCurrentUser && "bg-primary/10")}>
               <TableCell className="font-medium text-center">{user.rank || '-'}</TableCell>
               <TableCell>
-                <Link href={`/profile/${user.userId}`} className="flex items-center gap-2 hover:underline">
-                  <Avatar className="h-8 w-8 border">
+                <Link href={`/profile/${user.userId}`} className="flex items-center gap-2 hover:underline justify-end">
+                  {user.isCurrentUser && <UserCheck className="h-4 w-4 text-green-500 order-1" />}
+                  <span className="order-2">{user.name}</span>
+                  <Avatar className="h-8 w-8 border order-3">
                     {user.profileImageUrl ? (
                       <AvatarImage src={user.profileImageUrl} alt={user.name} data-ai-hint="leaderboard user"/>
                     ) : (
                       <AvatarFallback><UserPlaceholderIcon className="h-5 w-5" /></AvatarFallback>
                     )}
                   </Avatar>
-                  {user.name}
-                  {user.isCurrentUser && <UserCheck className="h-4 w-4 text-green-500" />}
                 </Link>
               </TableCell>
               <TableCell className="text-center">{user.score}</TableCell>
@@ -290,15 +290,15 @@ export default function HallOfFamePage() {
       return null;
     }
     return (
-      <Card className="mt-4 bg-muted/50">
+      <Card className="mt-4 bg-muted/50" dir="rtl">
         <CardHeader>
-          <CardTitle className="text-md font-medium flex items-center">
-             <Trophy className="ml-2 h-5 w-5 text-amber-500" />
+          <CardTitle className="text-md font-medium flex items-center justify-end">
             {title} - {HEBREW_TEXT.hallOfFame.yourScore}
+            <Trophy className="mr-2 h-5 w-5 text-amber-500" />
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-row-reverse">
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8 border">
                 {userData.profileImageUrl ? (
@@ -309,7 +309,7 @@ export default function HallOfFamePage() {
               </Avatar>
               <span>{userData.name}</span>
             </div>
-            <div className="text-right">
+            <div className="text-left">
               <p className="font-semibold text-lg">{userData.score} <span className="text-xs text-muted-foreground">{scoreType === 'events' ? HEBREW_TEXT.hallOfFame.events : HEBREW_TEXT.hallOfFame.guests}</span></p>
               <p className="text-xs text-muted-foreground">{HEBREW_TEXT.hallOfFame.rank}: {userData.rank || HEBREW_TEXT.hallOfFame.notRanked}</p>
             </div>
@@ -321,10 +321,10 @@ export default function HallOfFamePage() {
 
   if (isLoading && !leaderboardAttendees.length && !leaderboardHosts.length) {
     return (
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-12" dir="rtl">
         <div className="flex justify-center items-center mb-6">
-          <Award className="h-10 w-10 text-primary mr-3" />
           <h1 className="text-3xl font-bold font-headline">{HEBREW_TEXT.hallOfFame.title}</h1>
+          <Award className="h-10 w-10 text-primary ml-3" />
         </div>
         <Skeleton className="h-10 w-48 mb-6 mx-auto" />
         <Tabs defaultValue="attendees" className="w-full">
@@ -334,7 +334,7 @@ export default function HallOfFamePage() {
           </TabsList>
           <TabsContent value="attendees">
             <Card>
-              <CardHeader><CardTitle><Skeleton className="h-6 w-40" /></CardTitle></CardHeader>
+              <CardHeader className="text-right"><CardTitle><Skeleton className="h-6 w-40" /></CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
               </CardContent>
@@ -347,7 +347,7 @@ export default function HallOfFamePage() {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-12 text-center">
+      <div className="container mx-auto px-4 py-12 text-center" dir="rtl">
         <Alert variant="destructive" className="max-w-lg mx-auto">
           <AlertCircle className="h-5 w-5" />
           <ShadAlertTitle>{HEBREW_TEXT.general.error}</ShadAlertTitle>
@@ -358,11 +358,11 @@ export default function HallOfFamePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+    <div className="container mx-auto px-4 py-12" dir="rtl">
+      <div className="flex flex-col sm:flex-row-reverse justify-between items-center mb-8 gap-4">
         <div className="flex items-center">
-            <Crown className="h-10 w-10 text-amber-500 mr-3 rtl:ml-3 rtl:mr-0" />
             <h1 className="text-3xl md:text-4xl font-bold font-headline">{HEBREW_TEXT.hallOfFame.title}</h1>
+            <Crown className="h-10 w-10 text-amber-500 mr-3" />
         </div>
         <div className="w-full sm:w-auto min-w-[200px]">
           <Select value={eventTimeFilter} onValueChange={(value) => setEventTimeFilter(value as EventTimeFilter)} dir="rtl">
@@ -380,17 +380,17 @@ export default function HallOfFamePage() {
       <Tabs defaultValue="attendees" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6 h-12">
           <TabsTrigger value="attendees" className="text-sm sm:text-base">
-            <Users className="ml-2 h-5 w-5" />
             {HEBREW_TEXT.hallOfFame.topAttendees}
+            <Users className="mr-2 h-5 w-5" />
           </TabsTrigger>
           <TabsTrigger value="hosts" className="text-sm sm:text-base">
-            <UserCheck className="ml-2 h-5 w-5" />
             {HEBREW_TEXT.hallOfFame.mostGuestsHosted}
+            <UserCheck className="mr-2 h-5 w-5" />
           </TabsTrigger>
         </TabsList>
         <TabsContent value="attendees">
           <Card>
-            <CardHeader>
+            <CardHeader className="text-right">
               <CardTitle className="font-headline text-xl">{HEBREW_TEXT.hallOfFame.topAttendees}</CardTitle>
               <CardDescription>משתמשים שהשתתפו במספר האירועים הרב ביותר דרך האפליקציה.</CardDescription>
             </CardHeader>
@@ -402,7 +402,7 @@ export default function HallOfFamePage() {
         </TabsContent>
         <TabsContent value="hosts">
           <Card>
-            <CardHeader>
+            <CardHeader className="text-right">
               <CardTitle className="font-headline text-xl">{HEBREW_TEXT.hallOfFame.mostGuestsHosted}</CardTitle>
               <CardDescription>משתמשים שאירחו את מספר האורחים הרב ביותר דרך האירועים שלהם.</CardDescription>
             </CardHeader>
@@ -421,3 +421,6 @@ export default function HallOfFamePage() {
     </div>
   );
 }
+
+
+    
