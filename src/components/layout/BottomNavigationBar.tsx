@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Search, PlusSquare, MessageSquare, UserCircle, Contact as UserPlaceholderIcon } from 'lucide-react';
+import { Search, PlusSquare, MessageSquare, UserCircle, Contact as UserPlaceholderIcon, Award } from 'lucide-react';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -13,11 +13,12 @@ import { auth as firebaseAuthInstance, db } from "@/lib/firebase"; // Added db
 import { collection, query, where, onSnapshot, type DocumentData } from "firebase/firestore"; // Firebase imports
 import type { EventChat } from '@/types'; // Import EventChat type
 
-// Updated order: Events, Requests (Messages), Create Event, Profile
+// Updated order: Events, Requests (Messages), Create Event, Hall of Fame, Profile
 const navItemsConfig = [
   { href: '/events', label: HEBREW_TEXT.navigation.events, icon: Search },
-  { href: '/messages', label: HEBREW_TEXT.navigation.messages, icon: MessageSquare, isMessages: true }, // Label will be "בקשות" from HEBREW_TEXT
+  { href: '/messages', label: HEBREW_TEXT.navigation.messages, icon: MessageSquare, isMessages: true },
   { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: PlusSquare },
+  { href: '/hall-of-fame', label: HEBREW_TEXT.navigation.hallOfFame, icon: Award },
   { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: UserCircle, isProfile: true },
 ];
 
@@ -76,14 +77,18 @@ export default function BottomNavigationBar() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 h-16 bg-background border-t border-border md:hidden">
-      <div className="flex h-full max-w-lg mx-auto font-medium items-center justify-around">
+      <div className="grid grid-cols-5 h-full max-w-lg mx-auto font-medium items-center justify-around">
         {navItemsConfig.map((item) => {
           let currentItemIsActive = false;
           if (isMounted) {
             if (item.href === '/events') {
-              currentItemIsActive = (pathname === item.href || (pathname.startsWith(item.href + '/') && pathname !== '/events/create'));
+              currentItemIsActive = (pathname === item.href || (pathname.startsWith(item.href + '/') && pathname !== '/events/create' && pathname !== '/hall-of-fame'));
             } else {
-              currentItemIsActive = pathname === item.href;
+              currentItemIsActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            }
+             // Special check for /events/create to not activate /events
+            if (item.href === '/events' && (pathname === '/events/create' || pathname === '/hall-of-fame')) {
+                currentItemIsActive = false;
             }
           }
 

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
-import { LogIn, LogOut, Menu, UserCircle, Search, PlusSquare, MessageSquare, Contact as UserPlaceholderIcon } from 'lucide-react';
+import { LogIn, LogOut, Menu, UserCircle, Search, PlusSquare, MessageSquare, Contact as UserPlaceholderIcon, Award } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -29,6 +29,7 @@ const desktopNavItems = [
   { href: '/events', label: HEBREW_TEXT.navigation.events },
   { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent },
   { href: '/messages', label: HEBREW_TEXT.navigation.messages },
+  { href: '/hall-of-fame', label: HEBREW_TEXT.navigation.hallOfFame },
   // Profile link is accessed via avatar dropdown
 ];
 
@@ -37,6 +38,7 @@ const sheetNavItems = [
   { href: '/events', label: HEBREW_TEXT.navigation.events, icon: <Search className="ml-2 h-5 w-5" /> },
   { href: '/events/create', label: HEBREW_TEXT.navigation.createEvent, icon: <PlusSquare className="ml-2 h-5 w-5" /> },
   { href: '/messages', label: HEBREW_TEXT.navigation.messages, icon: <MessageSquare className="ml-2 h-5 w-5" /> },
+  { href: '/hall-of-fame', label: HEBREW_TEXT.navigation.hallOfFame, icon: <Award className="ml-2 h-5 w-5" /> },
   { href: '/profile', label: HEBREW_TEXT.navigation.profile, icon: <UserCircle className="ml-2 h-5 w-5" /> },
 ];
 
@@ -160,7 +162,7 @@ export default function Header() {
           </Link>
           <nav className="hidden md:flex items-center space-x-1 rtl:space-x-reverse">
             {desktopNavItems.map((item) => {
-              const isActive = pathname === item.href || (item.href === '/events' && pathname.startsWith('/events/') && pathname !== '/events/create');
+              const isActive = pathname === item.href || (item.href === '/events' && pathname.startsWith('/events/') && pathname !== '/events/create' && pathname !== '/hall-of-fame');
               return (
                 <Link
                   key={item.href}
@@ -213,7 +215,7 @@ export default function Header() {
                 </SheetHeader>
                 <nav className="flex flex-col space-y-2 mt-4">
                   {sheetNavItems.map(link => {
-                    const isActive = pathname === link.href || (link.href === '/events' && pathname.startsWith('/events/') && pathname !== '/events/create');
+                    const isActive = pathname === link.href || (link.href === '/events' && pathname.startsWith('/events/') && pathname !== '/events/create' && pathname !== '/hall-of-fame');
                     return (
                       <Button
                           variant="ghost"

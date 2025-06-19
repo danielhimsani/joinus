@@ -120,12 +120,22 @@ export interface Review {
   createdAt: Date;
 }
 
-export interface LeaderboardEntry {
+export interface LeaderboardEntry { // Existing one, might deprecate or adapt
   userId: string;
   userName: string;
-  score: number; // e.g., number of events attended positively
+  score: number; 
   rank?: number;
 }
+
+export interface LeaderboardUser { // More specific type for the new Hall of Fame
+  userId: string;
+  name: string;
+  profileImageUrl?: string;
+  score: number;
+  rank?: number;
+  isCurrentUser?: boolean;
+}
+
 
 export interface EventAnnouncement {
   id: string; // Firestore document ID

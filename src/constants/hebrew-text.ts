@@ -45,6 +45,7 @@ export const HEBREW_TEXT = {
     leaderboard: "טבלת מובילים",
     mobileMenuTitle: "תפריט",
     messages: "בקשות",
+    hallOfFame: "היכל התהילה",
   },
   event: {
     createEventTitle: "יצירת אירוע חדש",
@@ -358,6 +359,24 @@ export const HEBREW_TEXT = {
   legal: {
     privacyPolicyTitle: "מדיניות פרטיות",
     termsOfUseTitle: "תנאי שימוש",
+  },
+  hallOfFame: {
+    title: "היכל התהילה",
+    topAttendees: "המשתתפים המובילים",
+    mostGuestsHosted: "המארחים המובילים",
+    rank: "דירוג",
+    userName: "שם משתמש",
+    eventsAttended: "אירועים שהשתתף",
+    guestsHosted: "אורחים שאירח",
+    filterPastEvents: "אירועי עבר בלבד",
+    filterAllEvents: "כל האירועים (עבר ועתיד)",
+    yourScore: "הניקוד שלך",
+    notRanked: "עדיין לא מדורג",
+    noData: "אין נתונים להצגה עדיין.",
+    loadingLeaderboard: "טוען את היכל התהילה...",
+    score: "ניקוד",
+    events: "אירועים",
+    guests: "אורחים",
   }
 };
 
