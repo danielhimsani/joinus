@@ -4,7 +4,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react"; // Added useCallback
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,8 +24,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import type { UserProfile, Event as EventType } from "@/types";
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users, FileText, Gavel, Contact as UserPlaceholderIcon, BellRing } from "lucide-react";
+import type { UserProfile, Event as EventType, EventChat } from "@/types"; // Added EventChat
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users, FileText, Gavel, Contact as UserPlaceholderIcon, BellRing, Activity, ThumbsUp, ThumbsDown } from "lucide-react"; // Added Activity, ThumbsUp, ThumbsDown
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -39,12 +39,12 @@ import {
 } from "@/components/ui/tooltip";
 import { onAuthStateChanged, type User as FirebaseUser, updateProfile } from "firebase/auth";
 import { auth as firebaseAuthInstance, db } from "@/lib/firebase";
-import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { format as formatDate } from 'date-fns';
+import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, serverTimestamp, orderBy } from "firebase/firestore"; // Added orderBy
+import { format as formatDateFns } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
 import { getDisplayInitial } from '@/lib/textUtils';
-import { requestNotificationPermissionAndSaveToken, type NotificationSetupResult } from '@/lib/firebase-messaging'; 
+import { requestNotificationPermissionAndSaveToken, type NotificationSetupResult } from '@/lib/firebase-messaging';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
@@ -71,21 +71,87 @@ export default function ProfilePage() {
   const [isLoadingOwnedEvents, setIsLoadingOwnedEvents] = useState(false);
   const [calculatedAgeState, setCalculatedAgeState] = useState<number | null>(null);
 
+  // New state for statistics
+  const [eventsAttendedCount, setEventsAttendedCount] = useState<number | null>(null);
+  const [lastEventAttendedDate, setLastEventAttendedDate] = useState<Date | null>(null);
+  const [guestsHostedCount, setGuestsHostedCount] = useState<number | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
         name: "",
         email: "",
-        birthday: "", 
+        birthday: "",
         bio: "",
         phone: "",
     },
   });
 
+  const fetchUserStats = useCallback(async (currentFbUser: FirebaseUser) => {
+    if (!currentFbUser) return;
+    setIsLoadingStats(true);
+    try {
+        // Fetch Events Attended Statistics
+        const attendedChatsQuery = query(
+            collection(db, "eventChats"),
+            where("guestUid", "==", currentFbUser.uid),
+            where("status", "==", "request_approved")
+        );
+        const attendedChatsSnapshot = await getDocs(attendedChatsQuery);
+        setEventsAttendedCount(attendedChatsSnapshot.size);
+
+        let latestAttendedDate: Date | null = null;
+        if (attendedChatsSnapshot.size > 0) {
+            const eventPromises = attendedChatsSnapshot.docs.map(chatDoc => {
+                const eventId = (chatDoc.data() as EventChat).eventId;
+                return getDoc(doc(db, "events", eventId));
+            });
+            const eventDocs = await Promise.all(eventPromises);
+            eventDocs.forEach(eventDoc => {
+                if (eventDoc.exists()) {
+                    const eventDate = safeToDate(eventDoc.data()?.dateTime);
+                    if (eventDate < new Date() && (!latestAttendedDate || eventDate > latestAttendedDate)) {
+                        latestAttendedDate = eventDate;
+                    }
+                }
+            });
+        }
+        setLastEventAttendedDate(latestAttendedDate);
+
+        // Fetch Guests Hosted Statistics
+        const eventsRef = collection(db, "events");
+        const hostedEventsQuery = query(eventsRef, where("ownerUids", "array-contains", currentFbUser.uid));
+        const hostedEventsSnapshot = await getDocs(hostedEventsQuery);
+        let totalHosted = 0;
+        if (!hostedEventsSnapshot.empty) {
+            const guestCountPromises = hostedEventsSnapshot.docs.map(async (eventDoc) => {
+                const approvedGuestsQuery = query(
+                    collection(db, "eventChats"),
+                    where("eventId", "==", eventDoc.id),
+                    where("status", "==", "request_approved")
+                );
+                const approvedGuestsSnapshot = await getDocs(approvedGuestsQuery);
+                return approvedGuestsSnapshot.size;
+            });
+            const guestCounts = await Promise.all(guestCountPromises);
+            totalHosted = guestCounts.reduce((sum, count) => sum + count, 0);
+        }
+        setGuestsHostedCount(totalHosted);
+
+    } catch (error) {
+        console.error("Error fetching user stats:", error);
+        toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בטעינת סטטיסטיקות משתמש.", variant: "destructive" });
+    } finally {
+        setIsLoadingStats(false);
+    }
+  }, [toast]);
+
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, async (fbUser) => {
-      setIsLoading(true);
+      setIsLoading(true); // General loading for user profile and events
       if (fbUser) {
         setFirebaseUser(fbUser);
         setAuthProviderId(fbUser.providerData[0]?.providerId || null);
@@ -97,16 +163,15 @@ export default function ProfilePage() {
             if (userDocSnap.exists()) {
                 const data = userDocSnap.data();
                 let localPhoneNumber = data.phone || "";
-                if (localPhoneNumber && typeof localPhoneNumber === 'string' && localPhoneNumber.startsWith("+972")) { // Check if string before substring
+                if (localPhoneNumber && typeof localPhoneNumber === 'string' && localPhoneNumber.startsWith("+972")) {
                     localPhoneNumber = "0" + localPhoneNumber.substring(4);
                 }
-                
                 firestoreProfileData = {
                     name: data.name || fbUser.displayName || "משתמש",
-                    email: data.email || fbUser.email || "", 
+                    email: data.email || fbUser.email || "",
                     bio: data.bio || "",
                     phone: localPhoneNumber,
-                    birthday: data.birthday || "", 
+                    birthday: data.birthday || "",
                 };
             } else {
                 firestoreProfileData.email = fbUser.email || "";
@@ -132,7 +197,7 @@ export default function ProfilePage() {
         form.reset({
           name: profileData.name,
           email: profileData.email,
-          birthday: profileData.birthday || "", 
+          birthday: profileData.birthday || "",
           bio: profileData.bio || "",
           phone: profileData.phone || "",
         });
@@ -140,7 +205,7 @@ export default function ProfilePage() {
         setIsLoadingOwnedEvents(true);
         try {
           const eventsRef = collection(db, "events");
-          const q = query(eventsRef, where("ownerUids", "array-contains", fbUser.uid), where("dateTime", ">=", Timestamp.now()));
+          const q = query(eventsRef, where("ownerUids", "array-contains", fbUser.uid), where("dateTime", ">=", Timestamp.now()), orderBy("dateTime", "asc"));
           const querySnapshot = await getDocs(q);
           const fetchedEvents = querySnapshot.docs.map(eventDoc => {
             const data = eventDoc.data();
@@ -150,7 +215,7 @@ export default function ProfilePage() {
                 dateTime: safeToDate(data.dateTime),
                 createdAt: safeToDate(data.createdAt),
                 updatedAt: safeToDate(data.updatedAt),
-                imageUrl: data.imageUrl || undefined, 
+                imageUrl: data.imageUrl || undefined,
             } as EventType;
           });
           setOwnedEvents(fetchedEvents);
@@ -160,19 +225,23 @@ export default function ProfilePage() {
         } finally {
             setIsLoadingOwnedEvents(false);
         }
+        // Fetch stats after user is set
+        fetchUserStats(fbUser);
 
       } else {
         setUser(null);
         setFirebaseUser(null);
         setAuthProviderId(null);
         setOwnedEvents([]);
+        setIsLoadingStats(false); // No user, no stats to load
         router.push('/signin');
       }
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [form, router, toast]);
+  }, [form, router, toast, fetchUserStats]);
+
 
   useEffect(() => {
     if (user?.birthday) {
@@ -211,7 +280,7 @@ export default function ProfilePage() {
       return;
     }
 
-    const originalEmail = user?.email; 
+    const originalEmail = user?.email;
     const isEmailManagedExternally = authProviderId === 'google.com' || authProviderId === 'apple.com';
 
     try {
@@ -223,10 +292,10 @@ export default function ProfilePage() {
         name: values.name,
         bio: values.bio || "",
         phone: values.phone || "",
-        birthday: values.birthday || "", 
+        birthday: values.birthday || "",
         updatedAt: serverTimestamp(),
       };
-      
+
       if (!isEmailManagedExternally) {
           firestoreUpdateData.email = values.email || null;
       }
@@ -241,14 +310,14 @@ export default function ProfilePage() {
           ...prevUser,
           name: values.name,
           email: isEmailManagedExternally ? prevUser.email : (values.email || ""),
-          birthday: values.birthday || undefined, 
+          birthday: values.birthday || undefined,
           bio: values.bio || undefined,
           phone: values.phone || undefined,
         };
         setCalculatedAgeState(calculateAge(updatedUser.birthday));
         return updatedUser;
       });
-      form.reset({ 
+      form.reset({
         name: values.name,
         email: isEmailManagedExternally ? (user?.email || "") : (values.email || ""),
         birthday: values.birthday || "",
@@ -307,9 +376,9 @@ export default function ProfilePage() {
       toast({ title: HEBREW_TEXT.general.error, description: "עליך להיות מחובר כדי לאפשר התראות.", variant: "destructive" });
       return;
     }
-    
-    const initialToast = toast({ 
-      title: "מאפשר התראות...", 
+
+    const initialToast = toast({
+      title: "מאפשר התראות...",
       description: "אנא אשר את בקשת ההרשאה מהדפדפן.",
       duration: 10000 // Give user time to interact with browser prompt
     });
@@ -329,7 +398,7 @@ export default function ProfilePage() {
       case 'denied':
         toast({ title: "התראות נדחו", description: "לא אישרת קבלת התראות. ניתן לשנות זאת בהגדרות הדפדפן.", variant: "default", duration: 7000 });
         break;
-      case 'default': 
+      case 'default':
         toast({ title: "התראות לא הופעלו", description: "לא בוצעה פעולה לגבי התראות, או שהבקשה נדחתה בעבר.", variant: "default", duration: 7000 });
         break;
       case 'not-supported':
@@ -349,7 +418,7 @@ export default function ProfilePage() {
         toast({ title: "סטטוס לא ידוע", description: "התקבלה תגובה לא צפויה לגבי הגדרת התראות.", variant: "destructive", duration: 7000 });
     }
   };
-  
+
   const getManagedByProviderText = () => {
     if (authProviderId === 'google.com') return "מנוהל באמצעות Google";
     if (authProviderId === 'apple.com') return "מנוהל באמצעות Apple";
@@ -450,10 +519,10 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>{HEBREW_TEXT.profile.email}</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="email" 
-                            placeholder="your@email.com" 
-                            {...field} 
+                          <Input
+                            type="email"
+                            placeholder="your@email.com"
+                            {...field}
                             disabled={isSubmitting || authProviderId === 'google.com' || authProviderId === 'apple.com'}
                           />
                         </FormControl>
@@ -532,7 +601,7 @@ export default function ProfilePage() {
                         {HEBREW_TEXT.profile.birthday}
                     </h3>
                     <p className="text-foreground/90">
-                        {user.birthday ? formatDate(new Date(user.birthday + "T00:00:00"), 'dd/MM/yyyy', { locale: he }) : HEBREW_TEXT.profile.infoNotProvided}
+                        {user.birthday ? formatDateFns(new Date(user.birthday + "T00:00:00"), 'dd/MM/yyyy', { locale: he }) : HEBREW_TEXT.profile.infoNotProvided}
                         {calculatedAgeState !== null && ` (גיל ${calculatedAgeState})`}
                     </p>
                   </div>
@@ -553,6 +622,46 @@ export default function ProfilePage() {
                       </Button>
                   </Card>
                 )}
+
+                <Separator />
+
+                <div>
+                  <h3 className="font-headline text-xl font-semibold mb-3 flex items-center">
+                    <Activity className="ml-2 h-5 w-5 text-primary" />
+                    {HEBREW_TEXT.profile.statsSectionTitle}
+                  </h3>
+                  {isLoadingStats ? (
+                    <div className="flex justify-center items-center p-4">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      <span className="mr-2 text-muted-foreground">{HEBREW_TEXT.profile.loadingStats}</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                      <div className="flex items-center text-foreground/90">
+                        <Users className="ml-2 h-4 w-4 text-primary/80" />
+                        <span>{HEBREW_TEXT.profile.eventsAttended} {eventsAttendedCount ?? HEBREW_TEXT.profile.dataNotAvailable}</span>
+                      </div>
+                      <div className="flex items-center text-foreground/90">
+                        <CalendarDays className="ml-2 h-4 w-4 text-primary/80" />
+                        <span>
+                          {HEBREW_TEXT.profile.lastEventAttendedDate} {lastEventAttendedDate ? formatDateFns(lastEventAttendedDate, 'dd/MM/yyyy', { locale: he }) : HEBREW_TEXT.profile.dataNotAvailable}
+                        </span>
+                      </div>
+                      <div className="flex items-center text-foreground/90">
+                        <UserPlaceholderIcon className="ml-2 h-4 w-4 text-primary/80" /> {/* Placeholder icon */}
+                        <span>{HEBREW_TEXT.profile.guestsHosted} {guestsHostedCount ?? HEBREW_TEXT.profile.dataNotAvailable}</span>
+                      </div>
+                       <div className="flex items-center text-foreground/90">
+                        <ThumbsUp className="ml-2 h-4 w-4 text-green-500" />
+                        <span>{HEBREW_TEXT.profile.positiveRatings} {HEBREW_TEXT.profile.dataSoon}</span>
+                      </div>
+                      <div className="flex items-center text-foreground/90">
+                        <ThumbsDown className="ml-2 h-4 w-4 text-red-500" />
+                        <span>{HEBREW_TEXT.profile.negativeRatings} {HEBREW_TEXT.profile.dataSoon}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <div className="mt-6">
                     <h3 className="font-headline text-xl font-semibold mb-2">{HEBREW_TEXT.event.myEvents}</h3>
@@ -592,7 +701,7 @@ export default function ProfilePage() {
                                             <CardTitle className="text-md font-body mb-1 truncate hover:underline">{event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}</CardTitle>
                                         </Link>
                                         <div className="text-xs text-muted-foreground flex items-center mb-0.5">
-                                            <CalendarDays className="ml-1.5 h-3 w-3" /> {formatDate(event.dateTime, 'dd/MM/yy', { locale: he })}
+                                            <CalendarDays className="ml-1.5 h-3 w-3" /> {formatDateFns(event.dateTime, 'dd/MM/yy', { locale: he })}
                                         </div>
                                     </div>
                                     <Tooltip>
@@ -653,7 +762,7 @@ export default function ProfilePage() {
                     אפשר התראות דחיפה
                   </Button>
                 </div>
-                
+
                 <Separator className="my-8" />
 
                 <div>
@@ -702,10 +811,3 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
-    
-
-    
-
-    
-
-

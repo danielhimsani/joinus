@@ -204,6 +204,15 @@ export const HEBREW_TEXT = {
     legalInformationSectionTitle: "מידע משפטי",
     termsOfUseLink: "תנאי שימוש",
     privacyPolicyLink: "מדיניות פרטיות",
+    statsSectionTitle: "סטטיסטיקות משתמש",
+    eventsAttended: "אירועים שהשתתף:",
+    lastEventAttendedDate: "ביקור אחרון באירוע:",
+    guestsHosted: "אורחים שאירח:",
+    positiveRatings: "דירוגים חיוביים:",
+    negativeRatings: "דירוגים שליליים:",
+    dataNotAvailable: "אין נתונים",
+    dataSoon: "(בקרוב)",
+    loadingStats: "טוען סטטיסטיקות...",
   },
   notifications: {
     title: "התראות",
@@ -386,5 +395,15 @@ export const HEBREW_TEXT = {
 
 
 
-  
+
+
+
+
+
+
+
+
+
+
+
 

@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import type { UserProfile, Event as EventType } from "@/types";
-import { CalendarDays, MapPin, ShieldCheck, User as UserIconLucide, AlertCircle, ChevronRight, Cake, Contact as UserPlaceholderIcon } from "lucide-react"; // Changed ChevronLeft to ChevronRight
+import type { UserProfile, Event as EventType, EventChat } from "@/types"; // Added EventChat
+import { CalendarDays, MapPin, ShieldCheck, User as UserIconLucide, AlertCircle, ChevronRight, Cake, Contact as UserPlaceholderIcon, Users, ThumbsUp, ThumbsDown, Loader2, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -28,8 +28,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs, Timestamp } from "firebase/firestore";
-import { format } from 'date-fns';
+import { doc, getDoc, collection, query, where, getDocs, Timestamp, orderBy } from "firebase/firestore";
+import { format as formatDateFns } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate } from '@/lib/dateUtils';
 import type { User as FirebaseUser } from "firebase/auth";
@@ -37,14 +37,14 @@ import type { User as FirebaseUser } from "firebase/auth";
 const calculateAge = (birthDateString?: string): number | null => {
   if (!birthDateString) return null;
   const birthDate = new Date(birthDateString);
-  if (isNaN(birthDate.getTime())) return null; 
+  if (isNaN(birthDate.getTime())) return null;
   const today = new Date();
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDifference = today.getMonth() - birthDate.getMonth();
   if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
     age--;
   }
-  return age < 0 ? null : age; 
+  return age < 0 ? null : age;
 };
 
 export default function UserProfilePage() {
@@ -60,11 +60,18 @@ export default function UserProfilePage() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
 
+  // New state for statistics
+  const [eventsAttendedCount, setEventsAttendedCount] = useState<number | null>(null);
+  const [lastEventAttendedDate, setLastEventAttendedDate] = useState<Date | null>(null);
+  const [guestsHostedCount, setGuestsHostedCount] = useState<number | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+
   useEffect(() => {
     const unsubscribe = firebaseAuthInstance.onAuthStateChanged(user => {
         setCurrentUser(user);
         if (!user) {
-            router.push('/signin'); 
+            router.push('/signin');
         }
     });
     return () => unsubscribe();
@@ -72,15 +79,18 @@ export default function UserProfilePage() {
 
 
   const fetchProfileAndEvents = useCallback(async () => {
-    if (!userId || !currentUser) { 
+    if (!userId || !currentUser) {
       setIsLoading(false);
+      setIsLoadingStats(false);
       return;
     }
 
     setIsLoading(true);
+    setIsLoadingStats(true);
     setError(null);
 
     try {
+      // Fetch User Profile
       const userDocRef = doc(db, "users", userId);
       const userDocSnap = await getDoc(userDocRef);
 
@@ -90,20 +100,21 @@ export default function UserProfilePage() {
           id: userDocSnap.id,
           firebaseUid: data.firebaseUid || userId,
           name: data.name || "משתמש",
-          email: data.email, 
+          email: data.email,
           profileImageUrl: data.profileImageUrl,
           bio: data.bio || "",
-          birthday: data.birthday, 
+          birthday: data.birthday,
           isVerified: data.isVerified || false,
         };
         setProfileData(userProfile);
         setCalculatedAge(calculateAge(userProfile.birthday));
 
+        // Fetch Owned Future Events
         const eventsRef = collection(db, "events");
         const nowAsTimestamp = Timestamp.now();
-        const q = query(eventsRef, where("ownerUids", "array-contains", userId), where("dateTime", ">=", nowAsTimestamp));
-        const querySnapshot = await getDocs(q);
-        const fetchedEvents = querySnapshot.docs.map(eventDoc => {
+        const ownedEventsQuery = query(eventsRef, where("ownerUids", "array-contains", userId), where("dateTime", ">=", nowAsTimestamp), orderBy("dateTime", "asc"));
+        const ownedEventsSnapshot = await getDocs(ownedEventsQuery);
+        const fetchedOwnedEvents = ownedEventsSnapshot.docs.map(eventDoc => {
           const eventData = eventDoc.data();
           return {
             id: eventDoc.id,
@@ -113,7 +124,53 @@ export default function UserProfilePage() {
             updatedAt: eventData.updatedAt ? safeToDate(eventData.updatedAt) : new Date(),
           } as EventType;
         });
-        setOwnedEvents(fetchedEvents);
+        setOwnedEvents(fetchedOwnedEvents);
+
+        // Fetch Events Attended Statistics
+        const attendedChatsQuery = query(
+          collection(db, "eventChats"),
+          where("guestUid", "==", userId),
+          where("status", "==", "request_approved")
+        );
+        const attendedChatsSnapshot = await getDocs(attendedChatsQuery);
+        setEventsAttendedCount(attendedChatsSnapshot.size);
+
+        let latestAttendedDate: Date | null = null;
+        if (attendedChatsSnapshot.size > 0) {
+          const eventPromises = attendedChatsSnapshot.docs.map(chatDoc => {
+            const eventId = (chatDoc.data() as EventChat).eventId;
+            return getDoc(doc(db, "events", eventId));
+          });
+          const eventDocs = await Promise.all(eventPromises);
+          eventDocs.forEach(eventDoc => {
+            if (eventDoc.exists()) {
+              const eventDate = safeToDate(eventDoc.data()?.dateTime);
+              if (eventDate < new Date() && (!latestAttendedDate || eventDate > latestAttendedDate)) {
+                latestAttendedDate = eventDate;
+              }
+            }
+          });
+        }
+        setLastEventAttendedDate(latestAttendedDate);
+
+        // Fetch Guests Hosted Statistics
+        const hostedEventsQuery = query(eventsRef, where("ownerUids", "array-contains", userId));
+        const hostedEventsSnapshot = await getDocs(hostedEventsQuery);
+        let totalHosted = 0;
+        if (!hostedEventsSnapshot.empty) {
+          const guestCountPromises = hostedEventsSnapshot.docs.map(async (eventDoc) => {
+            const approvedGuestsQuery = query(
+              collection(db, "eventChats"),
+              where("eventId", "==", eventDoc.id),
+              where("status", "==", "request_approved")
+            );
+            const approvedGuestsSnapshot = await getDocs(approvedGuestsQuery);
+            return approvedGuestsSnapshot.size;
+          });
+          const guestCounts = await Promise.all(guestCountPromises);
+          totalHosted = guestCounts.reduce((sum, count) => sum + count, 0);
+        }
+        setGuestsHostedCount(totalHosted);
 
       } else {
         setError(HEBREW_TEXT.profile.userProfile + " " + HEBREW_TEXT.general.error.toLowerCase() + ": " + HEBREW_TEXT.event.noUsersFound.toLowerCase());
@@ -125,16 +182,18 @@ export default function UserProfilePage() {
       setProfileData(null);
     } finally {
       setIsLoading(false);
+      setIsLoadingStats(false);
     }
   }, [userId, currentUser]);
 
   useEffect(() => {
-    if (currentUser) { 
+    if (currentUser) {
         fetchProfileAndEvents();
     }
   }, [fetchProfileAndEvents, currentUser]);
 
-  if (isLoading || !currentUser) {
+
+  if (isLoading || !currentUser) { // Keep loading if isLoading is true OR currentUser is not yet set
     return (
       <div className="container mx-auto px-4 py-12">
         <Card className="max-w-3xl mx-auto">
@@ -189,7 +248,7 @@ export default function UserProfilePage() {
       </div>
     );
   }
-  
+
   const isViewingOwnProfile = currentUser?.uid === userId;
 
   return (
@@ -254,7 +313,47 @@ export default function UserProfilePage() {
                 {profileData.bio || HEBREW_TEXT.profile.bioNotProvided}
               </p>
             </div>
-            
+
+            <Separator />
+
+            <div>
+              <h3 className="font-headline text-xl font-semibold mb-3 flex items-center">
+                <Activity className="ml-2 h-5 w-5 text-primary" />
+                {HEBREW_TEXT.profile.statsSectionTitle}
+              </h3>
+              {isLoadingStats ? (
+                <div className="flex justify-center items-center p-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <span className="mr-2 text-muted-foreground">{HEBREW_TEXT.profile.loadingStats}</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div className="flex items-center text-foreground/90">
+                    <Users className="ml-2 h-4 w-4 text-primary/80" />
+                    <span>{HEBREW_TEXT.profile.eventsAttended} {eventsAttendedCount ?? HEBREW_TEXT.profile.dataNotAvailable}</span>
+                  </div>
+                  <div className="flex items-center text-foreground/90">
+                    <CalendarDays className="ml-2 h-4 w-4 text-primary/80" />
+                    <span>
+                      {HEBREW_TEXT.profile.lastEventAttendedDate} {lastEventAttendedDate ? formatDateFns(lastEventAttendedDate, 'dd/MM/yyyy', { locale: he }) : HEBREW_TEXT.profile.dataNotAvailable}
+                    </span>
+                  </div>
+                  <div className="flex items-center text-foreground/90">
+                    <UserIconLucide className="ml-2 h-4 w-4 text-primary/80" /> {/* Placeholder icon */}
+                    <span>{HEBREW_TEXT.profile.guestsHosted} {guestsHostedCount ?? HEBREW_TEXT.profile.dataNotAvailable}</span>
+                  </div>
+                  <div className="flex items-center text-foreground/90">
+                    <ThumbsUp className="ml-2 h-4 w-4 text-green-500" />
+                    <span>{HEBREW_TEXT.profile.positiveRatings} {HEBREW_TEXT.profile.dataSoon}</span>
+                  </div>
+                  <div className="flex items-center text-foreground/90">
+                    <ThumbsDown className="ml-2 h-4 w-4 text-red-500" />
+                    <span>{HEBREW_TEXT.profile.negativeRatings} {HEBREW_TEXT.profile.dataSoon}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <Separator />
 
             <div>
@@ -266,7 +365,7 @@ export default function UserProfilePage() {
                       <Card className="hover:shadow-md transition-shadow p-4">
                         <CardTitle className="text-lg font-body mb-1">{event.name || HEBREW_TEXT.event.eventNameGenericPlaceholder}</CardTitle>
                         <div className="text-sm text-muted-foreground flex items-center mb-0.5">
-                          <CalendarDays className="ml-1.5 h-4 w-4" /> {format(event.dateTime, 'dd/MM/yy, HH:mm', { locale: he })}
+                          <CalendarDays className="ml-1.5 h-4 w-4" /> {formatDateFns(event.dateTime, 'dd/MM/yy, HH:mm', { locale: he })}
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center">
                           <MapPin className="ml-1.5 h-4 w-4" /> {event.locationDisplayName || event.location}
@@ -285,5 +384,3 @@ export default function UserProfilePage() {
     </TooltipProvider>
   );
 }
-
-    
