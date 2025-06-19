@@ -378,7 +378,7 @@ export const HEBREW_TEXT = {
   },
   hallOfFame: {
     title: "היכל התהילה",
-    topAttendees: "המשתתפים המובילים",
+    topAttendees: "האורחים המתמידים",
     mostGuestsHosted: "המארחים המובילים",
     mostLikedGuests: "האורחים האהובים",
     rank: "דירוג",
@@ -387,8 +387,6 @@ export const HEBREW_TEXT = {
     guestsHosted: "אורחים שאירח",
     thumbsUp: "כמות לייקים",
     lastEventAttended: "תאריך אירוע אחרון",
-    filterAllEvents: "כלול אירועים עתידיים",
-    filterPastEvents: "אירועי עבר בלבד", // This might not be used directly anymore
     yourScore: "הניקוד שלך",
     notRanked: "עדיין לא מדורג",
     noData: "אין נתונים להצגה עדיין.",
@@ -398,3 +396,5 @@ export const HEBREW_TEXT = {
     guests: "אורחים",
   }
 };
+
+    

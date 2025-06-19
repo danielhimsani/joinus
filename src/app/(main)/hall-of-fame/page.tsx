@@ -41,7 +41,6 @@ export default function HallOfFamePage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [includeFutureEvents, setIncludeFutureEvents] = useState<boolean>(false); // Default to false (past events only)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
@@ -78,23 +77,18 @@ export default function HallOfFamePage() {
       allEvents.forEach(event => eventDateMap.set(event.id, event.dateTime));
       const now = new Date();
 
-      const relevantChats = !includeFutureEvents
-        ? allApprovedChats.filter(chat => {
-            const eventDate = eventDateMap.get(chat.eventId);
-            return eventDate && eventDate < now;
-          })
-        : allApprovedChats;
+      // Always filter for past events
+      const relevantChats = allApprovedChats.filter(chat => {
+        const eventDate = eventDateMap.get(chat.eventId);
+        return eventDate && eventDate < now;
+      });
 
-      const relevantEvents = !includeFutureEvents
-        ? allEvents.filter(event => event.dateTime < now)
-        : allEvents;
+      const relevantEvents = allEvents.filter(event => event.dateTime < now);
 
-      const relevantPositiveRatings = !includeFutureEvents
-        ? allPositiveRatings.filter(rating => {
-            const eventDate = eventDateMap.get(rating.eventId);
-            return eventDate && eventDate < now;
-        })
-        : allPositiveRatings;
+      const relevantPositiveRatings = allPositiveRatings.filter(rating => {
+        const eventDate = eventDateMap.get(rating.eventId);
+        return eventDate && eventDate < now;
+      });
 
 
       const attendeeData: Record<string, { score: number; lastEventDate: Date | null }> = {};
@@ -264,7 +258,7 @@ export default function HallOfFamePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser, includeFutureEvents, toast]);
+  }, [currentUser, toast]);
 
   useEffect(() => {
     if (currentUser) { 
@@ -337,7 +331,14 @@ export default function HallOfFamePage() {
     else if (type === 'hosts') isUserInTopList = leaderboardHosts.some(u => u.userId === userData.userId);
     else if (type === 'liked') isUserInTopList = leaderboardMostLiked.some(u => u.userId === userData.userId);
 
-    if (isUserInTopList && userData.rank <= MAX_LEADERBOARD_USERS) return null; 
+    // If user is already in the top list (table), don't show the separate card.
+    if (isUserInTopList && userData.rank != null && userData.rank <= MAX_LEADERBOARD_USERS) return null;
+    
+    // For 'liked' tab, if user is NOT in top list (i.e., rank > MAX_LEADERBOARD_USERS or not found in top list), also don't show the separate card.
+    if (type === 'liked' && (!isUserInTopList || (userData.rank != null && userData.rank > MAX_LEADERBOARD_USERS))) {
+        return null;
+    }
+
 
     return (
       <Card className="mt-4 bg-muted/50" dir="rtl">
@@ -389,15 +390,14 @@ export default function HallOfFamePage() {
             <h1 className="text-3xl md:text-4xl font-bold font-headline">{HEBREW_TEXT.hallOfFame.title}</h1>
             <Crown className="h-10 w-10 text-amber-500 mr-3" />
           </div>
-          <Skeleton className="h-10 w-48" />
         </div>
-        <Tabs defaultValue="attendees" className="w-full">
+        <Tabs defaultValue="hosts" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-4 h-12">
-            <TabsTrigger value="attendees" dir="rtl"><Skeleton className="h-5 w-32" /></TabsTrigger>
             <TabsTrigger value="hosts" dir="rtl"><Skeleton className="h-5 w-32" /></TabsTrigger>
+            <TabsTrigger value="attendees" dir="rtl"><Skeleton className="h-5 w-32" /></TabsTrigger>
             <TabsTrigger value="liked" dir="rtl"><Skeleton className="h-5 w-32" /></TabsTrigger>
           </TabsList>
-          <TabsContent value="attendees">
+          <TabsContent value="hosts">
             <Card dir="rtl">
               <CardHeader dir="rtl" className="py-4 px-4">
                 <CardDescription dir="rtl"><Skeleton className="h-6 w-full max-w-xs" /></CardDescription>
@@ -431,49 +431,27 @@ export default function HallOfFamePage() {
             <h1 className="text-3xl md:text-4xl font-bold font-headline">{HEBREW_TEXT.hallOfFame.title}</h1>
             <Crown className="h-10 w-10 text-amber-500 mr-3" />
         </div>
-        <div className="flex items-center space-x-2 rtl:space-x-reverse w-full sm:w-auto min-w-[240px] max-w-xs">
-          <Switch
-            id="includeFutureEvents"
-            checked={includeFutureEvents}
-            onCheckedChange={setIncludeFutureEvents}
-            aria-label={HEBREW_TEXT.hallOfFame.filterAllEvents}
-          />
-          <Label htmlFor="includeFutureEvents" className="cursor-pointer text-sm text-muted-foreground">
-            {HEBREW_TEXT.hallOfFame.filterAllEvents}
-          </Label>
-        </div>
       </div>
 
-      <Tabs defaultValue="attendees" className="w-full">
+      <Tabs defaultValue="hosts" className="w-full">
         <TabsList className="grid w-full grid-cols-3 mb-6 h-12">
-          <TabsTrigger value="attendees" className="text-sm sm:text-base" dir="rtl">
-            {HEBREW_TEXT.hallOfFame.topAttendees}
-            <Users className="mr-2 h-5 w-5" />
-          </TabsTrigger>
           <TabsTrigger value="hosts" className="text-sm sm:text-base" dir="rtl">
             {HEBREW_TEXT.hallOfFame.mostGuestsHosted}
             <UserCheck className="mr-2 h-5 w-5" />
+          </TabsTrigger>
+          <TabsTrigger value="attendees" className="text-sm sm:text-base" dir="rtl">
+            {HEBREW_TEXT.hallOfFame.topAttendees}
+            <Users className="mr-2 h-5 w-5" />
           </TabsTrigger>
           <TabsTrigger value="liked" className="text-sm sm:text-base" dir="rtl">
             {HEBREW_TEXT.hallOfFame.mostLikedGuests}
             <ThumbsUpIcon className="mr-2 h-5 w-5" />
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="attendees">
-          <Card dir="rtl">
-            <CardHeader dir="rtl" className="py-4 px-4">
-              <CardDescription dir="rtl">משתמשים שהשתתפו במספר האירועים הרב ביותר!</CardDescription>
-            </CardHeader>
-            <CardContent className="p-4">
-              {renderLeaderboardTable(leaderboardAttendees, 'attendees')}
-              {renderCurrentUserScore(currentUserAttendeeScore, 'attendees', HEBREW_TEXT.hallOfFame.topAttendees)}
-            </CardContent>
-          </Card>
-        </TabsContent>
         <TabsContent value="hosts">
           <Card dir="rtl">
             <CardHeader dir="rtl" className="py-4 px-4">
-              <CardDescription dir="rtl">משתמשים שאירחו את מספר האורחים הרב ביותר!</CardDescription>
+              <CardDescription dir="rtl">משתמשים שאירחו את מספר האורחים הרב ביותר באירועים שהסתיימו!</CardDescription>
             </CardHeader>
             <CardContent className="p-4">
               {renderLeaderboardTable(leaderboardHosts, 'hosts')}
@@ -481,10 +459,21 @@ export default function HallOfFamePage() {
             </CardContent>
           </Card>
         </TabsContent>
+        <TabsContent value="attendees">
+          <Card dir="rtl">
+            <CardHeader dir="rtl" className="py-4 px-4">
+              <CardDescription dir="rtl">משתמשים שהשתתפו במספר האירועים הרב ביותר שהסתיימו!</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4">
+              {renderLeaderboardTable(leaderboardAttendees, 'attendees')}
+              {renderCurrentUserScore(currentUserAttendeeScore, 'attendees', HEBREW_TEXT.hallOfFame.topAttendees)}
+            </CardContent>
+          </Card>
+        </TabsContent>
         <TabsContent value="liked">
           <Card dir="rtl">
             <CardHeader dir="rtl" className="py-4 px-4">
-              <CardDescription dir="rtl">האורחים שקיבלו הכי הרבה דירוגים חיוביים!</CardDescription>
+              <CardDescription dir="rtl">האורחים שקיבלו הכי הרבה דירוגים חיוביים מאירועים שהסתיימו!</CardDescription>
             </CardHeader>
             <CardContent className="p-4">
               {renderLeaderboardTable(leaderboardMostLiked, 'liked')}
@@ -502,3 +491,4 @@ export default function HallOfFamePage() {
   );
 }
 
+    
