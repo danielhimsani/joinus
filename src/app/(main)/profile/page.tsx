@@ -4,7 +4,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { useState, useEffect, useCallback } from "react"; // Added useCallback
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,8 +24,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
-import type { UserProfile, Event as EventType, EventChat } from "@/types"; // Added EventChat
-import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users, FileText, Gavel, Contact as UserPlaceholderIcon, BellRing, Activity, ThumbsUp, ThumbsDown } from "lucide-react"; // Added Activity, ThumbsUp, ThumbsDown
+import type { UserProfile, Event as EventType, EventChat } from "@/types";
+import { Camera, Edit3, ShieldCheck, UploadCloud, Loader2, LogOut, Moon, Sun, CalendarDays, MapPin, Cake, Users, FileText, Gavel, Contact as UserPlaceholderIcon, BellRing, Activity, ThumbsUp, ThumbsDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/tooltip";
 import { onAuthStateChanged, type User as FirebaseUser, updateProfile } from "firebase/auth";
 import { auth as firebaseAuthInstance, db } from "@/lib/firebase";
-import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, serverTimestamp, orderBy } from "firebase/firestore"; // Added orderBy
+import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, serverTimestamp, orderBy } from "firebase/firestore";
 import { format as formatDateFns } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
@@ -48,7 +48,7 @@ import { requestNotificationPermissionAndSaveToken, type NotificationSetupResult
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.profile.nameMinLengthError }),
-  email: z.string().email({ message: HEBREW_TEXT.auth.emailInvalid }).optional().or(z.literal("")), // Allow empty string
+  email: z.string().email({ message: HEBREW_TEXT.auth.emailInvalid }).optional().or(z.literal("")),
   birthday: z.string().optional(),
   bio: z.string().max(300, { message: "ביו יכול להכיל עד 300 תווים."}).optional(),
   phone: z.string().refine(val => val === '' || !val || /^0\d([\d]{0,1})([-]{0,1})\d{7}$/.test(val), {
@@ -71,10 +71,11 @@ export default function ProfilePage() {
   const [isLoadingOwnedEvents, setIsLoadingOwnedEvents] = useState(false);
   const [calculatedAgeState, setCalculatedAgeState] = useState<number | null>(null);
 
-  // New state for statistics
   const [eventsAttendedCount, setEventsAttendedCount] = useState<number | null>(null);
   const [lastEventAttendedDate, setLastEventAttendedDate] = useState<Date | null>(null);
   const [guestsHostedCount, setGuestsHostedCount] = useState<number | null>(null);
+  const [positiveRatingsCount, setPositiveRatingsCount] = useState<number | null>(null);
+  const [negativeRatingsCount, setNegativeRatingsCount] = useState<number | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
 
@@ -93,7 +94,6 @@ export default function ProfilePage() {
     if (!currentFbUser) return;
     setIsLoadingStats(true);
     try {
-        // Fetch Events Attended Statistics
         const attendedChatsQuery = query(
             collection(db, "eventChats"),
             where("guestUid", "==", currentFbUser.uid),
@@ -120,7 +120,6 @@ export default function ProfilePage() {
         }
         setLastEventAttendedDate(latestAttendedDate);
 
-        // Fetch Guests Hosted Statistics
         const eventsRef = collection(db, "events");
         const hostedEventsQuery = query(eventsRef, where("ownerUids", "array-contains", currentFbUser.uid));
         const hostedEventsSnapshot = await getDocs(hostedEventsQuery);
@@ -140,6 +139,17 @@ export default function ProfilePage() {
         }
         setGuestsHostedCount(totalHosted);
 
+        const ratingsQuery = query(collection(db, "userEventGuestRatings"), where("guestUid", "==", currentFbUser.uid));
+        const ratingsSnapshot = await getDocs(ratingsQuery);
+        let positive = 0;
+        let negative = 0;
+        ratingsSnapshot.forEach(doc => {
+          if (doc.data().ratingType === 'positive') positive++;
+          if (doc.data().ratingType === 'negative') negative++;
+        });
+        setPositiveRatingsCount(positive);
+        setNegativeRatingsCount(negative);
+
     } catch (error) {
         console.error("Error fetching user stats:", error);
         toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בטעינת סטטיסטיקות משתמש.", variant: "destructive" });
@@ -151,7 +161,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, async (fbUser) => {
-      setIsLoading(true); // General loading for user profile and events
+      setIsLoading(true);
       if (fbUser) {
         setFirebaseUser(fbUser);
         setAuthProviderId(fbUser.providerData[0]?.providerId || null);
@@ -205,7 +215,6 @@ export default function ProfilePage() {
         setIsLoadingOwnedEvents(true);
         try {
           const eventsRef = collection(db, "events");
-          // Query for all events owned by the user, ordered by date
           const q = query(eventsRef, where("ownerUids", "array-contains", fbUser.uid), orderBy("dateTime", "asc"));
           const querySnapshot = await getDocs(q);
           const fetchedEvents = querySnapshot.docs.map(eventDoc => {
@@ -226,7 +235,6 @@ export default function ProfilePage() {
         } finally {
             setIsLoadingOwnedEvents(false);
         }
-        // Fetch stats after user is set
         fetchUserStats(fbUser);
 
       } else {
@@ -234,7 +242,7 @@ export default function ProfilePage() {
         setFirebaseUser(null);
         setAuthProviderId(null);
         setOwnedEvents([]);
-        setIsLoadingStats(false); // No user, no stats to load
+        setIsLoadingStats(false);
         router.push('/signin');
       }
       setIsLoading(false);
@@ -381,12 +389,12 @@ export default function ProfilePage() {
     const initialToast = toast({
       title: "מאפשר התראות...",
       description: "אנא אשר את בקשת ההרשאה מהדפדפן.",
-      duration: 10000 // Give user time to interact with browser prompt
+      duration: 10000
     });
 
     const result: NotificationSetupResult = await requestNotificationPermissionAndSaveToken(firebaseUser.uid);
 
-    initialToast.dismiss(); // Dismiss the optimistic toast
+    initialToast.dismiss();
 
     switch (result.status) {
       case 'granted':
@@ -640,7 +648,7 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
                       <div className="flex items-center text-foreground/90">
                         <Users className="ml-2 h-4 w-4 text-primary/80" />
-                        <span>{HEBREW_TEXT.profile.eventsAttended} {eventsAttendedCount ?? HEBREW_TEXT.profile.dataNotAvailable}</span>
+                        <span>{HEBREW_TEXT.profile.eventsAttended} {eventsAttendedCount ?? 0}</span>
                       </div>
                       <div className="flex items-center text-foreground/90">
                         <CalendarDays className="ml-2 h-4 w-4 text-primary/80" />
@@ -648,17 +656,17 @@ export default function ProfilePage() {
                           {HEBREW_TEXT.profile.lastEventAttendedDate} {lastEventAttendedDate ? formatDateFns(lastEventAttendedDate, 'dd/MM/yyyy', { locale: he }) : HEBREW_TEXT.profile.dataNotAvailable}
                         </span>
                       </div>
-                      <div className="flex items-center text-foreground/90">
-                        <UserPlaceholderIcon className="ml-2 h-4 w-4 text-primary/80" /> {/* Placeholder icon */}
-                        <span>{HEBREW_TEXT.profile.guestsHosted} {guestsHostedCount ?? HEBREW_TEXT.profile.dataNotAvailable}</span>
-                      </div>
                        <div className="flex items-center text-foreground/90">
                         <ThumbsUp className="ml-2 h-4 w-4 text-green-500" />
-                        <span>{HEBREW_TEXT.profile.positiveRatings} {HEBREW_TEXT.profile.dataSoon}</span>
+                        <span>{HEBREW_TEXT.profile.positiveRatings} {positiveRatingsCount ?? 0}</span>
                       </div>
                       <div className="flex items-center text-foreground/90">
                         <ThumbsDown className="ml-2 h-4 w-4 text-red-500" />
-                        <span>{HEBREW_TEXT.profile.negativeRatings} {HEBREW_TEXT.profile.dataSoon}</span>
+                        <span>{HEBREW_TEXT.profile.negativeRatings} {negativeRatingsCount ?? 0}</span>
+                      </div>
+                      <div className="flex items-center text-foreground/90">
+                        <UserPlaceholderIcon className="ml-2 h-4 w-4 text-primary/80" />
+                        <span>{HEBREW_TEXT.profile.guestsHosted} {guestsHostedCount ?? 0}</span>
                       </div>
                     </div>
                   )}
