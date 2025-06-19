@@ -389,7 +389,7 @@ export default function MessagesPage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <ShadDialogTitle className="font-headline text-xl">סינון שיחות</ShadDialogTitle>
+                  <ShadDialogTitle className="font-headline text-xl">סינון בקשות</ShadDialogTitle>
                 </DialogHeader>
                 <div className="grid gap-6 py-4">
                     <div>
