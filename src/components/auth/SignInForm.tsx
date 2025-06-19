@@ -25,6 +25,7 @@ import { Chrome, Loader2, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { auth as firebaseAuthInstance, db } from "@/lib/firebase";
 import { useState, useEffect, useRef } from "react";
+import { Badge } from "@/components/ui/badge"; // Import Badge
 
 const emailPasswordSchema = z.object({
   email: z.string().email({ message: HEBREW_TEXT.auth.emailInvalid }),
@@ -461,8 +462,9 @@ export function SignInForm() {
           </div>
           <div className="mt-6 grid grid-cols-1 gap-3">
              {signInMethod === 'email' && (
-                <Button variant="outline" type="button" onClick={() => { setSignInMethod('phone'); resetPhoneAuthFlow(); }} disabled={isLoadingOverall}>
+                <Button variant="outline" type="button" onClick={() => { setSignInMethod('phone'); resetPhoneAuthFlow(); }} disabled={isLoadingOverall} className="relative">
                     <Phone className="mr-2 h-4 w-4" /> {HEBREW_TEXT.auth.switchToPhone}
+                    <Badge variant="warning" className="absolute -top-2 -right-2 px-1.5 py-0.5 text-xs">בטא</Badge>
                 </Button>
             )}
             {signInMethod === 'phone' && (
