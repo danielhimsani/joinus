@@ -28,7 +28,7 @@ import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, server
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
-import { Edit3, Users, FileText, Send, Loader2, AlertCircle, ChevronRight, Contact as UserPlaceholderIcon, MessageSquare, CalendarDays, MoreVertical, UserX, ChevronLeft } from 'lucide-react'; // Added ChevronLeft
+import { Edit3, Users, FileText, Send, Loader2, AlertCircle, ChevronRight, Contact as UserPlaceholderIcon, MessageSquare, CalendarDays, MoreVertical, UserX, ChevronLeft, ThumbsUp, ThumbsDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,9 +81,12 @@ export default function ManageEventGuestsPage() {
   const [showRevokeDialog, setShowRevokeDialog] = useState(false);
   const [guestToRevoke, setGuestToRevoke] = useState<ApprovedGuestWithProfile | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
+  const [isRating, setIsRating] = useState(false); // For rating loading state
 
   const totalGuestPages = Math.ceil(approvedGuests.length / GUESTS_PER_PAGE);
   const paginatedGuests = approvedGuests.slice((currentPage - 1) * GUESTS_PER_PAGE, currentPage * GUESTS_PER_PAGE);
+  
+  const isEventPast = event ? new Date(event.dateTime) < new Date() : false;
 
 
   useEffect(() => {
@@ -272,6 +275,28 @@ export default function ManageEventGuestsPage() {
     }
   };
 
+  const handleRateGuest = async (guest: ApprovedGuestWithProfile, rating: 'positive' | 'negative') => {
+    if (!guest || !event) return;
+    setIsRating(true);
+    // Placeholder for rating logic
+    // In a real app, you would write this rating to Firestore (e.g., a 'ratings' collection or update user profile)
+    console.log(`Rating guest ${guest.id} (${guest.name}) for event ${event.id} with: ${rating}`);
+    
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 700));
+
+    const ratingText = rating === 'positive' ? 'חיובית' : 'שלילית';
+    toast({
+        title: HEBREW_TEXT.general.success,
+        description: HEBREW_TEXT.event.guestRatedSuccessfully.replace('{guestName}', guest.name || HEBREW_TEXT.chat.guest).replace('{ratingType}', ratingText)
+    });
+    
+    // Potentially update UI to reflect that rating has been given for this guest (e.g., disable buttons)
+    // For now, we'll just show a toast.
+    setIsRating(false);
+  };
+
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-12">
@@ -384,7 +409,7 @@ export default function ManageEventGuestsPage() {
                             <Link href={`/profile/${guest.firebaseUid}`} passHref>
                               <Avatar className="h-10 w-10 border cursor-pointer">
                                 {guest.profileImageUrl ? (
-                                  <AvatarImage src={guest.profileImageUrl} alt={guest.name} data-ai-hint="guest avatar" />
+                                  <AvatarImage src={guest.profileImageUrl} alt={guest.name} data-ai-hint="guest avatar"/>
                                 ) : (
                                   <AvatarFallback className="bg-muted">
                                     <UserPlaceholderIcon className="h-6 w-6 text-muted-foreground"/>
@@ -404,22 +429,56 @@ export default function ManageEventGuestsPage() {
                                       {HEBREW_TEXT.chat.title}
                                   </Link>
                               </Button>
-                              <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                                          <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                                      </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                      <DropdownMenuItem 
-                                          onSelect={() => { setGuestToRevoke(guest); setShowRevokeDialog(true); }}
-                                          className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-                                      >
-                                          <UserX className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
-                                          {HEBREW_TEXT.event.revokeApproval}
-                                      </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                              </DropdownMenu>
+                              {!isEventPast ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isRating || isRevoking}>
+                                            <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem 
+                                            onSelect={() => { setGuestToRevoke(guest); setShowRevokeDialog(true); }}
+                                            className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                                            disabled={isRating || isRevoking}
+                                        >
+                                            <UserX className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                                            {HEBREW_TEXT.event.revokeApproval}
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                              ) : (
+                                <div className="flex items-center space-x-0 rtl:space-x-reverse">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                              variant="ghost" 
+                                              size="icon" 
+                                              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-500/10" 
+                                              onClick={() => handleRateGuest(guest, 'positive')}
+                                              disabled={isRating || isRevoking}
+                                            >
+                                                {isRating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsUp className="h-4 w-4" />}
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>{HEBREW_TEXT.general.ratePositive}</p></TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                              variant="ghost" 
+                                              size="icon" 
+                                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                              onClick={() => handleRateGuest(guest, 'negative')}
+                                              disabled={isRating || isRevoking}
+                                            >
+                                                {isRating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsDown className="h-4 w-4" />}
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>{HEBREW_TEXT.general.rateNegative}</p></TooltipContent>
+                                    </Tooltip>
+                                </div>
+                              )}
                           </div>
                         </div>
                       </Card>
@@ -491,7 +550,7 @@ export default function ManageEventGuestsPage() {
                               <div className='flex items-center text-xs text-muted-foreground'>
                                   <Avatar className="h-6 w-6 ml-1.5 border">
                                       {ann.ownerDisplayImage ? (
-                                          <AvatarImage src={ann.ownerDisplayImage} alt={ann.ownerDisplayName} data-ai-hint="owner avatar" />
+                                          <AvatarImage src={ann.ownerDisplayImage} alt={ann.ownerDisplayName} data-ai-hint="owner avatar"/>
                                       ) : (
                                           <AvatarFallback className="text-xs bg-muted">
                                             <UserPlaceholderIcon className="h-4 w-4 text-muted-foreground" />
@@ -549,3 +608,4 @@ export default function ManageEventGuestsPage() {
   );
 }
     
+

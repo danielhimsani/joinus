@@ -170,6 +170,8 @@ export const HEBREW_TEXT = {
     confirmRevoke: "אשר ביטול",
     guestApprovalRevoked: "אישור ההגעה של {guestName} בוטל.",
     errorRevokingApproval: "שגיאה בביטול אישור ההגעה.",
+    guestRatedSuccessfully: "האורח {guestName} דורג {ratingType}.",
+    errorRatingGuest: "שגיאה בדירוג האורח.",
     showAppliedEventsFilterLabel: "הצג אירועים שכבר ביקשתי להצטרף אליהם",
   },
   profile: {
@@ -326,6 +328,8 @@ export const HEBREW_TEXT = {
     confirm: "אישור",
     formValidationFailed: "אנא מלא את כל שדות החובה ותקן את השגיאות המסומנות.",
     yesterday: "אתמול",
+    ratePositive: "דירוג חיובי",
+    rateNegative: "דירוג שלילי",
   },
   foodIcons: {
     kosherMeat: "בשרי",
@@ -383,3 +387,4 @@ export const HEBREW_TEXT = {
 
 
   
+
