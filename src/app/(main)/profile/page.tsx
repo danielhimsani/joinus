@@ -739,11 +739,7 @@ export default function ProfilePage() {
                   <h3 className="font-headline text-xl font-semibold mb-2">{HEBREW_TEXT.profile.pastEventsAttended}</h3>
                   <p className="text-muted-foreground">רשימת אירועים תופיע כאן.</p>
                 </div>
-                <div className="mt-6">
-                  <h3 className="font-headline text-xl font-semibold mb-2">{HEBREW_TEXT.profile.reviews}</h3>
-                  <p className="text-muted-foreground">ביקורות ממשתמשים אחרים יופיעו כאן.</p>
-                </div>
-
+                
                 <Separator className="my-8" />
 
                 <div>
