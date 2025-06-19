@@ -75,7 +75,7 @@ const getWeddingTypeLabel = (weddingType: WeddingType | undefined) => {
 const getPriceDisplay = (event: Event) => {
     switch (event.paymentOption) {
         case 'payWhatYouWant': return HEBREW_TEXT.event.payWhatYouWant;
-        case 'fixed': return `₪${event.pricePerGuest || 0} ${HEBREW_TEXT.event.pricePerGuest}`;
+        case 'fixed': return `${HEBREW_TEXT.event.pricePerGuest}: ₪${event.pricePerGuest || 0}`;
         default: return '';
     }
 };
@@ -96,6 +96,7 @@ export default function EventDetailPage() {
   const [showRequestToJoinModal, setShowRequestToJoinModal] = useState(false);
   const [approvedGuestsCount, setApprovedGuestsCount] = useState(0);
   const [isLoadingApprovedCount, setIsLoadingApprovedCount] = useState(true);
+  const [isEventPast, setIsEventPast] = useState(false);
 
   const [existingChatId, setExistingChatId] = useState<string | null>(null);
   const [isLoadingExistingChat, setIsLoadingExistingChat] = useState(true);
@@ -123,6 +124,7 @@ export default function EventDetailPage() {
     setApprovedGuestsCount(0);
     setExistingChatId(null);
     setFetchError(null);
+    setIsEventPast(false);
 
     try {
       const eventDocRef = doc(db, "events", eventId);
@@ -171,6 +173,10 @@ export default function EventDetailPage() {
         } as Event;
         setEvent(fetchedEvent);
 
+        if (fetchedEvent && fetchedEvent.dateTime) {
+            setIsEventPast(new Date(fetchedEvent.dateTime) < new Date());
+        }
+
         const chatsRef = collection(db, "eventChats");
         const qCount = query(chatsRef, where("eventId", "==", eventId), where("status", "==", "request_approved"));
         const countSnapshot = await getCountFromServer(qCount);
@@ -180,8 +186,8 @@ export default function EventDetailPage() {
         const currentIsOwnerCheck = fetchedEvent && currentUser && fetchedEvent.ownerUids.includes(currentUser.uid);
 
         if (currentIsOwnerCheck) {
-          setIsLoadingExistingChat(false); // No specific chat to load for owner on this page
-        } else { // Not owner
+          setIsLoadingExistingChat(false);
+        } else {
           if (currentUser && eventId) {
               const existingChatQuery = query(
                   chatsRef,
@@ -233,7 +239,7 @@ export default function EventDetailPage() {
         router.push('/signin');
         return;
     }
-    if (event && currentUser) {
+    if (event && currentUser && !isEventPast) { // Added !isEventPast check
         if (availableSpots <= 0) {
             toast({ title: HEBREW_TEXT.event.noSpotsAvailableTitle, description: HEBREW_TEXT.event.noSpotsAvailableMessage, variant: "default" });
             return;
@@ -294,7 +300,7 @@ export default function EventDetailPage() {
           title: HEBREW_TEXT.general.success,
           description: HEBREW_TEXT.event.eventSharedSuccessfully,
         });
-        return; 
+        return;
       } catch (shareError) {
         console.error('Web Share API attempt failed:', shareError);
       }
@@ -505,14 +511,14 @@ export default function EventDetailPage() {
                 <Loader2 className="ml-2 h-5 w-5 animate-spin" />
                 {HEBREW_TEXT.general.loading}...
               </Button>
-            ) : existingChatId ? (
+            ) : !isEventPast && existingChatId ? (
               <Button asChild className="w-full font-body text-lg py-3">
                 <Link href={`/chat/${existingChatId}`}>
                   <MessageSquare className="ml-2 h-5 w-5" />
                   {HEBREW_TEXT.chat.viewChat}
                 </Link>
               </Button>
-            ) : !isOwner && currentUser ? (
+            ) : !isEventPast && !isOwner && currentUser ? (
               availableSpots > 0 ? (
                 <Button className="w-full font-body text-lg py-3" onClick={handleOpenRequestToJoinModal}>
                   <MessageCircleMore className="ml-2 h-5 w-5" />
@@ -524,11 +530,17 @@ export default function EventDetailPage() {
                   {HEBREW_TEXT.event.noSpotsAvailableTitle}
                 </Button>
               )
-            ) : !currentUser ? (
+            ) : !isEventPast && !currentUser ? (
               <Button className="w-full font-body text-lg py-3" onClick={() => router.push('/signin')}>
                 <MessageCircleMore className="ml-2 h-5 w-5" />
                 התחבר כדי לבקש להצטרף
               </Button>
+            ) : isEventPast && !isOwner ? (
+                 <Alert variant="default" className="text-center">
+                    <Info className="mx-auto h-5 w-5 mb-1" />
+                    <AlertTitle className="font-body">{HEBREW_TEXT.event.eventHasPassedTitle}</AlertTitle>
+                    <AlertDescription className="text-xs">{HEBREW_TEXT.event.eventHasPassedMessage}</AlertDescription>
+                </Alert>
             ) : null}
             </div>
           </div>
@@ -579,7 +591,7 @@ export default function EventDetailPage() {
         )}
       </Card>
 
-      {event && currentUser && !isOwner && !existingChatId && (
+      {event && currentUser && !isOwner && !existingChatId && !isEventPast && (
         <RequestToJoinModal
           isOpen={showRequestToJoinModal}
           onOpenChange={setShowRequestToJoinModal}

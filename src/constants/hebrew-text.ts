@@ -175,6 +175,8 @@ export const HEBREW_TEXT = {
     showAppliedEventsFilterLabel: "הצג אירועים שכבר ביקשתי להצטרף אליהם",
     ratingSaved: "הדירוג נשמר בהצלחה.",
     errorSavingRating: "שגיאה בשמירת הדירוג.",
+    eventHasPassedTitle: "האירוע הסתיים",
+    eventHasPassedMessage: "לא ניתן לבקש להצטרף לאירוע שכבר התקיים.",
   },
   profile: {
     userProfile: "פרופיל משתמש",
@@ -194,7 +196,6 @@ export const HEBREW_TEXT = {
     verifiedBadge: "מאומת",
     verificationPending: "אימות בתהליך",
     pastEventsAttended: "אירועים קודמים שהשתתפת",
-    reviews: "ביקורות",
     saveChanges: "שמור שינויים",
     settings: "הגדרות",
     darkMode: "מצב כהה",
@@ -397,4 +398,3 @@ export const HEBREW_TEXT = {
     guests: "אורחים",
   }
 };
-

@@ -40,7 +40,7 @@ const defaultAdvancedFilters: Filters = {
   kashrut: "any",
   weddingType: "any",
   minAvailableSpots: 1,
-  showAppliedEvents: false, // Default for new filter
+  showAppliedEvents: false,
 };
 
 const countActiveEventFilters = (currentFilters: Filters): number => {
@@ -51,7 +51,7 @@ const countActiveEventFilters = (currentFilters: Filters): number => {
   if (currentFilters.kashrut && currentFilters.kashrut !== defaultAdvancedFilters.kashrut) count++;
   if (currentFilters.weddingType && currentFilters.weddingType !== defaultAdvancedFilters.weddingType) count++;
   if (currentFilters.minAvailableSpots !== undefined && currentFilters.minAvailableSpots !== defaultAdvancedFilters.minAvailableSpots && currentFilters.minAvailableSpots !== 1) count++;
-  if (currentFilters.showAppliedEvents === true) count++; // Count if true (non-default)
+  if (currentFilters.showAppliedEvents === true) count++;
   return count;
 };
 
@@ -67,11 +67,10 @@ export default function EventsPage() {
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [isLoadingApprovedCounts, setIsLoadingApprovedCounts] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [advancedFilters, setAdvancedFilters] = useState<Filters>({...defaultAdvancedFilters}); 
+  const [advancedFilters, setAdvancedFilters] = useState<Filters>({...defaultAdvancedFilters});
   const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
   const [showFiltersModal, setShowFiltersModal] = useState(false);
 
-  // Pull to refresh states
   const [isMobileView, setIsMobileView] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
   const [pullStart, setPullStart] = useState(0);
@@ -79,7 +78,6 @@ export default function EventsPage() {
   const [isRefreshingViaPull, setIsRefreshingViaPull] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -120,9 +118,9 @@ export default function EventsPage() {
 
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 767px)"); // Tailwind 'md' breakpoint is 768px
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
     const handleResize = () => setIsMobileView(mediaQuery.matches);
-    handleResize(); // Initial check
+    handleResize();
     mediaQuery.addEventListener('change', handleResize);
     return () => mediaQuery.removeEventListener('change', handleResize);
   }, []);
@@ -136,7 +134,6 @@ export default function EventsPage() {
     setIsLoadingApprovedCounts(true);
     const newApprovedCountsMap = new Map<string, number>();
     try {
-      // Consider batching these calls if eventsToQuery can be very large
       const countPromises = eventsToQuery.map(async (event) => {
         const chatsRef = collection(db, "eventChats");
         const q = query(chatsRef, where("eventId", "==", event.id), where("status", "==", "request_approved"));
@@ -148,7 +145,7 @@ export default function EventsPage() {
       setApprovedCountsMap(newApprovedCountsMap);
     } catch (error) {
       console.error("Error fetching approved counts:", error);
-      setApprovedCountsMap(new Map()); 
+      setApprovedCountsMap(new Map());
     } finally {
       setIsLoadingApprovedCounts(false);
     }
@@ -157,24 +154,24 @@ export default function EventsPage() {
 
   const fetchEventsFromFirestore = useCallback(async () => {
     setIsLoadingEvents(true);
-    setIsLoadingApprovedCounts(true); 
+    setIsLoadingApprovedCounts(true);
     setFetchError(null);
     try {
       const eventsCollectionRef = collection(db, "events");
       const q = query(eventsCollectionRef, orderBy("dateTime", "asc"));
       const querySnapshot = await getDocs(q);
-      
+
       const fetchedEventsData = querySnapshot.docs.map(docSnap => {
         const data = docSnap.data();
         return {
           id: docSnap.id,
           ...data,
-          ownerUids: data.ownerUids || [], 
+          ownerUids: data.ownerUids || [],
           dateTime: safeToDate(data.dateTime),
           createdAt: safeToDate(data.createdAt),
           updatedAt: safeToDate(data.updatedAt),
           name: data.name || HEBREW_TEXT.event.eventNameGenericPlaceholder,
-          numberOfGuests: data.numberOfGuests || 0, 
+          numberOfGuests: data.numberOfGuests || 0,
           paymentOption: data.paymentOption || "free",
           location: data.location || "No location specified",
           locationDisplayName: data.locationDisplayName || "",
@@ -182,11 +179,11 @@ export default function EventsPage() {
           longitude: data.longitude || null,
           description: data.description || "",
           ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
-          foodType: data.foodType as FoodType || "meat", // Default if missing
-          kashrut: data.kashrut as KashrutType || "kosher", // Default if missing
-          weddingType: data.weddingType as WeddingType || (data as any).religionStyle as WeddingType || "traditional", // Map old religionStyle, default if missing
+          foodType: data.foodType as FoodType || "meat",
+          kashrut: data.kashrut as KashrutType || "kosher",
+          weddingType: data.weddingType as WeddingType || (data as any).religionStyle as WeddingType || "traditional",
           imageUrl: data.imageUrl,
-        } as Omit<Event, 'owners'> & { ownerUids: string[] }; 
+        } as Omit<Event, 'owners'> & { ownerUids: string[] };
       });
 
       const allOwnerUids = [...new Set(fetchedEventsData.flatMap(event => event.ownerUids || []))];
@@ -210,7 +207,7 @@ export default function EventsPage() {
             }
         }
       }
-      
+
       const eventsWithPopulatedOwners: Event[] = fetchedEventsData.map(eventData => {
           const owners: EventOwnerInfo[] = (eventData.ownerUids || []).map(uid =>
               ownerProfilesMap.get(uid) || { uid, name: "Unknown Owner", profileImageUrl: "" }
@@ -226,7 +223,7 @@ export default function EventsPage() {
       setFetchError(HEBREW_TEXT.general.error + " " + HEBREW_TEXT.general.tryAgainLater + (error instanceof Error && (error as any).code === 'failed-precondition' ? " (ייתכן שחסר אינדקס ב-Firestore. בדוק את הודעת השגיאה המלאה בקונסולה.)" : ""));
       setAllEvents([]);
       setApprovedCountsMap(new Map());
-      setIsLoadingApprovedCounts(false); 
+      setIsLoadingApprovedCounts(false);
     } finally {
       setIsLoadingEvents(false);
       setIsRefreshingViaPull(false);
@@ -239,14 +236,20 @@ export default function EventsPage() {
 
 
   useEffect(() => {
-    if (isLoadingEvents || isLoadingApprovedCounts || isLoadingAppliedEventIds) { 
-        setFilteredAndPaginatedEvents([]); 
+    if (isLoadingEvents || isLoadingApprovedCounts || isLoadingAppliedEventIds) {
+        setFilteredAndPaginatedEvents([]);
         return;
     }
 
     let eventsToFilter = [...allEvents];
 
-    // Filter out events already applied to if showAppliedEvents is false
+    // Filter out past events
+    const now = new Date();
+    eventsToFilter = eventsToFilter.filter(event => {
+        const eventDate = new Date(event.dateTime);
+        return eventDate >= now;
+    });
+
     if (!advancedFilters.showAppliedEvents && appliedEventIds.length > 0) {
         eventsToFilter = eventsToFilter.filter(event => !appliedEventIds.includes(event.id));
     }
@@ -254,7 +257,7 @@ export default function EventsPage() {
     eventsToFilter = eventsToFilter.filter(event => {
         const approvedCount = approvedCountsMap.get(event.id) || 0;
         const availableSpots = event.numberOfGuests - approvedCount;
-        return availableSpots > 0; 
+        return availableSpots > 0;
     });
 
     if (advancedFilters.minAvailableSpots !== undefined && advancedFilters.minAvailableSpots > 0) {
@@ -281,7 +284,7 @@ export default function EventsPage() {
           return new Date(event.dateTime).toDateString() === filterDateString;
       });
     }
-    
+
     if (advancedFilters.priceRange && advancedFilters.priceRange !== "any") {
         if (advancedFilters.priceRange === "payWhatYouWant") {
             eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "payWhatYouWant");
@@ -306,13 +309,12 @@ export default function EventsPage() {
 
     const newTotalPages = Math.ceil(eventsToFilter.length / EVENTS_PER_PAGE);
     setTotalPages(newTotalPages);
-    
-    // Reset to page 1 if current page is out of bounds for new total pages
+
     const newCurrentPage = (currentPage > newTotalPages && newTotalPages > 0) ? newTotalPages : (currentPage === 0 && newTotalPages > 0 ? 1 : currentPage);
     if (currentPage !== newCurrentPage && newTotalPages > 0) {
         setCurrentPage(newCurrentPage);
     } else if (newTotalPages === 0) {
-        setCurrentPage(1); // Default to 1 if no events
+        setCurrentPage(1);
     }
 
     const startIndex = (newCurrentPage - 1) * EVENTS_PER_PAGE;
@@ -326,7 +328,7 @@ export default function EventsPage() {
     if (window.scrollY === 0 && !isRefreshingViaPull && !isLoadingEvents && !isLoadingApprovedCounts && !isLoadingAppliedEventIds) {
       setPullStart(e.touches[0].clientY);
       setIsPulling(true);
-      setPullDistance(0); 
+      setPullDistance(0);
     }
   }, [isRefreshingViaPull, isLoadingEvents, isLoadingApprovedCounts, isLoadingAppliedEventIds]);
 
@@ -345,8 +347,8 @@ export default function EventsPage() {
     setIsPulling(false);
     if (pullDistance > PULL_TO_REFRESH_THRESHOLD) {
       setIsRefreshingViaPull(true);
-      setCurrentPage(1); // Reset to first page on refresh
-      fetchEventsFromFirestore(); 
+      setCurrentPage(1);
+      fetchEventsFromFirestore();
     }
     setTimeout(() => setPullDistance(0), 200);
   }, [isPulling, pullDistance, fetchEventsFromFirestore]);
@@ -357,7 +359,7 @@ export default function EventsPage() {
     const el = bodyRef.current.parentElement;
     if (!el) return;
 
-    const options = { passive: true }; 
+    const options = { passive: true };
 
     el.addEventListener("touchstart", handleTouchStart, options);
     el.addEventListener("touchmove", handleTouchMove, options);
@@ -375,13 +377,13 @@ export default function EventsPage() {
 
   const handleAdvancedFilterChange = (newFilters: Filters) => {
     setAdvancedFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
     setShowFiltersModal(false);
   };
 
   const handleSimpleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSimpleSearchQuery(event.target.value);
-    setCurrentPage(1); // Reset to first page on new search
+    setCurrentPage(1);
   };
 
 
@@ -399,7 +401,7 @@ export default function EventsPage() {
 
   const canActuallyRefresh = pullDistance > PULL_TO_REFRESH_THRESHOLD;
   const indicatorVisible = isPulling || isRefreshingViaPull;
-  const indicatorY = isRefreshingViaPull ? 20 : Math.min(pullDistance, PULL_INDICATOR_TRAVEL) * 0.5; 
+  const indicatorY = isRefreshingViaPull ? 20 : Math.min(pullDistance, PULL_INDICATOR_TRAVEL) * 0.5;
   const indicatorOpacity = isRefreshingViaPull ? 1 : Math.min(1, pullDistance / PULL_TO_REFRESH_THRESHOLD);
 
   const areFiltersApplied = checkAreEventsFiltersActive(advancedFilters);
@@ -412,10 +414,10 @@ export default function EventsPage() {
         <div
           style={{
             position: 'fixed',
-            top: isRefreshingViaPull || isPulling ? `${Math.max(0, indicatorY - 20)}px` : '-60px', 
+            top: isRefreshingViaPull || isPulling ? `${Math.max(0, indicatorY - 20)}px` : '-60px',
             left: '50%',
             transform: 'translateX(-50%)',
-            zIndex: 1000, 
+            zIndex: 1000,
             padding: '10px',
             background: 'hsl(var(--background))',
             borderRadius: '50%',
@@ -439,7 +441,7 @@ export default function EventsPage() {
       )}
 
       <div className="container mx-auto px-4 py-12">
-        <div className="hidden md:flex mb-6 justify-center"> {/* Desktop Logo */}
+        <div className="hidden md:flex mb-6 justify-center">
           <Image src="/app_logo.png" alt={HEBREW_TEXT.appName} width={150} height={45} data-ai-hint="app logo"/>
         </div>
 
@@ -515,7 +517,7 @@ export default function EventsPage() {
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
                 >
-                  <ChevronRight className="h-4 w-4" /> {/* Icon for Previous in RTL */}
+                  <ChevronRight className="h-4 w-4" />
                   {HEBREW_TEXT.general.previous}
                 </Button>
                 <span className="text-sm text-muted-foreground">
@@ -527,7 +529,7 @@ export default function EventsPage() {
                   disabled={currentPage === totalPages}
                 >
                   {HEBREW_TEXT.general.next}
-                  <ChevronLeft className="h-4 w-4" /> {/* Icon for Next in RTL */}
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
               </div>
             )}
