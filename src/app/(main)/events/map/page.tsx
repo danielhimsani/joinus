@@ -9,11 +9,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, MapPin, AlertCircle, ChevronRight } from "lucide-react"; // Changed ChevronLeft to ChevronRight
 import { Button } from "@/components/ui/button";
-import { db } from "@/lib/firebase";
+import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, Timestamp, where, getCountFromServer } from "firebase/firestore";
 import { safeToDate } from '@/lib/dateUtils';
 import type { Event, EventOwnerInfo } from "@/types";
 import { useJsApiLoader } from '@react-google-maps/api';
+import type { User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 
 const libraries: ("places" | "marker")[] = ['places', 'marker'];
 
@@ -25,6 +27,7 @@ export default function FullMapPage() {
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [isLoadingApprovedCounts, setIsLoadingApprovedCounts] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
 
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -37,6 +40,13 @@ export default function FullMapPage() {
     language: 'iw',
     region: 'IL',
   });
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(firebaseAuthInstance, (user) => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
 
   const fetchApprovedCountsForEvents = useCallback(async (eventsToQuery: Event[]) => {
     if (eventsToQuery.length === 0) {
@@ -77,6 +87,7 @@ export default function FullMapPage() {
         return {
           id: docSnap.id,
           ...data,
+          ownerUids: data.ownerUids || [], // Ensure ownerUids is always an array
           dateTime: safeToDate(data.dateTime),
           name: data.name || HEBREW_TEXT.event.eventNameGenericPlaceholder,
           numberOfGuests: data.numberOfGuests || 0,
@@ -128,7 +139,21 @@ export default function FullMapPage() {
   }, [fetchAllEventsForMap]);
 
   const mapEventLocations: MapLocation[] = useMemo(() => {
-    return allEvents
+    let eventsToProcess = [...allEvents];
+    const now = new Date();
+
+    // Filter out past events
+    eventsToProcess = eventsToProcess.filter(e => {
+        const eventDate = new Date(e.dateTime);
+        return eventDate >= now;
+    });
+
+    // Filter out user's own events
+    if (currentUser) {
+        eventsToProcess = eventsToProcess.filter(e => !e.ownerUids.includes(currentUser.uid));
+    }
+
+    return eventsToProcess
       .filter(e => e.latitude != null && e.longitude != null)
       .map(e => ({
         id: e.id,
@@ -138,8 +163,10 @@ export default function FullMapPage() {
         locationDisplayName: e.locationDisplayName || e.location,
         dateTime: e.dateTime,
         numberOfGuests: e.numberOfGuests - (approvedCountsMap.get(e.id) || 0),
-      }));
-  }, [allEvents, approvedCountsMap]);
+      }))
+      // Also filter out events with no available spots for the map
+      .filter(e => e.numberOfGuests > 0);
+  }, [allEvents, approvedCountsMap, currentUser]);
 
   const isLoading = isLoadingEvents || isLoadingApprovedCounts || isFetchingLocation || !isMapsApiLoaded;
 

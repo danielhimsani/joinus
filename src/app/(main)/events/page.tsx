@@ -250,6 +250,11 @@ export default function EventsPage() {
         return eventDate >= now;
     });
 
+    // Filter out user's own events
+    if (currentUser) {
+        eventsToFilter = eventsToFilter.filter(event => !event.ownerUids.includes(currentUser.uid));
+    }
+
     if (!advancedFilters.showAppliedEvents && appliedEventIds.length > 0) {
         eventsToFilter = eventsToFilter.filter(event => !appliedEventIds.includes(event.id));
     }
@@ -321,7 +326,7 @@ export default function EventsPage() {
     const endIndex = startIndex + EVENTS_PER_PAGE;
     setFilteredAndPaginatedEvents(eventsToFilter.slice(startIndex, endIndex));
 
-  }, [allEvents, approvedCountsMap, simpleSearchQuery, advancedFilters, isLoadingEvents, isLoadingApprovedCounts, isLoadingAppliedEventIds, appliedEventIds, currentPage]);
+  }, [allEvents, approvedCountsMap, simpleSearchQuery, advancedFilters, isLoadingEvents, isLoadingApprovedCounts, isLoadingAppliedEventIds, appliedEventIds, currentPage, currentUser]);
 
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
