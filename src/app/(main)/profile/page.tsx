@@ -93,42 +93,78 @@ export default function ProfilePage() {
   const fetchUserStats = useCallback(async (currentFbUser: FirebaseUser) => {
     if (!currentFbUser) return;
     setIsLoadingStats(true);
+    const now = new Date();
+    const eventDateMap = new Map<string, Date>();
+
     try {
+        // Step 1: Gather all potentially relevant event IDs
+        const allEventIds = new Set<string>();
+
         const attendedChatsQuery = query(
             collection(db, "eventChats"),
             where("guestUid", "==", currentFbUser.uid),
             where("status", "==", "request_approved")
         );
         const attendedChatsSnapshot = await getDocs(attendedChatsQuery);
-        setEventsAttendedCount(attendedChatsSnapshot.size);
-
-        let latestAttendedDate: Date | null = null;
-        if (attendedChatsSnapshot.size > 0) {
-            const eventPromises = attendedChatsSnapshot.docs.map(chatDoc => {
-                const eventId = (chatDoc.data() as EventChat).eventId;
-                return getDoc(doc(db, "events", eventId));
-            });
-            const eventDocs = await Promise.all(eventPromises);
-            eventDocs.forEach(eventDoc => {
-                if (eventDoc.exists()) {
-                    const eventDate = safeToDate(eventDoc.data()?.dateTime);
-                    if (eventDate < new Date() && (!latestAttendedDate || eventDate > latestAttendedDate)) {
-                        latestAttendedDate = eventDate;
-                    }
-                }
-            });
-        }
-        setLastEventAttendedDate(latestAttendedDate);
+        attendedChatsSnapshot.forEach(chatDoc => allEventIds.add((chatDoc.data() as EventChat).eventId));
 
         const eventsRef = collection(db, "events");
         const hostedEventsQuery = query(eventsRef, where("ownerUids", "array-contains", currentFbUser.uid));
         const hostedEventsSnapshot = await getDocs(hostedEventsQuery);
+        hostedEventsSnapshot.forEach(eventDoc => allEventIds.add(eventDoc.id));
+
+        const ratingsQuery = query(collection(db, "userEventGuestRatings"), where("guestUid", "==", currentFbUser.uid));
+        const ratingsSnapshot = await getDocs(ratingsQuery);
+        ratingsSnapshot.forEach(ratingDoc => allEventIds.add(ratingDoc.data().eventId as string));
+
+        // Step 2: Fetch event details (dateTime) for these IDs
+        if (allEventIds.size > 0) {
+            const MAX_IDS_PER_QUERY = 30;
+            const eventIdArray = Array.from(allEventIds);
+            for (let i = 0; i < eventIdArray.length; i += MAX_IDS_PER_QUERY) {
+                const chunkEventIds = eventIdArray.slice(i, i + MAX_IDS_PER_QUERY);
+                if (chunkEventIds.length > 0) {
+                    const eventsDetailsQuery = query(collection(db, "events"), where("__name__", "in", chunkEventIds));
+                    const eventsDetailsSnapshot = await getDocs(eventsDetailsQuery);
+                    eventsDetailsSnapshot.forEach(eventDoc => {
+                        eventDateMap.set(eventDoc.id, safeToDate(eventDoc.data()?.dateTime));
+                    });
+                }
+            }
+        }
+        
+        // Step 3: Calculate stats based on past events
+
+        // Events Attended Count & Last Event Attended Date
+        let attendedCount = 0;
+        let latestAttendedDate: Date | null = null;
+        attendedChatsSnapshot.forEach(chatDoc => {
+            const eventId = (chatDoc.data() as EventChat).eventId;
+            const eventDate = eventDateMap.get(eventId);
+            if (eventDate && eventDate < now) {
+                attendedCount++;
+                if (!latestAttendedDate || eventDate > latestAttendedDate) {
+                    latestAttendedDate = eventDate;
+                }
+            }
+        });
+        setEventsAttendedCount(attendedCount);
+        setLastEventAttendedDate(latestAttendedDate);
+
+        // Guests Hosted Count
         let totalHosted = 0;
-        if (!hostedEventsSnapshot.empty) {
-            const guestCountPromises = hostedEventsSnapshot.docs.map(async (eventDoc) => {
+        const hostedPastEventIds: string[] = [];
+        hostedEventsSnapshot.forEach(eventDoc => {
+            const eventDate = eventDateMap.get(eventDoc.id);
+            if (eventDate && eventDate < now) {
+                hostedPastEventIds.push(eventDoc.id);
+            }
+        });
+        if (hostedPastEventIds.length > 0) {
+            const guestCountPromises = hostedPastEventIds.map(async (eventId) => {
                 const approvedGuestsQuery = query(
                     collection(db, "eventChats"),
-                    where("eventId", "==", eventDoc.id),
+                    where("eventId", "==", eventId),
                     where("status", "==", "request_approved")
                 );
                 const approvedGuestsSnapshot = await getDocs(approvedGuestsQuery);
@@ -139,13 +175,16 @@ export default function ProfilePage() {
         }
         setGuestsHostedCount(totalHosted);
 
-        const ratingsQuery = query(collection(db, "userEventGuestRatings"), where("guestUid", "==", currentFbUser.uid));
-        const ratingsSnapshot = await getDocs(ratingsQuery);
+        // Positive/Negative Ratings Count
         let positive = 0;
         let negative = 0;
-        ratingsSnapshot.forEach(doc => {
-          if (doc.data().ratingType === 'positive') positive++;
-          if (doc.data().ratingType === 'negative') negative++;
+        ratingsSnapshot.forEach(ratingDoc => {
+            const eventId = ratingDoc.data().eventId as string;
+            const eventDate = eventDateMap.get(eventId);
+            if (eventDate && eventDate < now) {
+                if (ratingDoc.data().ratingType === 'positive') positive++;
+                if (ratingDoc.data().ratingType === 'negative') negative++;
+            }
         });
         setPositiveRatingsCount(positive);
         setNegativeRatingsCount(negative);
@@ -733,12 +772,6 @@ export default function ProfilePage() {
                         <p className="text-muted-foreground">{HEBREW_TEXT.profile.noFutureEventsOwnedSelf}</p>
                     )}
                 </div>
-
-
-                <div className="mt-6">
-                  <h3 className="font-headline text-xl font-semibold mb-2">{HEBREW_TEXT.profile.pastEventsAttended}</h3>
-                  <p className="text-muted-foreground">רשימת אירועים תופיע כאן.</p>
-                </div>
                 
                 <Separator className="my-8" />
 
@@ -816,3 +849,5 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
+
+    
