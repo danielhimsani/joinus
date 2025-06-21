@@ -4,7 +4,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -31,6 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
   TooltipContent,
@@ -38,8 +39,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { onAuthStateChanged, type User as FirebaseUser, updateProfile } from "firebase/auth";
-import { auth as firebaseAuthInstance, db } from "@/lib/firebase";
+import { auth as firebaseAuthInstance, db, storage } from "@/lib/firebase";
 import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, serverTimestamp, orderBy } from "firebase/firestore";
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import imageCompression from 'browser-image-compression';
 import { format as formatDateFns } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { safeToDate, calculateAge } from '@/lib/dateUtils';
@@ -70,6 +73,12 @@ export default function ProfilePage() {
   const [ownedEvents, setOwnedEvents] = useState<EventType[]>([]);
   const [isLoadingOwnedEvents, setIsLoadingOwnedEvents] = useState(false);
   const [calculatedAgeState, setCalculatedAgeState] = useState<number | null>(null);
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   const [eventsAttendedCount, setEventsAttendedCount] = useState<number | null>(null);
   const [lastEventAttendedDate, setLastEventAttendedDate] = useState<Date | null>(null);
@@ -319,35 +328,101 @@ export default function ProfilePage() {
       document.documentElement.classList.remove("dark");
     }
   };
+  
+  const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      toast({ title: "דוחס תמונה...", description: "אנא המתן." });
+      try {
+        const options = {
+          maxSizeMB: 0.5, // Profile pics can be smaller
+          maxWidthOrHeight: 800,
+          useWebWorker: true,
+        };
+        const compressedFile = await imageCompression(file, options);
+        toast({ title: "הדחיסה הושלמה", description: "התמונה מוכנה לעדכון." });
+
+        setImageFile(compressedFile);
+        const previewUrl = URL.createObjectURL(compressedFile);
+        setImagePreviewUrl(previewUrl);
+      } catch (error) {
+        console.error("Error compressing image:", error);
+        toast({ title: "שגיאה בדחיסת תמונה", description: (error instanceof Error) ? error.message : String(error), variant: "destructive" });
+        setImageFile(null);
+        setImagePreviewUrl(user?.profileImageUrl || null);
+      }
+    }
+  };
 
   const onSubmit = async (values: z.infer<typeof profileFormSchema>) => {
     setIsSubmitting(true);
+    setIsUploadingImage(false);
+    setImageUploadProgress(null);
+
     if (!firebaseUser) {
       toast({ title: HEBREW_TEXT.general.error, description: "משתמש לא מאומת.", variant: "destructive" });
       setIsSubmitting(false);
       return;
     }
 
+    let finalImageUrl: string | undefined = user?.profileImageUrl;
+
+    if (imageFile) {
+        setIsUploadingImage(true);
+        const filePath = `profile_images/${firebaseUser.uid}/${Date.now()}-${imageFile.name}`;
+        const imageStorageRef = storageRef(storage, filePath);
+        const uploadTask = uploadBytesResumable(imageStorageRef, imageFile);
+
+        try {
+            await new Promise<void>((resolve, reject) => {
+                uploadTask.on(
+                'state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    setImageUploadProgress(progress);
+                },
+                (error) => {
+                    console.error("Profile image upload error:", error);
+                    toast({ title: "שגיאת העלאת תמונה", description: error.message, variant: "destructive" });
+                    reject(error);
+                },
+                async () => {
+                    finalImageUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                    resolve();
+                }
+                );
+            });
+        } catch (error) {
+            setIsUploadingImage(false);
+            setIsSubmitting(false);
+            setImageUploadProgress(null);
+            return;
+        }
+        setIsUploadingImage(false);
+        setImageUploadProgress(100);
+    }
+
     const originalEmail = user?.email;
     const isEmailManagedExternally = authProviderId === 'google.com' || authProviderId === 'apple.com';
 
     try {
-      if (values.name !== firebaseUser.displayName) {
-        await updateProfile(firebaseUser, { displayName: values.name });
-      }
-
-      const firestoreUpdateData: Partial<UserProfile> & { updatedAt: any } = {
-        name: values.name,
-        bio: values.bio || "",
-        phone: values.phone || "",
-        birthday: values.birthday || "",
-        updatedAt: serverTimestamp(),
+      await updateProfile(firebaseUser, { 
+          displayName: values.name,
+          photoURL: finalImageUrl,
+      });
+    
+      const firestoreUpdateData: Partial<UserProfile> & { updatedAt: any, profileImageUrl?: string | null } = {
+          name: values.name,
+          bio: values.bio || "",
+          phone: values.phone || "",
+          birthday: values.birthday || "",
+          profileImageUrl: finalImageUrl,
+          updatedAt: serverTimestamp(),
       };
 
       if (!isEmailManagedExternally) {
           firestoreUpdateData.email = values.email || null;
       }
-
 
       const userDocRef = doc(db, "users", firebaseUser.uid);
       await setDoc(userDocRef, firestoreUpdateData, { merge: true });
@@ -361,10 +436,12 @@ export default function ProfilePage() {
           birthday: values.birthday || undefined,
           bio: values.bio || undefined,
           phone: values.phone || undefined,
+          profileImageUrl: finalImageUrl,
         };
         setCalculatedAgeState(calculateAge(updatedUser.birthday));
         return updatedUser;
       });
+      
       form.reset({
         name: values.name,
         email: isEmailManagedExternally ? (user?.email || "") : (values.email || ""),
@@ -372,6 +449,9 @@ export default function ProfilePage() {
         bio: values.bio || "",
         phone: values.phone || "",
       });
+      
+      setImageFile(null);
+      setImagePreviewUrl(null); 
 
       toast({
         title: HEBREW_TEXT.general.success,
@@ -392,6 +472,7 @@ export default function ProfilePage() {
       toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בעדכון הפרופיל.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
+      setIsUploadingImage(false);
     }
   };
 
@@ -505,7 +586,9 @@ export default function ProfilePage() {
               <div className="flex-grow text-center">
                 <div className="relative inline-block mb-4">
                   <Avatar className="h-32 w-32 border-4 border-primary shadow-md">
-                    {user.profileImageUrl ? (
+                    {imagePreviewUrl ? (
+                      <AvatarImage src={imagePreviewUrl} alt={user.name} data-ai-hint="profile picture"/>
+                    ) : user.profileImageUrl ? (
                       <AvatarImage src={user.profileImageUrl} alt={user.name} data-ai-hint="profile picture"/>
                     ) : (
                        <AvatarFallback className="text-4xl bg-muted">
@@ -514,12 +597,35 @@ export default function ProfilePage() {
                     )}
                   </Avatar>
                   {isEditing && (
-                      <Button variant="outline" size="icon" className="absolute bottom-0 left-0 bg-background rounded-full">
-                          <Camera className="h-5 w-5"/>
-                          <span className="sr-only">{HEBREW_TEXT.profile.uploadProfileImage}</span>
-                      </Button>
+                      <>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="absolute bottom-0 left-0 bg-background rounded-full"
+                            onClick={() => imageInputRef.current?.click()}
+                        >
+                            <Camera className="h-5 w-5"/>
+                            <span className="sr-only">{HEBREW_TEXT.profile.uploadProfileImage}</span>
+                        </Button>
+                        <input
+                            type="file"
+                            ref={imageInputRef}
+                            onChange={handleImageFileChange}
+                            className="hidden"
+                            accept="image/png, image/jpeg, image/webp"
+                        />
+                      </>
                   )}
                 </div>
+                 {isUploadingImage && imageUploadProgress !== null && (
+                    <div className="w-full max-w-xs mx-auto mt-2">
+                        <Progress value={imageUploadProgress} className="w-full h-2" />
+                        <p className="text-sm text-muted-foreground text-center mt-1">
+                            {imageUploadProgress < 100 ? `מעלה תמונה... ${Math.round(imageUploadProgress)}%` : "התמונה הועלתה!"}
+                        </p>
+                    </div>
+                )}
                 <CardTitle className="font-headline text-3xl">{user.name}</CardTitle>
                 <CardDescription className="flex items-center justify-center">
                   {user.email}
@@ -849,5 +955,3 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
-
-    
