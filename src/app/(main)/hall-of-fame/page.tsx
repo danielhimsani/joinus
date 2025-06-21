@@ -434,16 +434,16 @@ export default function HallOfFamePage() {
       </div>
 
       <Tabs defaultValue="hosts" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6 h-12">
-          <TabsTrigger value="hosts" className="text-sm sm:text-base" dir="rtl">
+        <TabsList className="grid w-full grid-cols-3 mb-6 h-auto gap-2">
+          <TabsTrigger value="hosts" className="text-xs sm:text-base h-auto whitespace-normal" dir="rtl">
             {HEBREW_TEXT.hallOfFame.mostGuestsHosted}
             <UserCheck className="mr-2 h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="attendees" className="text-sm sm:text-base" dir="rtl">
+          <TabsTrigger value="attendees" className="text-xs sm:text-base h-auto whitespace-normal" dir="rtl">
             {HEBREW_TEXT.hallOfFame.topAttendees}
             <Users className="mr-2 h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="liked" className="text-sm sm:text-base" dir="rtl">
+          <TabsTrigger value="liked" className="text-xs sm:text-base h-auto whitespace-normal" dir="rtl">
             {HEBREW_TEXT.hallOfFame.mostLikedGuests}
             <ThumbsUpIcon className="mr-2 h-5 w-5" />
           </TabsTrigger>
