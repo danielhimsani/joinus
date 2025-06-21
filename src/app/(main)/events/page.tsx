@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { EventCard } from "@/components/events/EventCard";
 import { EventFilters, type Filters } from "@/components/events/EventFilters";
-import type { Event, EventOwnerInfo, FoodType, KashrutType, WeddingType } from "@/types";
+import type { Event, EventOwnerInfo } from "@/types";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -27,6 +27,7 @@ import { safeToDate } from '@/lib/dateUtils';
 import { cn } from "@/lib/utils";
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
+import { applyEventFilters } from "@/lib/eventFilterUtils";
 
 
 const PULL_TO_REFRESH_THRESHOLD = 70; // Pixels to pull to trigger refresh
@@ -179,9 +180,9 @@ export default function EventsPage() {
           longitude: data.longitude || null,
           description: data.description || "",
           ageRange: Array.isArray(data.ageRange) && data.ageRange.length === 2 ? data.ageRange : [18, 99],
-          foodType: data.foodType as FoodType || "meat",
-          kashrut: data.kashrut as KashrutType || "kosher",
-          weddingType: data.weddingType as WeddingType || (data as any).religionStyle as WeddingType || "traditional",
+          foodType: data.foodType,
+          kashrut: data.kashrut,
+          weddingType: data.weddingType || (data as any).religionStyle || "traditional",
           imageUrl: data.imageUrl,
         } as Omit<Event, 'owners'> & { ownerUids: string[] };
       });
@@ -241,78 +242,16 @@ export default function EventsPage() {
         return;
     }
 
-    let eventsToFilter = [...allEvents];
+    const filteredEvents = applyEventFilters(
+        allEvents,
+        advancedFilters,
+        simpleSearchQuery,
+        approvedCountsMap,
+        appliedEventIds,
+        currentUser?.uid || null
+    );
 
-    // Filter out past events
-    const now = new Date();
-    eventsToFilter = eventsToFilter.filter(event => {
-        const eventDate = new Date(event.dateTime);
-        return eventDate >= now;
-    });
-
-    // Filter out user's own events
-    if (currentUser) {
-        eventsToFilter = eventsToFilter.filter(event => !event.ownerUids.includes(currentUser.uid));
-    }
-
-    if (!advancedFilters.showAppliedEvents && appliedEventIds.length > 0) {
-        eventsToFilter = eventsToFilter.filter(event => !appliedEventIds.includes(event.id));
-    }
-
-    eventsToFilter = eventsToFilter.filter(event => {
-        const approvedCount = approvedCountsMap.get(event.id) || 0;
-        const availableSpots = event.numberOfGuests - approvedCount;
-        return availableSpots > 0;
-    });
-
-    if (advancedFilters.minAvailableSpots !== undefined && advancedFilters.minAvailableSpots > 0) {
-        eventsToFilter = eventsToFilter.filter(event => {
-            const approvedCount = approvedCountsMap.get(event.id) || 0;
-            const availableSpots = event.numberOfGuests - approvedCount;
-            return availableSpots >= advancedFilters.minAvailableSpots!;
-        });
-    }
-
-    if (simpleSearchQuery.trim()) {
-      const queryText = simpleSearchQuery.toLowerCase().trim();
-      eventsToFilter = eventsToFilter.filter(event =>
-          (event.name?.toLowerCase() || '').includes(queryText) ||
-          (event.description?.toLowerCase() || '').includes(queryText) ||
-          (event.locationDisplayName?.toLowerCase() || '').includes(queryText) ||
-          (event.location?.toLowerCase() || '').includes(queryText)
-      );
-    }
-
-    if (advancedFilters.date) {
-      const filterDateString = advancedFilters.date.toDateString();
-      eventsToFilter = eventsToFilter.filter(event => {
-          return new Date(event.dateTime).toDateString() === filterDateString;
-      });
-    }
-
-    if (advancedFilters.priceRange && advancedFilters.priceRange !== "any") {
-        if (advancedFilters.priceRange === "payWhatYouWant") {
-            eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "payWhatYouWant");
-        } else if (advancedFilters.priceRange === "fixed_0-100") {
-            eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "fixed" && e.pricePerGuest != null && e.pricePerGuest >= 0 && e.pricePerGuest <= 100);
-        } else if (advancedFilters.priceRange === "fixed_101-200") {
-            eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "fixed" && e.pricePerGuest != null && e.pricePerGuest >= 101 && e.pricePerGuest <= 200);
-        } else if (advancedFilters.priceRange === "fixed_201+") {
-            eventsToFilter = eventsToFilter.filter(e => e.paymentOption === "fixed" && e.pricePerGuest != null && e.pricePerGuest >= 201);
-        }
-    }
-
-     if (advancedFilters.foodType && advancedFilters.foodType !== "any") {
-      eventsToFilter = eventsToFilter.filter(event => event.foodType === advancedFilters.foodType);
-    }
-    if (advancedFilters.kashrut && advancedFilters.kashrut !== "any") {
-      eventsToFilter = eventsToFilter.filter(event => event.kashrut === advancedFilters.kashrut);
-    }
-    if (advancedFilters.weddingType && advancedFilters.weddingType !== "any") {
-      eventsToFilter = eventsToFilter.filter(event => event.weddingType === advancedFilters.weddingType);
-    }
-
-    const newTotalPages = Math.ceil(eventsToFilter.length / EVENTS_PER_PAGE);
+    const newTotalPages = Math.ceil(filteredEvents.length / EVENTS_PER_PAGE);
     setTotalPages(newTotalPages);
 
     const newCurrentPage = (currentPage > newTotalPages && newTotalPages > 0) ? newTotalPages : (currentPage === 0 && newTotalPages > 0 ? 1 : currentPage);
@@ -324,7 +263,7 @@ export default function EventsPage() {
 
     const startIndex = (newCurrentPage - 1) * EVENTS_PER_PAGE;
     const endIndex = startIndex + EVENTS_PER_PAGE;
-    setFilteredAndPaginatedEvents(eventsToFilter.slice(startIndex, endIndex));
+    setFilteredAndPaginatedEvents(filteredEvents.slice(startIndex, endIndex));
 
   }, [allEvents, approvedCountsMap, simpleSearchQuery, advancedFilters, isLoadingEvents, isLoadingApprovedCounts, isLoadingAppliedEventIds, appliedEventIds, currentPage, currentUser]);
 
@@ -391,6 +330,35 @@ export default function EventsPage() {
     setCurrentPage(1);
   };
 
+  const mapLinkQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    if (simpleSearchQuery) {
+        params.set('q', simpleSearchQuery);
+    }
+    if (advancedFilters.date) {
+        params.set('date', advancedFilters.date.toISOString().split('T')[0]); // YYYY-MM-DD
+    }
+    if (advancedFilters.priceRange && advancedFilters.priceRange !== 'any') {
+        params.set('price', advancedFilters.priceRange);
+    }
+    if (advancedFilters.foodType && advancedFilters.foodType !== 'any') {
+        params.set('food', advancedFilters.foodType);
+    }
+    if (advancedFilters.kashrut && advancedFilters.kashrut !== 'any') {
+        params.set('kashrut', advancedFilters.kashrut);
+    }
+    if (advancedFilters.weddingType && advancedFilters.weddingType !== 'any') {
+        params.set('wedding', advancedFilters.weddingType);
+    }
+    if (advancedFilters.minAvailableSpots && advancedFilters.minAvailableSpots > 1) {
+        params.set('spots', advancedFilters.minAvailableSpots.toString());
+    }
+    if (advancedFilters.showAppliedEvents) {
+        params.set('applied', 'true');
+    }
+    return params.toString();
+  }, [simpleSearchQuery, advancedFilters]);
+
 
   const renderSkeletons = () => (
     Array.from({ length: 4 }).map((_, index) => (
@@ -452,7 +420,7 @@ export default function EventsPage() {
 
         <div className="mb-8 flex items-center gap-2 rtl:space-x-reverse">
           <Button asChild variant="outline" size="icon" className="flex-shrink-0">
-            <Link href="/events/map">
+            <Link href={`/events/map?${mapLinkQuery}`}>
               <MapIcon className="h-5 w-5" />
               <span className="sr-only">{HEBREW_TEXT.map.openFullMap}</span>
             </Link>
@@ -552,4 +520,3 @@ export default function EventsPage() {
     </div>
   );
 }
-    

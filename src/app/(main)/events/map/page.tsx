@@ -2,39 +2,44 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { GoogleMapComponent, type MapLocation } from "@/components/maps/GoogleMapComponent";
 import { HEBREW_TEXT } from "@/constants/hebrew-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, MapPin, AlertCircle, ChevronRight } from "lucide-react"; // Changed ChevronLeft to ChevronRight
+import { Loader2, MapPin, AlertCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { db, auth as firebaseAuthInstance } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, Timestamp, where, getCountFromServer } from "firebase/firestore";
 import { safeToDate } from '@/lib/dateUtils';
-import type { Event, EventOwnerInfo } from "@/types";
+import type { Event, EventOwnerInfo, FoodType, KashrutType, WeddingType } from "@/types";
 import { useJsApiLoader } from '@react-google-maps/api';
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
+import { applyEventFilters } from "@/lib/eventFilterUtils";
+import type { Filters } from "@/components/events/EventFilters";
 
 const libraries: ("places" | "marker")[] = ['places', 'marker'];
 
 
 export default function FullMapPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [approvedCountsMap, setApprovedCountsMap] = useState<Map<string, number>>(new Map());
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [isLoadingApprovedCounts, setIsLoadingApprovedCounts] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [appliedEventIds, setAppliedEventIds] = useState<string[]>([]);
+  const [isLoadingAppliedEventIds, setIsLoadingAppliedEventIds] = useState(true);
 
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(true); 
 
   const { isLoaded: isMapsApiLoaded, loadError: mapsApiLoadError } = useJsApiLoader({
-    id: 'app-google-maps-script', // Standardized ID
+    id: 'app-google-maps-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries,
     language: 'iw',
@@ -47,6 +52,34 @@ export default function FullMapPage() {
     });
     return () => unsubscribeAuth();
   }, []);
+
+  useEffect(() => {
+    const fetchAppliedEvents = async () => {
+      if (!currentUser) {
+        setAppliedEventIds([]);
+        setIsLoadingAppliedEventIds(false);
+        return;
+      }
+      setIsLoadingAppliedEventIds(true);
+      try {
+        const chatsRef = collection(db, "eventChats");
+        const q = query(chatsRef, where("guestUid", "==", currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const ids = querySnapshot.docs.map(doc => doc.data().eventId as string);
+        setAppliedEventIds(ids);
+      } catch (error) {
+        console.error("Error fetching applied event IDs for map:", error);
+        setAppliedEventIds([]);
+      } finally {
+        setIsLoadingAppliedEventIds(false);
+      }
+    };
+    if (currentUser) {
+      fetchAppliedEvents();
+    } else {
+      setIsLoadingAppliedEventIds(false);
+    }
+  }, [currentUser]);
 
   const fetchApprovedCountsForEvents = useCallback(async (eventsToQuery: Event[]) => {
     if (eventsToQuery.length === 0) {
@@ -87,7 +120,7 @@ export default function FullMapPage() {
         return {
           id: docSnap.id,
           ...data,
-          ownerUids: data.ownerUids || [], // Ensure ownerUids is always an array
+          ownerUids: data.ownerUids || [],
           dateTime: safeToDate(data.dateTime),
           name: data.name || HEBREW_TEXT.event.eventNameGenericPlaceholder,
           numberOfGuests: data.numberOfGuests || 0,
@@ -139,21 +172,27 @@ export default function FullMapPage() {
   }, [fetchAllEventsForMap]);
 
   const mapEventLocations: MapLocation[] = useMemo(() => {
-    let eventsToProcess = [...allEvents];
-    const now = new Date();
+    const filtersFromParams: Filters = {
+        date: searchParams.get('date') ? new Date(searchParams.get('date') + 'T00:00:00') : undefined,
+        priceRange: searchParams.get('price') || "any",
+        foodType: (searchParams.get('food') as FoodType | "any") || "any",
+        kashrut: (searchParams.get('kashrut') as KashrutType | "any") || "any",
+        weddingType: (searchParams.get('wedding') as WeddingType | "any") || "any",
+        minAvailableSpots: searchParams.get('spots') ? parseInt(searchParams.get('spots')!, 10) : 1,
+        showAppliedEvents: searchParams.get('applied') === 'true',
+    };
+    const searchQueryFromParams = searchParams.get('q') || '';
+    
+    const filteredEvents = applyEventFilters(
+        allEvents,
+        filtersFromParams,
+        searchQueryFromParams,
+        approvedCountsMap,
+        appliedEventIds,
+        currentUser?.uid || null
+    );
 
-    // Filter out past events
-    eventsToProcess = eventsToProcess.filter(e => {
-        const eventDate = new Date(e.dateTime);
-        return eventDate >= now;
-    });
-
-    // Filter out user's own events
-    if (currentUser) {
-        eventsToProcess = eventsToProcess.filter(e => !e.ownerUids.includes(currentUser.uid));
-    }
-
-    return eventsToProcess
+    return filteredEvents
       .filter(e => e.latitude != null && e.longitude != null)
       .map(e => ({
         id: e.id,
@@ -163,12 +202,10 @@ export default function FullMapPage() {
         locationDisplayName: e.locationDisplayName || e.location,
         dateTime: e.dateTime,
         numberOfGuests: e.numberOfGuests - (approvedCountsMap.get(e.id) || 0),
-      }))
-      // Also filter out events with no available spots for the map
-      .filter(e => e.numberOfGuests > 0);
-  }, [allEvents, approvedCountsMap, currentUser]);
+      }));
+  }, [allEvents, approvedCountsMap, currentUser, searchParams, appliedEventIds]);
 
-  const isLoading = isLoadingEvents || isLoadingApprovedCounts || isFetchingLocation || !isMapsApiLoaded;
+  const isLoading = isLoadingEvents || isLoadingApprovedCounts || isFetchingLocation || !isMapsApiLoaded || isLoadingAppliedEventIds;
 
   if (mapsApiLoadError) {
     return (
@@ -249,5 +286,3 @@ export default function FullMapPage() {
     </div>
   );
 }
-
-    
