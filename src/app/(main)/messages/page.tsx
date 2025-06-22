@@ -72,6 +72,11 @@ export default function MessagesPage() {
   const [chatTimeFilter, setChatTimeFilter] = useState<ChatTimeFilter>(defaultChatTimeFilter);
   const [chatStatusFilter, setChatStatusFilter] = useState<ChatStatusFilter>(defaultChatStatusFilter);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
+  
+  // New state for dialog filters
+  const [tempTimeFilter, setTempTimeFilter] = useState<ChatTimeFilter>(defaultChatTimeFilter);
+  const [tempStatusFilter, setTempStatusFilter] = useState<ChatStatusFilter>(defaultChatStatusFilter);
+
 
   const [currentPageOwned, setCurrentPageOwned] = useState(1);
   const [currentPageRequested, setCurrentPageRequested] = useState(1);
@@ -164,6 +169,15 @@ export default function MessagesPage() {
   useEffect(() => {
     fetchChatsAndEvents();
   }, [fetchChatsAndEvents]);
+  
+  // Sync temp filters when dialog opens
+  useEffect(() => {
+    if (isFilterDialogOpen) {
+      setTempTimeFilter(chatTimeFilter);
+      setTempStatusFilter(chatStatusFilter);
+    }
+  }, [isFilterDialogOpen, chatTimeFilter, chatStatusFilter]);
+
 
   useEffect(() => {
     setCurrentPageOwned(1);
@@ -320,11 +334,15 @@ export default function MessagesPage() {
     </div>
   );
 
-  const handleClearFilters = () => {
-    setSimpleSearchQuery(defaultSimpleSearchQuery);
-    setChatTimeFilter(defaultChatTimeFilter);
-    setChatStatusFilter(defaultChatStatusFilter);
-    // Page reset will be handled by useEffect watching these filters
+  const handleApplyFilters = () => {
+    setChatTimeFilter(tempTimeFilter);
+    setChatStatusFilter(tempStatusFilter);
+    setIsFilterDialogOpen(false);
+  };
+
+  const handleClearFiltersInDialog = () => {
+    setTempTimeFilter(defaultChatTimeFilter);
+    setTempStatusFilter(defaultChatStatusFilter);
   };
 
   if (isLoading && !currentUser && !allFetchedChats.length) { 
@@ -397,8 +415,8 @@ export default function MessagesPage() {
                             {HEBREW_TEXT.chat.chatTimeFilter}
                         </Label>
                         <Select 
-                            value={chatTimeFilter} 
-                            onValueChange={(value) => setChatTimeFilter(value as ChatTimeFilter)}
+                            value={tempTimeFilter} 
+                            onValueChange={(value) => setTempTimeFilter(value as ChatTimeFilter)}
                             disabled={isLoading}
                             dir="rtl"
                         >
@@ -417,8 +435,8 @@ export default function MessagesPage() {
                             {HEBREW_TEXT.chat.chatStatusFilter}
                         </Label>
                         <Select
-                            value={chatStatusFilter}
-                            onValueChange={(value) => setChatStatusFilter(value as ChatStatusFilter)}
+                            value={tempStatusFilter}
+                            onValueChange={(value) => setTempStatusFilter(value as ChatStatusFilter)}
                             disabled={isLoading}
                             dir="rtl"
                         >
@@ -439,14 +457,12 @@ export default function MessagesPage() {
                     </div>
                 </div>
                 <DialogFooter className="sm:justify-between pt-4 border-t">
-                    <Button type="button" variant="ghost" onClick={handleClearFilters} disabled={isLoading}>
+                    <Button type="button" variant="ghost" onClick={handleClearFiltersInDialog} disabled={isLoading}>
                         {HEBREW_TEXT.general.clearFilters}
                     </Button>
-                    <DialogClose asChild>
-                        <Button type="button" variant="default" disabled={isLoading}>
-                            {HEBREW_TEXT.general.close}
-                        </Button>
-                    </DialogClose>
+                    <Button type="button" variant="default" disabled={isLoading} onClick={handleApplyFilters}>
+                        {HEBREW_TEXT.event.applyFilters}
+                    </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -477,4 +493,3 @@ export default function MessagesPage() {
     </div>
   );
 }
-
