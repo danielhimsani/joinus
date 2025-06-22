@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, collection, query, where, getCountFromServer } from 'firebase/firestore';
 import { db, auth as firebaseAuthInstance } from '@/lib/firebase';
 import type { Event, FoodType, KashrutType, WeddingType } from '@/types';
 import { EventForm } from '@/components/events/EventForm';
@@ -25,6 +25,8 @@ export default function EditEventPage() {
   const [isFetchingEvent, setIsFetchingEvent] = useState(false); // Specific loading for event data fetch
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [approvedGuestsCount, setApprovedGuestsCount] = useState(0);
+  const [isLoadingApprovedCount, setIsLoadingApprovedCount] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (user) => {
@@ -57,6 +59,7 @@ export default function EditEventPage() {
 
     const fetchEventData = async () => {
       setIsFetchingEvent(true);
+      setIsLoadingApprovedCount(true);
       setFetchError(null);
       try {
         const eventDocRef = doc(db, "events", eventId);
@@ -68,6 +71,13 @@ export default function EditEventPage() {
             setFetchError("אינך מורשה לערוך אירוע זה.");
             setEventToEdit(null);
           } else {
+
+            // Fetch approved guests count
+            const chatsQuery = query(collection(db, "eventChats"), where("eventId", "==", eventId), where("status", "==", "request_approved"));
+            const countSnapshot = await getCountFromServer(chatsQuery);
+            setApprovedGuestsCount(countSnapshot.data().count);
+
+
             // Basic data migration for old foodType and religionStyle if they exist
             let foodType: FoodType = data.foodType as FoodType || 'meat';
             let kashrut: KashrutType = data.kashrut as KashrutType || 'kosher';
@@ -124,6 +134,7 @@ export default function EditEventPage() {
         setEventToEdit(null);
       } finally {
         setIsFetchingEvent(false);
+        setIsLoadingApprovedCount(false);
       }
     };
 
@@ -132,7 +143,7 @@ export default function EditEventPage() {
     }
   }, [eventId, currentUser, isLoading, router]);
 
-  if (isLoading || isFetchingEvent) { 
+  if (isLoading || isFetchingEvent || isLoadingApprovedCount) { 
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto space-y-6">
@@ -187,8 +198,8 @@ export default function EditEventPage() {
         isEditMode={true}
         pageTitle={pageTitle}
         submitButtonText={submitButtonText}
+        approvedGuestsCount={approvedGuestsCount}
       />
     </div>
   );
 }
-

@@ -3,7 +3,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { doc, getDoc, collection, query, orderBy, onSnapshot, addDoc, updateDoc, serverTimestamp, writeBatch, Timestamp, where, increment, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, onSnapshot, addDoc, updateDoc, serverTimestamp, writeBatch, Timestamp, where, increment, getDocs, getCountFromServer } from 'firebase/firestore';
 import { db, auth as firebaseAuthInstance } from '@/lib/firebase';
 import type { EventChat, EventChatMessage, EventAnnouncement } from '@/types';
 import { HEBREW_TEXT } from '@/constants/hebrew-text';
@@ -264,8 +264,40 @@ export default function ChatPage() {
     if (!chatDetails || !currentUser || !chatDetails.ownerUids.includes(currentUser.uid)) return;
 
     setIsUpdatingStatus(true);
-    const chatDocRef = doc(db, "eventChats", chatId);
     
+    // Check for available spots before approving
+    if (newStatus === 'request_approved') {
+        try {
+            const eventDocRef = doc(db, "events", chatDetails.eventId);
+            const eventSnap = await getDoc(eventDocRef);
+
+            if (!eventSnap.exists()) {
+                toast({ title: HEBREW_TEXT.general.error, description: "לא ניתן למצוא את פרטי האירוע המשויך.", variant: "destructive" });
+                setIsUpdatingStatus(false);
+                return;
+            }
+
+            const eventData = eventSnap.data();
+            const totalSpots = eventData.numberOfGuests as number;
+
+            const approvedChatsQuery = query(collection(db, "eventChats"), where("eventId", "==", chatDetails.eventId), where("status", "==", "request_approved"));
+            const approvedCountSnapshot = await getCountFromServer(approvedChatsQuery);
+            const currentApprovedCount = approvedCountSnapshot.data().count;
+
+            if (currentApprovedCount >= totalSpots) {
+                toast({ title: HEBREW_TEXT.event.noSpotsAvailableTitle, description: HEBREW_TEXT.event.noSpotsAvailableMessage, variant: "destructive" });
+                setIsUpdatingStatus(false);
+                return;
+            }
+        } catch (e) {
+            console.error("Error checking available spots:", e);
+            toast({ title: HEBREW_TEXT.general.error, description: "שגיאה בבדיקת מקומות פנויים.", variant: "destructive" });
+            setIsUpdatingStatus(false);
+            return;
+        }
+    }
+
+    const chatDocRef = doc(db, "eventChats", chatId);
     try {
       await updateDoc(chatDocRef, {
         status: newStatus,

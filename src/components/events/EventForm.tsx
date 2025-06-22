@@ -70,7 +70,7 @@ const paymentOptions: { value: PaymentOption; label: string }[] = [
     { value: "fixed", label: HEBREW_TEXT.event.pricePerGuest },
 ];
 
-const formSchema = z.object({
+const createEventFormSchema = (approvedGuestsCount: number, isEditMode: boolean) => z.object({
   name: z.string().min(2, { message: HEBREW_TEXT.event.eventNameMinLengthError }),
   ownerUids: z.array(z.string()).min(1, { message: "חייב להיות לפחות בעלים אחד לאירוע." }),
   numberOfGuests: z.coerce.number().min(1, { message: "מספר אורחים חייב להיות לפחות 1." }),
@@ -90,17 +90,26 @@ const formSchema = z.object({
   kashrut: z.enum(["kosher", "notKosher"], { errorMap: () => ({ message: "יש לבחור רמת כשרות."}) }),
   weddingType: z.enum(["traditional", "civil", "harediWithSeparation"], { errorMap: () => ({ message: "יש לבחור סוג חתונה."}) }),
   imageUrl: z.string().optional(),
-}).refine(data => {
+}).superRefine((data, ctx) => {
     if (data.paymentOption === 'fixed') {
-        return data.pricePerGuest !== undefined && data.pricePerGuest >= 0;
+        if (data.pricePerGuest === undefined || data.pricePerGuest < 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["pricePerGuest"],
+                message: "יש להזין מחיר לאורח (יכול להיות 0) כאשר אפשרות התשלום היא מחיר קבוע.",
+            });
+        }
     }
-    return true;
-}, {
-    message: "יש להזין מחיר לאורח (יכול להיות 0) כאשר אפשרות התשלום היא מחיר קבוע.",
-    path: ["pricePerGuest"],
+    if (isEditMode && data.numberOfGuests < approvedGuestsCount) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["numberOfGuests"],
+            message: HEBREW_TEXT.event.guestCountLowerThanApprovedError.replace('{count}', approvedGuestsCount.toString()),
+        });
+    }
 });
 
-type FormSchemaType = z.infer<typeof formSchema>;
+type FormSchemaType = z.infer<ReturnType<typeof createEventFormSchema>>;
 
 
 function promiseWithTimeout<T>(promise: Promise<T>, ms: number, timeoutError = new Error('Operation timed out after ' + ms + 'ms')): Promise<T> {
@@ -119,17 +128,21 @@ interface EventFormProps {
     isEditMode?: boolean;
     pageTitle?: string;
     submitButtonText?: string;
+    approvedGuestsCount?: number;
 }
 
 export function EventForm({
     initialEventData = null,
     isEditMode = false,
     pageTitle: propPageTitle,
-    submitButtonText: propSubmitButtonText
+    submitButtonText: propSubmitButtonText,
+    approvedGuestsCount = 0
 }: EventFormProps) {
   const router = useRouter();
   const { toast } = useToast();
 
+  const formSchema = createEventFormSchema(approvedGuestsCount, isEditMode);
+  
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
