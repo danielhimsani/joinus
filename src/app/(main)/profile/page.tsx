@@ -597,25 +597,23 @@ export default function ProfilePage() {
                     )}
                   </Avatar>
                   {isEditing && (
-                      <>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="absolute bottom-0 left-0 bg-background rounded-full"
-                            onClick={() => imageInputRef.current?.click()}
-                        >
-                            <Camera className="h-5 w-5"/>
-                            <span className="sr-only">{HEBREW_TEXT.profile.uploadProfileImage}</span>
-                        </Button>
-                        <input
-                            type="file"
-                            ref={imageInputRef}
-                            onChange={handleImageFileChange}
-                            className="hidden"
-                            accept="image/png, image/jpeg, image/webp"
-                        />
-                      </>
+                    <>
+                      <label
+                        htmlFor="profile-image-upload"
+                        className="absolute bottom-0 left-0 flex h-10 w-10 items-center justify-center rounded-full border bg-background shadow-md cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <Camera className="h-5 w-5" />
+                        <span className="sr-only">{HEBREW_TEXT.profile.uploadProfileImage}</span>
+                      </label>
+                      <input
+                        id="profile-image-upload"
+                        type="file"
+                        ref={imageInputRef}
+                        onChange={handleImageFileChange}
+                        className="hidden"
+                        accept="image/png, image/jpeg, image/webp"
+                      />
+                    </>
                   )}
                 </div>
                  {isUploadingImage && imageUploadProgress !== null && (
