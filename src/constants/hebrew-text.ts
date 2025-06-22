@@ -190,7 +190,7 @@ export const HEBREW_TEXT = {
     bioNotProvided: "לא סופק ביו.",
     uploadProfileImage: "העלה תמונת פרופיל",
     bio: "קצת עליי",
-    phone: "טלפון (אופציונלי)",
+    phone: "טלפון",
     email: "אימייל",
     uploadIdForVerification: "העלה תעודת זהות (לאימות)",
     verifiedBadge: "מאומת",
